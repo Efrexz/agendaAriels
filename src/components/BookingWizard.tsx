@@ -15,7 +15,7 @@ export interface PetData {
   petType: "dog" | "cat";
   service: "bath" | "bath_cut";
   extraServices: string[];
-  size: "small" | "medium" | "large";
+  size: "small" | "medium" | "large" | "giant";
   coat: "normal" | "knotted";
   petNotes: string;
   petName: string;
@@ -31,7 +31,7 @@ export interface FormData {
   petType: "dog" | "cat" | null;
   service: "bath" | "bath_cut" | null;
   extraServices: string[];
-  size: "small" | "medium" | "large" | null;
+  size: "small" | "medium" | "large" | "giant" | null;
   coat: "normal" | "knotted";
   petNotes: string;
   petName: string;
@@ -64,7 +64,7 @@ const INITIAL_PET_FIELDS = {
   petType: null as "dog" | "cat" | null,
   service: null as "bath" | "bath_cut" | null,
   extraServices: [] as string[],
-  size: null as "small" | "medium" | "large" | null,
+  size: null as "small" | "medium" | "large" | "giant" | null,
   coat: "normal" as "normal" | "knotted",
   petNotes: "",
   petName: "",
@@ -185,6 +185,24 @@ export function BookingWizard() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-2xl rounded-2xl border-t-4 border-t-orange-500 bg-white shadow-xl">
         <div className="p-6 sm:p-8">
+          {/* Brand Header */}
+          <div className="mb-6">
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-500 text-lg font-bold text-white shadow-sm shadow-orange-200">
+                AC
+              </div>
+              <div>
+                <h1 className="text-lg font-bold leading-tight tracking-tight text-[#1A2238]">
+                  Ariels Clinics
+                </h1>
+                <p className="text-[11px] font-medium uppercase tracking-[0.18em] text-orange-500">
+                  Estilismo &amp; Bienestar
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 h-px w-full bg-[#E7E2D8]" />
+          </div>
+
           <div className="mb-6">
             <div className="mb-2 flex items-center justify-between text-sm text-gray-500">
               <span className="flex items-center gap-2 font-medium text-gray-700">

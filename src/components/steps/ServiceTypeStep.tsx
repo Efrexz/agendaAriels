@@ -1,4 +1,3 @@
-import { Dog, Cat } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 
 interface ServiceTypeStepProps {
@@ -11,8 +10,20 @@ interface ServiceTypeStepProps {
 }
 
 const OPTIONS = [
-  { value: "dog" as const, label: "Perro", icon: Dog },
-  { value: "cat" as const, label: "Gato", icon: Cat },
+  {
+    value: "dog" as const,
+    label: "Perro",
+    blurb: "Cuidado canino completo",
+    image: "/images/service-dog.png",
+    alt: "Perro recién bañado y cepillado",
+  },
+  {
+    value: "cat" as const,
+    label: "Gato",
+    blurb: "Estilismo felino a bajo estrés",
+    image: "/images/service-cat.png",
+    alt: "Gato con pelaje brillante tras el baño",
+  },
 ];
 
 export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepProps) {
@@ -23,34 +34,59 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
 
   return (
     <div>
-      <h2 className="mb-8 text-center text-2xl font-bold text-gray-800">
-        ¿Qué tipo de mascota es?
-      </h2>
-      <div className="grid grid-cols-2 gap-6">
-        {OPTIONS.map(({ value, label, icon: Icon }) => {
+      <div className="mb-8 text-center">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          Ariels Clinics
+        </p>
+        <h2 className="text-2xl font-bold tracking-tight text-[#1A2238]">
+          ¿Qué tipo de mascota es?
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        {OPTIONS.map(({ value, label, blurb, image, alt }) => {
           const selected = formData.petType === value;
           return (
             <button
               key={value}
+              type="button"
               onClick={() => handleSelect(value)}
-              className={`flex cursor-pointer flex-col items-center gap-5 rounded-2xl border-2 p-10 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] ${
+              aria-pressed={selected}
+              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
-                  : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                  ? "border-blue-500 shadow-lg shadow-blue-100"
+                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <Icon
-                className={`h-20 w-20 transition-colors ${
-                  selected ? "text-blue-600" : "text-gray-600"
-                }`}
-              />
-              <span
-                className={`text-xl font-semibold ${
-                  selected ? "text-blue-700" : "text-gray-700"
-                }`}
-              >
-                {label}
-              </span>
+              <div className="relative aspect-[4/3] w-full overflow-hidden bg-[#FBF8F4]">
+                <img
+                  src={image}
+                  alt={alt}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                <div
+                  className={`absolute inset-0 transition-opacity duration-300 ${
+                    selected ? "bg-blue-900/10" : "bg-transparent"
+                  }`}
+                />
+                {selected && (
+                  <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md">
+                    ✓
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-1 flex-col gap-1 p-5">
+                <span
+                  className={`text-lg font-semibold tracking-tight ${
+                    selected ? "text-blue-700" : "text-[#1A2238]"
+                  }`}
+                >
+                  {label}
+                </span>
+                <span className="text-xs leading-snug text-gray-500">{blurb}</span>
+              </div>
             </button>
           );
         })}

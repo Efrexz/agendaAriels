@@ -9,8 +9,15 @@ interface PetInfoStepProps {
 }
 
 const SERVICE_OPTIONS = [
-  { value: "bath" as const, label: "Baño", icon: ShowerHead },
-  { value: "bath_cut" as const, label: "Baño + Corte", icon: Scissors },
+  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/service-bath.png", alt: "Mascota recibiendo baño" },
+  {
+    value: "bath_cut" as const,
+    label: "Baño y Corte",
+    icon: Scissors,
+    image: "/images/service-bath-cut.png",
+    alt: "Mascota con corte de pelaje de estilo",
+    premium: true,
+  },
 ];
 
 const BATH_OPTIONS = [
@@ -87,7 +94,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
     <div>
       {/* Pet Name Input */}
       <div className="mb-6">
-        <label className="mb-1 block text-sm font-medium text-gray-700">
+        <label className="mb-1 block text-sm font-medium text-[#1A2238]">
           Nombre de la mascota
         </label>
         <input type="text" value={formData.petName || ""}
@@ -101,12 +108,20 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Service Selection: Bath or Bath+Cut */}
-      <h2 className="mb-8 text-center text-2xl font-bold text-gray-800">
-        ¿Qué servicio necesita?
-      </h2>
-      <div className="grid grid-cols-2 gap-6">
-        {SERVICE_OPTIONS.map(({ value, label, icon: Icon }) => {
+      <div className="mb-8 text-center">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          Servicio principal
+        </p>
+        <h2 className="text-2xl font-bold tracking-tight text-[#1A2238]">
+          ¿Qué servicio necesita?
+        </h2>
+      </div>
+
+      <div className="grid grid-cols-2 gap-5">
+        {SERVICE_OPTIONS.map(({ value, label, icon: Icon, image, alt }) => {
           const selected = formData.service === value;
+          const isPremium = value === "bath_cut";
+          const accentColor = isPremium ? "orange" : "blue";
           return (
             <button key={value} type="button"
               onClick={() => {
@@ -118,13 +133,57 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   update("corteImage", "");
                 }
               }}
-              className={`flex cursor-pointer flex-col items-center gap-5 rounded-2xl border-2 p-10 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] ${
-                selected ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
-                         : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+              aria-pressed={selected}
+              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-${accentColor}-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+                selected
+                  ? isPremium
+                    ? "border-orange-400 shadow-lg shadow-orange-100"
+                    : "border-blue-500 shadow-lg shadow-blue-100"
+                  : isPremium
+                    ? "border-orange-400 shadow-sm"
+                    : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <Icon className={`h-20 w-20 transition-colors ${selected ? "text-blue-600" : "text-gray-600"}`} />
-              <span className={`text-xl font-semibold ${selected ? "text-blue-700" : "text-gray-700"}`}>{label}</span>
+              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#FBF8F4]">
+                <img
+                  src={image}
+                  alt={alt}
+                  loading="lazy"
+                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                {isPremium ? (
+                  <div className="absolute inset-0 bg-gradient-to-t from-orange-500/55 via-orange-500/10 to-transparent" />
+                ) : (
+                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
+                )}
+                {selected && (
+                  <span className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold text-white shadow-md ${
+                    isPremium ? "bg-orange-600" : "bg-blue-600"
+                  }`}>
+                    ✓
+                  </span>
+                )}
+              </div>
+
+              <div className="flex flex-1 items-center gap-3 p-5">
+                <Icon className={`h-6 w-6 shrink-0 transition-colors ${
+                  isPremium
+                    ? selected ? "text-orange-600" : "text-orange-500"
+                    : selected ? "text-blue-600" : "text-gray-500"
+                }`} />
+                <div className="flex flex-col">
+                  <span className={`text-base font-semibold tracking-tight ${
+                    selected
+                      ? isPremium ? "text-orange-700" : "text-blue-700"
+                      : "text-[#1A2238]"
+                  }`}>
+                    {label}
+                  </span>
+                  <span className="text-xs leading-snug text-gray-500">
+                    {isPremium ? "Estilismo con corte de pelaje a elección" : "Limpieza profunda con productos especializados"}
+                  </span>
+                </div>
+              </div>
             </button>
           );
         })}
@@ -200,8 +259,8 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
         showCorte ? "mt-10 max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
       }`}>
-        <div className="rounded-2xl border border-orange-200 bg-orange-50/40 p-6 shadow-sm">
-          <h3 className="mb-6 text-center text-xl font-bold text-gray-800">Detalles del Corte</h3>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm">
+          <h3 className="mb-6 text-center text-xl font-bold text-[#1A2238]">Detalles del Corte</h3>
           <div className="mb-6">
             <p className="mb-3 text-sm font-semibold text-gray-700">Tipo de corte</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -211,8 +270,8 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   <button key={value} type="button"
                     onClick={() => { setError(null); update("corteType", value); }}
                     className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
-                      selected ? "border-orange-500 bg-orange-100 text-orange-800 shadow-md"
-                               : "border-orange-200 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
+                      selected ? "border-blue-500 bg-blue-100 text-blue-800 shadow-md"
+                               : "border-blue-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
                     }`}
                   >{label}</button>
                 );
@@ -225,7 +284,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
               onChange={(e) => update("corteSpecs", e.target.value)}
               placeholder="Ej: Dejar punta de cola tipo pompón, no tocar bigotes, no cortar mucho las orejas..."
               rows={4}
-              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-orange-400 focus:ring-2 focus:ring-orange-200" />
+              className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-400 focus:ring-2 focus:ring-blue-200" />
           </div>
           <div className="mb-4 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-700">
             ⚠️ Importante: Si su mascota presenta nudos o el pelaje muy motado, por salud y bienestar dermatológico, el estilista podría recomendar obligatoriamente un corte rapado. Los nudos severos atrapan la humedad, impiden un secado correcto y pueden generar hongos o infecciones en la piel.
@@ -236,7 +295,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
             <div className="flex items-center gap-4">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
               <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-orange-300 bg-white px-5 py-3 text-sm font-medium text-gray-600 transition-all hover:border-orange-500 hover:text-orange-600">
+                className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-white px-5 py-3 text-sm font-medium text-gray-600 transition-all hover:border-blue-500 hover:text-blue-600">
                 <Upload className="h-5 w-5" /> Subir foto
               </button>
               {formData.corteImage && (
