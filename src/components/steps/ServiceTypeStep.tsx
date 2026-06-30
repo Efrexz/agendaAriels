@@ -14,14 +14,14 @@ const OPTIONS = [
     value: "dog" as const,
     label: "Perro",
     blurb: "Cuidado canino completo",
-    image: "/images/service-dog.png",
+    image: "/images/petType/dog.webp",
     alt: "Perro recién bañado y cepillado",
   },
   {
     value: "cat" as const,
     label: "Gato",
     blurb: "Estilismo felino a bajo estrés",
-    image: "/images/service-cat.png",
+    image: "/images/petType/cat.webp",
     alt: "Gato con pelaje brillante tras el baño",
   },
 ];

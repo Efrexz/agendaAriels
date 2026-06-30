@@ -9,14 +9,13 @@ interface PetInfoStepProps {
 }
 
 const SERVICE_OPTIONS = [
-  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/service-bath.png", alt: "Mascota recibiendo baño" },
+  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/servicios/bath.webp", alt: "Mascota recibiendo baño" },
   {
     value: "bath_cut" as const,
     label: "Baño y Corte",
     icon: Scissors,
-    image: "/images/service-bath-cut.png",
+    image: "/images/servicios/bath-cut.webp",
     alt: "Mascota con corte de pelaje de estilo",
-    premium: true,
   },
 ];
 
@@ -100,7 +99,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <input type="text" value={formData.petName || ""}
           onChange={(e) => { if (error) setError(null); update("petName", e.target.value); }}
           placeholder="Ej: Firulais"
-          className={`w-full rounded-xl border px-4 py-3 text-gray-800 outline-none transition-colors focus:ring-2 ${
+          className={`w-full rounded-xl border px-4 py-3 text-lg text-gray-800 outline-none transition-colors focus:ring-2 lg:px-5 lg:py-4 ${
             error && !formData.petName?.trim() ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
           }`} />
@@ -112,7 +111,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Servicio principal
         </p>
-        <h2 className="text-2xl font-bold tracking-tight text-[#1A2238]">
+        <h2 className="text-2xl font-bold tracking-tight text-[#1A2238] lg:text-3xl">
           ¿Qué servicio necesita?
         </h2>
       </div>
@@ -120,8 +119,6 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       <div className="grid grid-cols-2 gap-5">
         {SERVICE_OPTIONS.map(({ value, label, icon: Icon, image, alt }) => {
           const selected = formData.service === value;
-          const isPremium = value === "bath_cut";
-          const accentColor = isPremium ? "orange" : "blue";
           return (
             <button key={value} type="button"
               onClick={() => {
@@ -134,14 +131,10 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                 }
               }}
               aria-pressed={selected}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-${accentColor}-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? isPremium
-                    ? "border-orange-400 shadow-lg shadow-orange-100"
-                    : "border-blue-500 shadow-lg shadow-blue-100"
-                  : isPremium
-                    ? "border-orange-400 shadow-sm"
-                    : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
+                  ? "border-blue-500 shadow-lg shadow-blue-100"
+                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
               <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#FBF8F4]">
@@ -151,36 +144,28 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 />
-                {isPremium ? (
-                  <div className="absolute inset-0 bg-gradient-to-t from-orange-500/55 via-orange-500/10 to-transparent" />
-                ) : (
-                  <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
-                )}
+                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
                 {selected && (
-                  <span className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold text-white shadow-md ${
-                    isPremium ? "bg-orange-600" : "bg-blue-600"
-                  }`}>
+                  <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md">
                     ✓
                   </span>
                 )}
               </div>
 
-              <div className="flex flex-1 items-center gap-3 p-5">
-                <Icon className={`h-6 w-6 shrink-0 transition-colors ${
-                  isPremium
-                    ? selected ? "text-orange-600" : "text-orange-500"
-                    : selected ? "text-blue-600" : "text-gray-500"
+              <div className="flex flex-1 items-center gap-3 p-5 lg:gap-4 lg:p-7">
+                <Icon className={`h-6 w-6 shrink-0 transition-colors lg:h-7 lg:w-7 ${
+                  selected ? "text-blue-600" : "text-gray-500"
                 }`} />
                 <div className="flex flex-col">
-                  <span className={`text-base font-semibold tracking-tight ${
-                    selected
-                      ? isPremium ? "text-orange-700" : "text-blue-700"
-                      : "text-[#1A2238]"
+                  <span className={`text-base font-semibold tracking-tight lg:text-lg ${
+                    selected ? "text-blue-700" : "text-[#1A2238]"
                   }`}>
                     {label}
                   </span>
-                  <span className="text-xs leading-snug text-gray-500">
-                    {isPremium ? "Estilismo con corte de pelaje a elección" : "Limpieza profunda con productos especializados"}
+                  <span className="text-xs leading-snug text-gray-500 lg:text-sm">
+                    {value === "bath_cut"
+                      ? "Estilismo con corte de pelaje a elección"
+                      : "Limpieza profunda con productos especializados"}
                   </span>
                 </div>
               </div>
@@ -190,7 +175,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Services detail card: Bath type + Extras */}
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm lg:p-8">
         {/* Bath Type Selection */}
         <div>
           <div className="mb-1 flex items-center gap-2">
@@ -199,23 +184,23 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
               Tipo de baño
             </h3>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 lg:gap-6">
             {BATH_OPTIONS.map(({ value, label, description, icon: Icon }) => {
               const selected = formData.bathType === value;
               return (
                 <button key={value} type="button"
                   onClick={() => { setError(null); update("bathType", value); }}
-                  className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] ${
+                  className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-5 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] lg:gap-4 lg:p-7 ${
                     selected
                       ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
                       : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
                   }`}
                 >
-                  <Icon className={`h-10 w-10 transition-colors ${selected ? "text-blue-600" : "text-gray-600"}`} />
-                  <span className={`text-center text-sm font-semibold leading-tight ${selected ? "text-blue-700" : "text-gray-700"}`}>
+                  <Icon className={`h-10 w-10 transition-colors lg:h-12 lg:w-12 ${selected ? "text-blue-600" : "text-gray-600"}`} />
+                  <span className={`text-center text-sm font-semibold leading-tight lg:text-base ${selected ? "text-blue-700" : "text-gray-700"}`}>
                     {label}
                   </span>
-                  <span className="text-center text-xs leading-tight text-gray-500">
+                  <span className="text-center text-xs leading-tight text-gray-500 lg:text-sm">
                     {description}
                   </span>
                 </button>
@@ -234,17 +219,17 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
               Servicios adicionales
             </h3>
           </div>
-          <div className="grid grid-cols-3 gap-4">
+          <div className="grid grid-cols-3 gap-4 lg:gap-6">
             {EXTRA_OPTIONS.map(({ value, label }) => {
               const checked = (formData.extraServices || []).includes(value);
               return (
                 <button key={value} type="button" onClick={() => toggleExtra(value)}
-                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 ${
+                  className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 lg:gap-3 lg:px-6 lg:py-5 lg:text-base ${
                     checked ? "border-orange-500 bg-orange-50 text-orange-800 shadow-md"
                             : "border-slate-200 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
                   }`}
                 >
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-xs font-bold transition-all ${
+                  <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-xs font-bold transition-all lg:h-6 lg:w-6 ${
                     checked ? "border-orange-500 bg-orange-500 text-white" : "border-slate-200 bg-white text-transparent"
                   }`}>✓</span>
                   {label}
@@ -259,8 +244,8 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
         showCorte ? "mt-10 max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
       }`}>
-        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm">
-          <h3 className="mb-6 text-center text-xl font-bold text-[#1A2238]">Detalles del Corte</h3>
+        <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm lg:p-8">
+          <h3 className="mb-6 text-center text-xl font-bold text-[#1A2238] lg:text-2xl">Detalles del Corte</h3>
           <div className="mb-6">
             <p className="mb-3 text-sm font-semibold text-gray-700">Tipo de corte</p>
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
@@ -269,7 +254,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                 return (
                   <button key={value} type="button"
                     onClick={() => { setError(null); update("corteType", value); }}
-                    className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all duration-200 ${
+                    className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all duration-200 lg:px-6 lg:py-4 lg:text-base ${
                       selected ? "border-blue-500 bg-blue-100 text-blue-800 shadow-md"
                                : "border-blue-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
                     }`}
@@ -313,21 +298,21 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Perfume Aroma */}
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm">
+      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm lg:p-8">
         <div className="mb-1 flex items-center gap-2">
           <div className="h-1 w-6 rounded-full bg-orange-500" />
           <h3 className="text-sm font-semibold uppercase tracking-wide text-orange-600">
             Aroma del perfume
           </h3>
         </div>
-        <div className="flex justify-center gap-4">
+        <div className="flex justify-center gap-4 lg:gap-6">
           {(["fruital", "floral", "fresco"] as const).map((value) => {
             const labels: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
             const selected = formData.perfume === value;
             return (
               <button key={value} type="button"
                 onClick={() => update("perfume", value)}
-                className={`cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] ${
+                className={`cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] lg:px-8 lg:py-4 lg:text-base ${
                   selected
                     ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
                     : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
@@ -345,7 +330,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       )}
 
       <button onClick={handleContinue}
-        className="mt-10 w-full cursor-pointer rounded-xl bg-blue-600 py-4 text-lg font-bold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]">
+        className="mt-10 w-full cursor-pointer rounded-xl bg-blue-600 py-4 text-lg font-bold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98] lg:py-5 lg:text-xl">
         Continuar
       </button>
     </div>
