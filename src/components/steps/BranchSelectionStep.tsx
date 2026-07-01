@@ -11,19 +11,19 @@ const BRANCHES = [
   {
     value: "san_martin" as const,
     label: "Sede San Martín de Porres",
-    image: "https://images.unsplash.com/photo-1584820927498-cfe5211fd8bf?w=600&h=400&fit=crop&q=80",
+    image: "/images/sedes/sanMartin.webp",
     address: "Av. Proceres 115",
   },
   {
     value: "los_olivos" as const,
     label: "Sede Los Olivos",
-    image: "https://images.unsplash.com/photo-1629909613654-28e377c37b09?w=600&h=400&fit=crop&q=80",
+    image: "/images/sedes/olivos.webp",
     address: "Av. Beta Mz Ñ lote 1",
   },
   {
     value: "san_miguel" as const,
     label: "Sede San Miguel",
-    image: "https://images.unsplash.com/photo-1576201836106-db1758fd1c97?w=600&h=400&fit=crop&q=80",
+    image: "/images/sedes/sanMiguel.webp",
     address: "Av. Brigida Silva 272",
   },
 ];
