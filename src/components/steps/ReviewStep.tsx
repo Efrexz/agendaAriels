@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from "@react-google-maps/api";
 import type { FormData } from "../BookingWizard";
 
@@ -27,6 +27,15 @@ function getDefaultCenter(branch: string | null) {
 }
 
 export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
+  const isCat = formData.petType === "cat";
+
+  // Auto-select species to match petType when not yet set or inconsistent
+  useEffect(() => {
+    if (isCat && formData.petSpecies !== "cat") {
+      update("petSpecies", "cat");
+    }
+  }, [isCat, formData.petSpecies, update]);
+
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
     libraries: MAP_LIBRARIES,
@@ -339,7 +348,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                   type="text"
                   value={formData.petBreed}
                   onChange={(e) => update("petBreed", e.target.value)}
-                  placeholder="Ej: Labrador"
+                  placeholder={isCat ? "Ej: Siamés" : "Ej: Labrador"}
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
@@ -412,7 +421,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 rows={4}
                 value={formData.petNotes}
                 onChange={(e) => update("petNotes", e.target.value)}
-                placeholder="Ej: Mi perro se pone nervioso con la secadora..."
+                placeholder={isCat ? "Ej: Mi gato se pone nervioso con la secadora..." : "Ej: Mi perro se pone nervioso con la secadora..."}
                 className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
               />
             </div>

@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ShowerHead, Scissors, Upload, Trash2, Droplets, ShieldAlert, Smile } from "lucide-react";
+import { ShowerHead, Scissors, Wind, Upload, Trash2, Droplets, ShieldAlert, Smile } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 
 interface PetInfoStepProps {
@@ -8,14 +8,25 @@ interface PetInfoStepProps {
   onNext: () => void;
 }
 
-const SERVICE_OPTIONS = [
-  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/servicios/bath.webp", alt: "Mascota recibiendo baño" },
+const DOG_SERVICE_OPTIONS = [
+  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/servicios/dog/bath.webp", alt: "Mascota recibiendo baño" },
   {
     value: "bath_cut" as const,
     label: "Baño y Corte",
     icon: Scissors,
-    image: "/images/servicios/bath-cut.webp",
+    image: "/images/servicios/dog/bath-cut.webp",
     alt: "Mascota con corte de pelaje de estilo",
+  },
+];
+
+const CAT_SERVICE_OPTIONS = [
+  { value: "bath" as const, label: "Baño", icon: ShowerHead, image: "/images/servicios/cat/bath.webp", alt: "Mascota recibiendo baño" },
+  {
+    value: "bath_deslanado" as const,
+    label: "Baño y Deslanado",
+    icon: Wind,
+    image: "/images/servicios/cat/bath-deslanado.webp",
+    alt: "Mascota recibiendo baño y deslanado",
   },
 ];
 
@@ -40,6 +51,9 @@ const CORTE_OPTIONS = [
 export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const isCat = formData.petType === "cat";
+  const SERVICE_OPTIONS = isCat ? CAT_SERVICE_OPTIONS : DOG_SERVICE_OPTIONS;
 
   const showCorte = formData.service === "bath_cut";
 
@@ -144,7 +158,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   loading="lazy"
                   className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-gradient-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
+                <div className="absolute inset-0 bg-linear-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
                 {selected && (
                   <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md">
                     ✓
@@ -242,7 +256,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
 
       {/* Corte Details (collapsible, only when bath_cut) */}
       <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
-        showCorte ? "mt-10 max-h-[1000px] opacity-100" : "max-h-0 opacity-0"
+        showCorte ? "mt-10 max-h-250 opacity-100" : "max-h-0 opacity-0"
       }`}>
         <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm lg:p-8">
           <h3 className="mb-6 text-center text-xl font-bold text-[#1A2238] lg:text-2xl">Detalles del Corte</h3>

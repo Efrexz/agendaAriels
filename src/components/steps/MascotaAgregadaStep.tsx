@@ -11,7 +11,7 @@ interface MascotaAgregadaStepProps {
 }
 
 const PET_TYPE_LABELS: Record<string, string> = { dog: "Perro", cat: "Gato" };
-const SERVICE_LABELS: Record<string, string> = { bath: "Baño", bath_cut: "Baño + Corte" };
+const SERVICE_LABELS: Record<string, string> = { bath: "Baño", bath_cut: "Baño + Corte", bath_deslanado: "Baño + Deslanado" };
 const SIZE_LABELS: Record<string, string> = { small: "Pequeño", medium: "Mediano", large: "Grande" };
 const EXTRA_LABELS: Record<string, string> = { deworming: "Desparasitación", antiflea: "Antipulgas", vaccine: "Vacuna" };
 const PERFUME_LABELS: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
@@ -21,7 +21,7 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue }: Masc
     petType: formData.petType ?? "dog",
     service: formData.service ?? "bath",
     extraServices: formData.extraServices ?? [],
-    size: formData.size ?? "small",
+    size: formData.petType === "cat" ? null : (formData.size ?? "small"),
     coat: formData.coat ?? "normal",
     petNotes: formData.petNotes,
     petName: formData.petName,
@@ -37,6 +37,8 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue }: Masc
       ? currentPet.extraServices.map((s) => EXTRA_LABELS[s] || s).join(", ")
       : null;
 
+  const sizeSegment = currentPet.petType === "cat" || !currentPet.size ? null : SIZE_LABELS[currentPet.size];
+
   return (
     <div className="flex flex-col items-center gap-6 py-6">
       <div className="relative">
@@ -47,7 +49,8 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue }: Masc
         ¡Mascota agregada!
       </h2>
       <p className="max-w-md text-center text-gray-500">
-        {currentPet.petName || "Mascota"} — {PET_TYPE_LABELS[currentPet.petType]} | {SERVICE_LABELS[currentPet.service]} | {SIZE_LABELS[currentPet.size]}
+        {currentPet.petName || "Mascota"} — {PET_TYPE_LABELS[currentPet.petType]} | {SERVICE_LABELS[currentPet.service]}
+        {sizeSegment && <> | {sizeSegment}</>}
         {currentPet.perfume && <> | {PERFUME_LABELS[currentPet.perfume]}</>}
         {extraSummary && <> | {extraSummary}</>}
       </p>

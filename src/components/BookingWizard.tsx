@@ -13,9 +13,9 @@ import { ConfirmationStep } from "./steps/ConfirmationStep";
 
 export interface PetData {
   petType: "dog" | "cat";
-  service: "bath" | "bath_cut";
+  service: "bath" | "bath_cut" | "bath_deslanado";
   extraServices: string[];
-  size: "small" | "medium" | "large" | "giant";
+  size: "small" | "medium" | "large" | "giant" | null;
   coat: "normal" | "knotted";
   petNotes: string;
   petName: string;
@@ -29,7 +29,7 @@ export interface PetData {
 export interface FormData {
   branch: "san_martin" | "los_olivos" | "san_miguel" | null;
   petType: "dog" | "cat" | null;
-  service: "bath" | "bath_cut" | null;
+  service: "bath" | "bath_cut" | "bath_deslanado" | null;
   extraServices: string[];
   size: "small" | "medium" | "large" | "giant" | null;
   coat: "normal" | "knotted";
@@ -62,7 +62,7 @@ export interface FormData {
 
 const INITIAL_PET_FIELDS = {
   petType: null as "dog" | "cat" | null,
-  service: null as "bath" | "bath_cut" | null,
+  service: null as "bath" | "bath_cut" | "bath_deslanado" | null,
   extraServices: [] as string[],
   size: null as "small" | "medium" | "large" | "giant" | null,
   coat: "normal" as "normal" | "knotted",
@@ -134,12 +134,13 @@ export function BookingWizard() {
   const progress = ((currentStep + 1) / totalSteps) * 100;
 
   const saveCurrentPet = () => {
-    if (!formData.petType || !formData.service || !formData.size) return;
+    const isCat = formData.petType === "cat";
+    if (!formData.petType || !formData.service || (!isCat && !formData.size)) return;
     const pet: PetData = {
       petType: formData.petType,
       service: formData.service,
       extraServices: formData.extraServices,
-      size: formData.size,
+      size: isCat ? null : formData.size,
       coat: formData.coat,
       petNotes: formData.petNotes,
       petName: formData.petName,
@@ -153,14 +154,25 @@ export function BookingWizard() {
   };
 
   const handleNext = () => {
-    setCurrentStep((prev) => Math.min(prev + 1, totalSteps - 1));
+    setCurrentStep((prev) => {
+      // Skip size step (3) for cats: from PetInfoStep (2) jump to MascotaAgregadaStep (4)
+      if (prev === 2 && formData.petType === "cat") {
+        return 4;
+      }
+      return Math.min(prev + 1, totalSteps - 1);
+    });
   };
 
   const handleBack = () => {
     setCurrentStep((prev) => {
       if (prev === 5) {
         setFormData((f) => ({ ...f, pets: f.pets.slice(0, -1) }));
-        return 3;
+        // From ScheduleStep (5) go back to size (3) for dogs, or to PetInfoStep (2) for cats
+        return formData.petType === "cat" ? 2 : 3;
+      }
+      // From MascotaAgregadaStep (4) back to size (3) for dogs, or to PetInfoStep (2) for cats
+      if (prev === 4 && formData.petType === "cat") {
+        return 2;
       }
       return Math.max(prev - 1, 0);
     });

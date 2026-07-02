@@ -14,7 +14,7 @@ interface ConfirmationStepProps {
 }
 
 const PET_TYPE_LABELS: Record<string, string> = { dog: "Perro", cat: "Gato" };
-const SERVICE_LABELS: Record<string, string> = { bath: "Baño", bath_cut: "Baño + Corte" };
+  const SERVICE_LABELS: Record<string, string> = { bath: "Baño", bath_cut: "Baño + Corte", bath_deslanado: "Baño + Deslanado" };
 const SIZE_LABELS: Record<string, string> = { small: "Pequeño", medium: "Mediano", large: "Grande" };
 const TIME_LABELS: Record<string, string> = { "9-11": "9:00 am – 11:00 am", "11-14": "11:00 am – 2:00 pm" };
 const EXTRA_LABELS: Record<string, string> = { deworming: "Desparasitación", antiflea: "Antipulgas", vaccine: "Vacuna" };
@@ -78,7 +78,9 @@ function PetCard({ pet, index }: { pet: PetData; index: number }) {
             {pet.extraServices.map((s) => EXTRA_LABELS[s] || s).join(", ")}
           </p>
         )}
-        <p><span className="font-medium text-gray-700">Tamaño:</span> {SIZE_LABELS[pet.size]}</p>
+        {pet.size && (
+          <p><span className="font-medium text-gray-700">Tamaño:</span> {SIZE_LABELS[pet.size]}</p>
+        )}
         {pet.perfume && (
           <p><span className="font-medium text-gray-700">Aroma:</span> {PERFUME_LABELS[pet.perfume]}</p>
         )}
