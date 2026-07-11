@@ -1,4 +1,9 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
+
+export interface ExtraService {
+  service: string;
+  variant?: string;
+}
 import { AnimatePresence, motion } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
 import { BranchSelectionStep } from "./steps/BranchSelectionStep";
@@ -14,7 +19,7 @@ import { ConfirmationStep } from "./steps/ConfirmationStep";
 export interface PetData {
   petType: "dog" | "cat";
   service: "bath" | "bath_cut" | "bath_deslanado";
-  extraServices: string[];
+  extraServices: ExtraService[];
   size: "small" | "medium" | "large" | "giant" | null;
   coat: "normal" | "knotted";
   petNotes: string;
@@ -30,7 +35,7 @@ export interface FormData {
   branch: "san_martin" | "los_olivos" | "san_miguel" | null;
   petType: "dog" | "cat" | null;
   service: "bath" | "bath_cut" | "bath_deslanado" | null;
-  extraServices: string[];
+  extraServices: ExtraService[];
   size: "small" | "medium" | "large" | "giant" | null;
   coat: "normal" | "knotted";
   petNotes: string;
@@ -63,7 +68,7 @@ export interface FormData {
 const INITIAL_PET_FIELDS = {
   petType: null as "dog" | "cat" | null,
   service: null as "bath" | "bath_cut" | "bath_deslanado" | null,
-  extraServices: [] as string[],
+  extraServices: [] as ExtraService[],
   size: null as "small" | "medium" | "large" | "giant" | null,
   coat: "normal" as "normal" | "knotted",
   petNotes: "",
@@ -101,6 +106,12 @@ const STEP_LABELS = [
 
 export function BookingWizard() {
   const [currentStep, setCurrentStep] = useState(0);
+  const cardRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [currentStep]);
+
   const [formData, setFormData] = useState<FormData>({
     ...INITIAL_PET_FIELDS,
     branch: null,
@@ -194,20 +205,20 @@ export function BookingWizard() {
   };
 
   return (
-    <div className="flex min-h-screen items-center justify-center p-4">
-      <div className="w-full max-w-2xl lg:max-w-5xl 2xl:max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl">
+    <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
+      <div ref={cardRef} className="w-full max-w-2xl lg:max-w-5xl 2xl:max-w-6xl overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="h-3 bg-gradient-to-r from-blue-500 to-orange-400" />
-        <div className="p-6 sm:p-8 lg:p-10">
+        <div className="p-4 sm:p-6 lg:p-10">
           {/* Brand Header */}
           <div className="mb-1">
             <div className="flex items-center">
               <img
                   src="/logo.webp"
-                  alt="Referencia de corte"
-                  className="h-24"
+                  alt="Veterinaria Ariel"
+                  className="h-16 sm:h-20 lg:h-24"
                 />
             </div>
-            <div className="mt-4 h-px w-full bg-[#E7E2D8]" />
+            <div className="mt-3 sm:mt-4 h-px w-full bg-[#E7E2D8]" />
           </div>
 
           <div className="mb-6">

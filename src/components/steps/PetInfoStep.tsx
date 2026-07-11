@@ -1,5 +1,5 @@
 import { useState, useRef } from "react";
-import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets } from "lucide-react";
+import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 
 interface PetInfoStepProps {
@@ -48,12 +48,31 @@ const CORTE_OPTIONS = [
   { value: "tijera" as const, label: "Corte con Tijera / Estilo de la raza" },
 ];
 
+const ANTIFLEA_OPTIONS = [
+  { value: "1m", label: "1 mes", description: "Pipeta tópica de acción rápida. Repetir mensualmente." },
+  { value: "3m", label: "3 meses", description: "Comprimido de acción prolongada. Cobertura trimestral." },
+  { value: "6m", label: "6 meses", description: "Collar/inyectable de larga duración. Máxima comodidad." },
+];
+
+const VACCINE_OPTIONS_DOG = [
+  { value: "sextuple", label: "Séxtuple", description: "Moquillo, parvovirus, hepatitis, parainfluenza, leptospira (2 serovares) y adenovirus." },
+  { value: "rabia", label: "Antirrábica", description: "Protección obligatoria contra la rabia. Esquema anual." },
+  { value: "kc", label: "KC (Tos de las perreras)", description: "Bordetella + parainfluenza. Recomendada si asiste a guardería o convive con otros." },
+  { value: "leptospira", label: "Leptospira", description: "Refuerzo contra leptospirosis, relevante en zonas húmedas o con roedores." },
+];
+
+const VACCINE_OPTIONS_CAT = [
+  { value: "triple_felina", label: "Triple Felina", description: "Calcivirus, panleucopenia y rinotraqueítis felina (herpesvirus)." },
+  { value: "rabia", label: "Antirrábica", description: "Protección obligatoria contra la rabia. Esquema anual." },
+];
+
 export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const [error, setError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCat = formData.petType === "cat";
   const SERVICE_OPTIONS = isCat ? CAT_SERVICE_OPTIONS : DOG_SERVICE_OPTIONS;
+  const VACCINE_OPTIONS = isCat ? VACCINE_OPTIONS_CAT : VACCINE_OPTIONS_DOG;
 
   const showCorte = formData.service === "bath_cut";
 
@@ -78,12 +97,36 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
     onNext();
   };
 
-  const toggleExtra = (value: string) => {
+  const isServiceActive = (service: string) =>
+    (formData.extraServices || []).some((s) => s.service === service);
+
+  const isVariantSelected = (service: string, variant: string) =>
+    (formData.extraServices || []).some((s) => s.service === service && s.variant === variant);
+
+  const toggleExtra = (service: string) => {
     const current = formData.extraServices || [];
-    if (current.includes(value)) {
-      update("extraServices", current.filter((s) => s !== value));
+    if (isServiceActive(service)) {
+      update("extraServices", current.filter((s) => s.service !== service));
     } else {
-      update("extraServices", [...current, value]);
+      update("extraServices", [...current, { service }]);
+    }
+  };
+
+  const selectExtraVariant = (service: string, variant: string, exclusive: boolean) => {
+    const current = formData.extraServices || [];
+    if (exclusive) {
+      update(
+        "extraServices",
+        current.map((s) => (s.service === service ? { service, variant } : s))
+      );
+    } else {
+      const exists = current.some((s) => s.service === service && s.variant === variant);
+      if (exists) {
+        const filtered = current.filter((s) => !(s.service === service && s.variant === variant));
+        update("extraServices", filtered.length === 0 ? current.filter((s) => s.service !== service) : filtered);
+      } else {
+        update("extraServices", [...current, { service, variant }]);
+      }
     }
   };
 
@@ -121,16 +164,16 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Service Selection: Bath or Bath+Cut */}
-      <div className="mb-8 text-center">
+      <div className="mb-6 sm:mb-8 text-center">
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Servicio principal
         </p>
-        <h2 className="text-3xl font-bold tracking-tight text-[#1A2238] lg:text-3xl">
+        <h2 className="text-[var(--text-step-title)] font-display font-bold tracking-tight text-[#1A2238]">
           ¿Qué servicio necesita?
         </h2>
       </div>
 
-      <div className="grid grid-cols-2 gap-5">
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
         {SERVICE_OPTIONS.map(({ value, label, icon: Icon, image, alt }) => {
           const selected = formData.service === value;
           return (
@@ -228,28 +271,98 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         {/* Extra Services */}
         <div>
           <div className="mb-4 flex items-center gap-2">
-            <div className="h-1 w-6 rounded-full bg-orange-500" />
-            <h3 className="text-sm font-semibold uppercase tracking-wide text-orange-600">
+            <div className="h-1 w-6 rounded-full bg-blue-500" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-blue-600">
               Servicios adicionales
             </h3>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-6">
             {EXTRA_OPTIONS.map(({ value, label }) => {
-              const checked = (formData.extraServices || []).includes(value);
+              const checked = isServiceActive(value);
               return (
                 <button key={value} type="button" onClick={() => toggleExtra(value)}
                   className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 lg:gap-3 lg:px-6 lg:py-5 lg:text-base ${
-                    checked ? "border-orange-500 bg-orange-50 text-orange-800 shadow-md"
-                            : "border-slate-200 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
+                    checked ? "border-blue-500 bg-blue-50 text-blue-800 shadow-md"
+                            : "border-slate-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
                   <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-xs font-bold transition-all lg:h-6 lg:w-6 ${
-                    checked ? "border-orange-500 bg-orange-500 text-white" : "border-slate-200 bg-white text-transparent"
+                    checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-white text-transparent"
                   }`}>✓</span>
                   {label}
                 </button>
               );
             })}
+          </div>
+
+          {/* Antiflea variants */}
+          <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
+            isServiceActive("antiflea") ? "mt-6 max-h-128 opacity-100" : "max-h-0 opacity-0"
+          }`}>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="h-1 w-4 rounded-full bg-blue-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                Elige la duración del antipulgas
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 px-1 py-1 sm:grid-cols-3 sm:gap-4">
+              {ANTIFLEA_OPTIONS.map(({ value, label, description }) => {
+                const selected = isVariantSelected("antiflea", value);
+                return (
+                  <button key={value} type="button"
+                    onClick={() => selectExtraVariant("antiflea", value, true)}
+                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-4 ${
+                      selected
+                        ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
+                        : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                    }`}
+                  >
+                    <ShieldCheck className={`h-7 w-7 ${selected ? "text-blue-600" : "text-gray-400"}`} />
+                    <span className={`text-center text-sm font-semibold leading-tight ${selected ? "text-blue-700" : "text-gray-700"}`}>
+                      {label}
+                    </span>
+                    <span className="text-center text-xs leading-tight text-gray-500">
+                      {description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Vaccine variants */}
+          <div className={`overflow-hidden transition-all duration-500 ease-in-out ${
+            isServiceActive("vaccine") ? "mt-6 max-h-160 opacity-100" : "max-h-0 opacity-0"
+          }`}>
+            <div className="mb-3 flex items-center gap-2">
+              <div className="h-1 w-4 rounded-full bg-blue-500" />
+              <span className="text-xs font-semibold uppercase tracking-wide text-blue-600">
+                Seleccioná la(s) vacuna(s)
+              </span>
+            </div>
+            <div className="grid grid-cols-1 gap-3 px-1 py-1 sm:grid-cols-2 sm:gap-4 lg:gap-5">
+              {VACCINE_OPTIONS.map(({ value, label, description }) => {
+                const selected = isVariantSelected("vaccine", value);
+                return (
+                  <button key={value} type="button"
+                    onClick={() => selectExtraVariant("vaccine", value, false)}
+                    className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-4 ${
+                      selected
+                        ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
+                        : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                    }`}
+                  >
+                    <Syringe className={`h-7 w-7 ${selected ? "text-blue-600" : "text-gray-400"}`} />
+                    <span className={`text-center text-sm font-semibold leading-tight ${selected ? "text-blue-700" : "text-gray-700"}`}>
+                      {label}
+                    </span>
+                    <span className="text-center text-xs leading-tight text-gray-500">
+                      {description}
+                    </span>
+                  </button>
+                );
+              })}
+            </div>
           </div>
         </div>
       </div>

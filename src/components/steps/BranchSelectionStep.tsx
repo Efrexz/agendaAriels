@@ -13,13 +13,13 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
 
   return (
     <div>
-      <h2 className="mb-2 text-center text-3xl font-bold tracking-tight text-gray-800">
+      <h2 className="mb-2 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         Seleccione su sede más cercana
       </h2>
-      <p className="mb-8 text-center text-sm text-gray-500">
+      <p className="mb-6 sm:mb-8 text-center text-sm text-gray-500">
         Elige la veterinaria donde atenderemos a tu mascota
       </p>
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-3">
         {BRANCHES.map(({ value, label, image, address }) => {
           const isSelected = selected === value;
           return (
@@ -51,7 +51,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
                   {address}
                 </div>
               </div>
-              <div className="flex flex-col gap-1 px-6 py-5">
+              <div className="flex flex-col gap-1 px-5 py-4 sm:px-6 sm:py-5">
                 <span
                   className={`text-lg font-bold leading-tight transition-colors ${
                     isSelected ? "text-blue-700" : "text-gray-800"

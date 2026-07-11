@@ -27,6 +27,31 @@ export const EXTRA_LABELS: Record<string, string> = {
   vaccine: "Vacuna",
 };
 
+export const EXTRA_VARIANT_LABELS: Record<string, string> = {
+  "1m": "1 mes",
+  "3m": "3 meses",
+  "6m": "6 meses",
+  sextuple: "Séxtuple",
+  rabia: "Antirrábica",
+  kc: "KC (Tos de las perreras)",
+  leptospira: "Leptospira",
+  triple_felina: "Triple Felina",
+};
+
+export interface ExtraServiceLike {
+  service: string;
+  variant?: string;
+}
+
+export function formatExtraLabel(extra: ExtraServiceLike): string {
+  const serviceLabel = EXTRA_LABELS[extra.service] || extra.service;
+  if (extra.variant) {
+    const variantLabel = EXTRA_VARIANT_LABELS[extra.variant] || extra.variant;
+    return `${serviceLabel} (${variantLabel})`;
+  }
+  return serviceLabel;
+}
+
 export const CORTE_LABELS: Record<string, string> = {
   rapado: "Corte Rapado",
   rebaje: "Rebaje Comercial (1 cm de largo parejo)",

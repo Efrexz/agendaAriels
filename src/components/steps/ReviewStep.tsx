@@ -122,7 +122,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
   return (
     <div>
-      <h2 className="mb-8 text-center text-3xl font-bold tracking-tight text-gray-800">
+      <h2 className="mb-6 sm:mb-8 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         Datos del cliente
       </h2>
 
@@ -160,7 +160,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
         {isLoaded && (
           <div className="rounded-2xl overflow-hidden border border-gray-200 shadow-md">
             <GoogleMap
-              mapContainerClassName="h-64 w-full"
+              mapContainerClassName="h-72 w-full sm:h-80"
               center={mapCenter}
               zoom={markerPos ? 18 : 14}
               onLoad={onMapLoad}
@@ -299,7 +299,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 />
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
                   Fecha de nacimiento <span className="text-red-500">*</span>
@@ -339,7 +339,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div>
                 <label className="mb-1 block text-sm font-medium text-gray-700">
                   Raza <span className="text-red-500">*</span>
@@ -385,18 +385,18 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
         {formData.hasHistory !== null && (
           <>
-            <div className="flex items-center gap-3">
+            <label htmlFor="mobilityDifferent" className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg py-2 hover:bg-blue-50/40 sm:items-center">
               <input
                 type="checkbox"
                 id="mobilityDifferent"
                 checked={formData.mobilityPhoneDifferent}
                 onChange={(e) => update("mobilityPhoneDifferent", e.target.checked)}
-                className="h-5 w-5 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 sm:mt-0"
               />
-              <label htmlFor="mobilityDifferent" className="text-sm font-medium text-gray-700 cursor-pointer">
+              <span className="text-sm font-medium leading-snug text-gray-700">
                 ¿El número que recibirá a la movilidad es diferente al registrado?
-              </label>
-            </div>
+              </span>
+            </label>
 
             {formData.mobilityPhoneDifferent && (
               <div>

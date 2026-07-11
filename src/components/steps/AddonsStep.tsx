@@ -37,7 +37,7 @@ export function AddonsStep({ formData, update, onNext }: AddonsStepProps) {
 
   return (
     <div>
-      <h2 className="mb-8 text-center text-3xl font-bold tracking-tight text-gray-800">
+      <h2 className="mb-6 sm:mb-8 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         Elige un horario de recojo
       </h2>
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-6">

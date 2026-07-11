@@ -41,7 +41,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
 
   return (
     <div>
-      <h2 className="mb-6 text-center text-3xl font-bold tracking-tight text-gray-800">
+      <h2 className="mb-6 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         Selecciona una fecha
       </h2>
 

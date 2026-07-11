@@ -48,15 +48,15 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
 
   return (
     <div>
-      <div className="mb-8 text-center">
+      <div className="mb-6 sm:mb-8 text-center">
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Tamaño
         </p>
-        <h2 className="text-3xl font-bold tracking-tight text-[#1A2238]">
+        <h2 className="text-[var(--text-step-title)] font-display font-bold tracking-tight text-[#1A2238]">
           ¿Qué tamaño tiene tu peludito?
         </h2>
       </div>
-      <div className="grid grid-cols-2 gap-4 sm:grid-cols-4 sm:gap-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 sm:gap-5">
         {OPTIONS.map(({ value, label, weight, image, alt }) => {
           const selected = formData.size === value;
           return (
@@ -71,7 +71,7 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
                   : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <div className="relative aspect-square w-full overflow-hidden bg-[#FBF8F4]">
+              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#FBF8F4]">
                 <img
                   src={image}
                   alt={alt}

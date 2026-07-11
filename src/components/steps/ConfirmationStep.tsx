@@ -9,7 +9,7 @@ import {
   SERVICE_LABELS,
   SIZE_LABELS,
   TIME_LABELS,
-  EXTRA_LABELS,
+  formatExtraLabel,
   CORTE_LABELS,
   BATH_LABELS,
   PERFUME_LABELS,
@@ -64,7 +64,7 @@ function PetCard({ pet, index }: { pet: PetData; index: number }) {
         {pet.extraServices && pet.extraServices.length > 0 && (
           <p>
             <span className="font-medium text-gray-700">Servicios adicionales:</span>{" "}
-            {pet.extraServices.map((s) => EXTRA_LABELS[s] || s).join(", ")}
+            {pet.extraServices.map(formatExtraLabel).join(", ")}
           </p>
         )}
         {pet.size && (
@@ -103,8 +103,8 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
   if (submitState === "success") {
     return (
       <div className="flex flex-col items-center gap-6 py-10">
-        <CheckCircle className="h-24 w-24 text-green-500" />
-        <h2 className="text-3xl font-bold tracking-tight text-gray-800">
+        <CheckCircle className="h-20 w-20 text-green-500 sm:h-24 sm:w-24" />
+        <h2 className="text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
           ¡Solicitud enviada con éxito!
         </h2>
         <p className="text-center text-gray-500">
@@ -147,7 +147,7 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
 
   return (
     <div>
-      <h2 className="mb-6 text-center text-2xl font-bold tracking-tight text-gray-800">
+      <h2 className="mb-6 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         Resumen de tu solicitud
       </h2>
 
@@ -180,36 +180,36 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
 
       <div className="mb-6 space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-5">
         <p className="text-sm font-semibold text-gray-700">Agenda</p>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Fecha</span>
-          <span className="font-medium text-gray-800">{formData.date ? formatDate(formData.date) : "-"}</span>
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+          <span className="text-xs text-gray-500 sm:text-sm">Fecha</span>
+          <span className="text-sm font-medium text-gray-800 sm:text-right">{formData.date ? formatDate(formData.date) : "-"}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Horario</span>
-          <span className="font-medium text-gray-800">{TIME_LABELS[formData.timeRange ?? ""] ?? "-"}</span>
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+          <span className="text-xs text-gray-500 sm:text-sm">Horario</span>
+          <span className="text-sm font-medium text-gray-800 sm:text-right">{TIME_LABELS[formData.timeRange ?? ""] ?? "-"}</span>
         </div>
       </div>
 
       <div className="mb-6 space-y-3 rounded-2xl border border-gray-200 bg-gray-50 p-5">
         <p className="text-sm font-semibold text-gray-700">Datos del cliente</p>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Nombre</span>
-          <span className="font-medium text-gray-800">{formData.ownerName || "-"}</span>
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+          <span className="text-xs text-gray-500 sm:text-sm">Nombre</span>
+          <span className="text-sm font-medium text-gray-800 sm:text-right">{formData.ownerName || "-"}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Teléfono</span>
-          <span className="font-medium text-gray-800">{formData.ownerPhone || "-"}</span>
+        <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+          <span className="text-xs text-gray-500 sm:text-sm">Teléfono</span>
+          <span className="text-sm font-medium text-gray-800 sm:text-right">{formData.ownerPhone || "-"}</span>
         </div>
-        <div className="flex justify-between">
-          <span className="text-gray-500">Dirección</span>
-          <div className="flex items-center gap-2">
-            <span className="font-medium text-gray-800">{formData.ownerAddress || "-"}</span>
+        <div className="flex flex-col gap-1 sm:flex-row sm:justify-between">
+          <span className="text-xs text-gray-500 sm:text-sm">Dirección</span>
+          <div className="flex items-start gap-2 sm:max-w-[60%] sm:justify-end">
+            <span className="text-sm font-medium text-gray-800 sm:text-right">{formData.ownerAddress || "-"}</span>
             {formData.ownerLat && formData.ownerLng && (
               <a
                 href={`https://www.google.com/maps?q=${formData.ownerLat},${formData.ownerLng}`}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
+                className="mt-0.5 flex shrink-0 items-center gap-1 text-blue-600 hover:text-blue-800 transition-colors"
               >
                 <ExternalLink className="h-4 w-4" />
               </a>
@@ -217,9 +217,9 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
           </div>
         </div>
         {formData.mobilityPhoneDifferent && formData.mobilityPhone && (
-          <div className="flex justify-between">
-            <span className="text-gray-500">Tel. movilidad</span>
-            <span className="font-medium text-gray-800">{formData.mobilityPhone}</span>
+          <div className="flex flex-col gap-0.5 sm:flex-row sm:justify-between">
+            <span className="text-xs text-gray-500 sm:text-sm">Tel. movilidad</span>
+            <span className="text-sm font-medium text-gray-800 sm:text-right">{formData.mobilityPhone}</span>
           </div>
         )}
       </div>
