@@ -15,7 +15,7 @@ export function ErrorModal({
   open,
   onClose,
   errors,
-  mascotSrc = "/images/errorPet/error-dog.png",
+  mascotSrc = "/images/vetMascot/error-dog.png",
   mascotAlt = "Mascota veterinaria",
   title = "¡Guau! Esto necesita atención",
   buttonText = "Entendido",

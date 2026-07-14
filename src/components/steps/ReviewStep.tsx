@@ -106,7 +106,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
   const isValid = () => {
     if (formData.hasHistory === true) {
-      return formData.ownerDni.trim() !== "" && formData.registeredPetName.trim() !== "" && formData.registeredPhone.trim() !== "";
+      return formData.ownerDni.trim() !== "" && formData.registeredPhone.trim() !== "";
     }
     if (formData.hasHistory === false) {
       const baseValid = formData.ownerDni.trim() !== "" && formData.ownerName.trim() !== "" && formData.ownerAddress.trim() !== "" && formData.ownerPhone.trim() !== "" && formData.registeredPetName.trim() !== "" && formData.petBirthDate.trim() !== "" && formData.petSpecies !== null && formData.petBreed.trim() !== "";
