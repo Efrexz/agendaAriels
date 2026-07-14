@@ -1,4 +1,5 @@
 import type { FormData } from "../BookingWizard";
+import { LazyImage } from "../LazyImage";
 
 interface OwnerInfoStepProps {
   formData: FormData;
@@ -71,12 +72,11 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
                   : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#FBF8F4]">
-                <img
+              <div className="relative aspect-[4/5] w-full overflow-hidden">
+                <LazyImage
                   src={image}
                   alt={alt}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div
                   className={`absolute inset-0 transition-opacity duration-300 ${

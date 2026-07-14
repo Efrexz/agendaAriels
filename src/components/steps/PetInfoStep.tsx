@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { ErrorModal } from "../ErrorModal";
+import { LazyImage } from "../LazyImage";
 
 interface PetInfoStepProps {
   formData: FormData;
@@ -211,12 +212,11 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                     : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#FBF8F4]">
-                <img
+              <div className="relative aspect-[16/9] w-full overflow-hidden">
+                <LazyImage
                   src={image}
                   alt={alt}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
                 {selected && (

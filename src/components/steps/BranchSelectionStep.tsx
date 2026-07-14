@@ -1,6 +1,7 @@
 import { MapPin, CheckCircle } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { BRANCHES } from "../../data/branches";
+import { LazyImage } from "../LazyImage";
 
 interface BranchSelectionStepProps {
   formData: FormData;
@@ -33,10 +34,10 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
               }`}
             >
               <div className="relative aspect-[5/4] w-full overflow-hidden">
-                <img
+                <LazyImage
                   src={image}
                   alt={label}
-                  className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                  className="transition-transform duration-500 group-hover:scale-105"
                 />
                 <div className={`absolute inset-0 transition-colors duration-300 ${
                   isSelected ? "bg-blue-500/20" : "bg-gradient-to-t from-black/40 to-transparent"

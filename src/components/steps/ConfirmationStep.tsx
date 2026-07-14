@@ -107,7 +107,7 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
         <motion.img
           src="/images/vetMascot/agendado.png"
           alt="Bulldog feliz manejando la movilidad"
-          className="h-40 w-40 object-contain sm:h-52 sm:w-52"
+          className="h-52 w-52 object-contain sm:h-82 sm:w-82"
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
@@ -124,11 +124,11 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
 
   if (submitState === "error") {
     return (
-      <div className="flex flex-col items-center gap-6 py-6">
+      <div className="flex flex-col items-center gap-4 py-6">
         <motion.img
           src="/images/vetMascot/errorAgenda.png"
           alt="Bulldog mirando con cara preocupada"
-          className="h-40 w-40 object-contain sm:h-52 sm:w-52"
+          className="h-52 w-52 object-contain sm:h-82 sm:w-82"
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
