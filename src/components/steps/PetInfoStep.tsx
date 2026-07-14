@@ -1,6 +1,9 @@
 import { useState, useRef } from "react";
+import { motion } from "framer-motion";
 import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck } from "lucide-react";
 import type { FormData } from "../BookingWizard";
+import { ErrorModal } from "../ErrorModal";
+import { LazyImage } from "../LazyImage";
 
 interface PetInfoStepProps {
   formData: FormData;
@@ -67,7 +70,8 @@ const VACCINE_OPTIONS_CAT = [
 ];
 
 export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
-  const [error, setError] = useState<string | null>(null);
+  const [errors, setErrors] = useState<string[]>([]);
+  const [showModal, setShowModal] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCat = formData.petType === "cat";
@@ -76,25 +80,30 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
 
   const showCorte = formData.service === "bath_cut";
 
+  const invalidPetName = !formData.petName || formData.petName.trim().length < 3;
+  const invalidService = !formData.service;
+  const invalidBathType = !formData.bathType;
+  const invalidCorteType = showCorte && !formData.corteType;
+
   const handleContinue = () => {
-    if (!formData.petName || formData.petName.trim().length < 3) {
-      setError("El nombre de la mascota debe tener al menos 3 caracteres.");
+    const found: string[] = [];
+    if (invalidPetName) found.push("El nombre de la mascota necesita al menos 3 letritas");
+    if (invalidService) found.push("Elegí un servicio principal (Baño o Baño y Corte)");
+    if (invalidBathType) found.push("Elegí un tipo de baño");
+    if (invalidCorteType) found.push("Elegí un tipo de corte");
+
+    if (found.length > 0) {
+      setErrors(found);
+      setShowModal(true);
       return;
     }
-    if (!formData.service) {
-      setError("Selecciona un servicio principal.");
-      return;
-    }
-    if (!formData.bathType) {
-      setError("Selecciona un tipo de baño.");
-      return;
-    }
-    if (showCorte && !formData.corteType) {
-      setError("Selecciona un tipo de corte.");
-      return;
-    }
-    setError(null);
+    setErrors([]);
     onNext();
+  };
+
+  const clearErrors = () => {
+    if (showModal) setShowModal(false);
+    if (errors.length > 0) setErrors([]);
   };
 
   const isServiceActive = (service: string) =>
@@ -153,14 +162,17 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <label className="mb-1 block text-sm font-medium text-[#1A2238]">
           Nombre de la mascota
         </label>
-        <input type="text" value={formData.petName || ""}
-          onChange={(e) => { if (error) setError(null); update("petName", e.target.value); }}
+        <motion.input
+          type="text"
+          value={formData.petName || ""}
+          onChange={(e) => { clearErrors(); update("petName", e.target.value); }}
           placeholder="Ej: Firulais"
+          animate={invalidPetName && errors.length > 0 ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+          transition={{ duration: 0.4 }}
           className={`w-full rounded-xl border px-4 py-3 text-lg text-gray-800 outline-none transition-colors focus:ring-2 lg:px-5 lg:py-4 ${
-            error && !formData.petName?.trim() ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+            invalidPetName && errors.length > 0 ? "border-red-500 focus:border-red-500 focus:ring-red-200"
                   : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
           }`} />
-        {error && !formData.petName?.trim() && <p className="mt-2 text-sm text-red-600 font-medium">{error}</p>}
       </div>
 
       {/* Service Selection: Bath or Bath+Cut */}
@@ -176,10 +188,14 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
         {SERVICE_OPTIONS.map(({ value, label, icon: Icon, image, alt }) => {
           const selected = formData.service === value;
+          const hasError = invalidService && errors.length > 0;
           return (
-            <button key={value} type="button"
+            <motion.button
+              key={value} type="button"
+              animate={hasError ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }}
+              transition={{ duration: 0.4 }}
               onClick={() => {
-                setError(null);
+                clearErrors();
                 update("service", value);
                 if (value !== "bath_cut") {
                   update("corteType", null);
@@ -191,15 +207,16 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
               className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
                   ? "border-blue-500 shadow-lg shadow-blue-100"
-                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
+                  : hasError
+                    ? "border-red-500 shadow-sm"
+                    : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
               }`}
             >
-              <div className="relative aspect-[16/9] w-full overflow-hidden bg-[#FBF8F4]">
-                <img
+              <div className="relative aspect-[16/9] w-full overflow-hidden">
+                <LazyImage
                   src={image}
                   alt={alt}
-                  loading="lazy"
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div className="absolute inset-0 bg-linear-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
                 {selected && (
@@ -226,7 +243,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   </span>
                 </div>
               </div>
-            </button>
+            </motion.button>
           );
         })}
       </div>
@@ -244,13 +261,19 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 lg:gap-6">
             {BATH_OPTIONS.map(({ value, label, description, icon: Icon }) => {
               const selected = formData.bathType === value;
+              const hasError = invalidBathType && errors.length > 0;
               return (
-                <button key={value} type="button"
-                  onClick={() => { setError(null); update("bathType", value); }}
+                <motion.button
+                  key={value} type="button"
+                  animate={hasError ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }}
+                  transition={{ duration: 0.4 }}
+                  onClick={() => { clearErrors(); update("bathType", value); }}
                   className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-5 lg:gap-4 lg:p-7 ${
                     selected
                       ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
-                      : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                      : hasError
+                        ? "border-red-500 bg-white shadow-sm"
+                        : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
                   }`}
                 >
                   <Icon className={`h-10 w-10 transition-colors lg:h-12 lg:w-12 ${selected ? "text-blue-600" : "text-gray-600"}`} />
@@ -260,7 +283,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   <span className="text-center text-xs leading-tight text-gray-500 lg:text-sm">
                     {description}
                   </span>
-                </button>
+                </motion.button>
               );
             })}
           </div>
@@ -378,14 +401,20 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
               {CORTE_OPTIONS.map(({ value, label }) => {
                 const selected = formData.corteType === value;
+                const hasError = invalidCorteType && errors.length > 0;
                 return (
-                  <button key={value} type="button"
-                    onClick={() => { setError(null); update("corteType", value); }}
+                  <motion.button
+                    key={value} type="button"
+                    animate={hasError ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }}
+                    transition={{ duration: 0.4 }}
+                    onClick={() => { clearErrors(); update("corteType", value); }}
                     className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all duration-200 lg:px-6 lg:py-4 lg:text-base ${
                       selected ? "border-blue-500 bg-blue-100 text-blue-800 shadow-md"
-                               : "border-blue-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
+                               : hasError
+                                 ? "border-red-500 bg-white text-red-700"
+                                 : "border-blue-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
                     }`}
-                  >{label}</button>
+                  >{label}</motion.button>
                 );
               })}
             </div>
@@ -452,14 +481,16 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         </div>
       </div>
 
-      {error && (
-        <p className="mt-4 text-center text-sm text-red-600 font-medium">{error}</p>
-      )}
-
       <button onClick={handleContinue}
         className="mt-10 w-full cursor-pointer rounded-xl bg-blue-600 py-4 text-lg font-bold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98] lg:py-5 lg:text-xl">
         Continuar
       </button>
+
+      <ErrorModal
+        open={showModal}
+        onClose={() => setShowModal(false)}
+        errors={errors}
+      />
     </div>
   );
 }

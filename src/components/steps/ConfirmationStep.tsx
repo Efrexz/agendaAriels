@@ -1,7 +1,8 @@
 import { useState } from "react";
+import { motion } from "framer-motion";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import { CheckCircle, MapPin, ExternalLink, Loader2, AlertCircle, Phone } from "lucide-react";
+import { MapPin, ExternalLink, Loader2, Phone } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
 import { BRANCH_BY_VALUE } from "../../data/branches";
 import {
@@ -102,9 +103,16 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
 
   if (submitState === "success") {
     return (
-      <div className="flex flex-col items-center gap-6 py-10">
-        <CheckCircle className="h-20 w-20 text-green-500 sm:h-24 sm:w-24" />
-        <h2 className="text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
+      <div className="flex flex-col items-center gap-6 py-6">
+        <motion.img
+          src="/images/vetMascot/agendado.png"
+          alt="Bulldog feliz manejando la movilidad"
+          className="h-52 w-52 object-contain sm:h-82 sm:w-82"
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+        <h2 className="text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-green-700">
           ¡Solicitud enviada con éxito!
         </h2>
         <p className="text-center text-gray-500">
@@ -116,9 +124,16 @@ export function ConfirmationStep({ formData, onBack: _onBack }: ConfirmationStep
 
   if (submitState === "error") {
     return (
-      <div className="flex flex-col items-center gap-6 py-10">
-        <AlertCircle className="h-20 w-20 text-red-500" />
-        <h2 className="text-2xl font-bold tracking-tight text-gray-800">
+      <div className="flex flex-col items-center gap-4 py-6">
+        <motion.img
+          src="/images/vetMascot/errorAgenda.png"
+          alt="Bulldog mirando con cara preocupada"
+          className="h-52 w-52 object-contain sm:h-82 sm:w-82"
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+        <h2 className="text-2xl font-bold tracking-tight text-red-600">
           No se pudo enviar la solicitud
         </h2>
         <p className="text-center text-sm text-gray-500">

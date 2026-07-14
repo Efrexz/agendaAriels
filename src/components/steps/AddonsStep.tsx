@@ -1,5 +1,6 @@
 import { CheckCircle } from "lucide-react";
 import type { FormData } from "../BookingWizard";
+import { LazyImage } from "../LazyImage";
 
 interface AddonsStepProps {
   formData: FormData;
@@ -55,16 +56,15 @@ export function AddonsStep({ formData, update, onNext }: AddonsStepProps) {
               }`}
             >
               <div className="relative aspect-[5/4] w-full overflow-hidden">
-                <img
+                <LazyImage
                   src={image}
                   alt={alt}
-                  loading="lazy"
                   onError={(e) => {
                     if (petType !== "dog") {
                       e.currentTarget.src = `/images/pickUpTime/dog/${timeKey}.webp`;
                     }
                   }}
-                  className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div className={`absolute inset-0 transition-colors duration-300 ${
                   selected ? "bg-blue-500/20" : "bg-gradient-to-t from-black/40 to-transparent"
