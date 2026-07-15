@@ -1,3 +1,4 @@
+import { motion } from "framer-motion";
 import { CheckCircle, PawPrint, Scissors, Wind, Ruler, Droplets } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
 import { formatExtraLabel } from "../../data/labels";
@@ -42,8 +43,17 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue }: Masc
   return (
     <div className="flex flex-col items-center gap-5 py-6">
       <div className="relative">
-        <div className="absolute -inset-3 rounded-full bg-blue-100/60" />
-        <CheckCircle className="relative h-20 w-20 text-blue-600 sm:h-24 sm:w-24" />
+        <motion.img
+          src="/images/vetMascot/copy.png"
+          alt="Mascota agregada a la lista"
+          className="h-48 w-48 object-contain sm:h-64 sm:w-64"
+          initial={{ opacity: 0, scale: 0.8, y: 10 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.4, ease: "easeOut" }}
+        />
+        <div className="absolute -bottom-1 -right-1 grid h-9 w-9 place-items-center rounded-full border-2 border-white bg-green-500 shadow">
+          <CheckCircle className="h-5 w-5 text-white" />
+        </div>
       </div>
       <h2 className="text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
         ¡Mascota agregada!
