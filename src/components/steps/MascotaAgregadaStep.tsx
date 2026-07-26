@@ -57,7 +57,7 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, contin
           <CheckCircle className="h-5 w-5 text-white" />
         </div>
       </div>
-      <h2 className="text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
+      <h2 className="text-center text-step-title font-display font-bold tracking-tight text-gray-800">
         {isEditing ? "¡Mascota actualizada!" : "¡Mascota agregada!"}
       </h2>
       <p className="text-center text-lg font-semibold text-gray-700">

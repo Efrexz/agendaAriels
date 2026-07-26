@@ -35,7 +35,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
 
   return (
     <div>
-      <h2 className="mb-2 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
+      <h2 className="mb-2 text-center text-step-title font-display font-bold tracking-tight text-gray-800">
         Selecciona tu sede{" "}
         <span className="text-blue-600 underline decoration-orange-400 decoration-2 underline-offset-[3px]">
           más cercana
@@ -164,7 +164,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
         </div>
 
         <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-8 sm:right-0 sm:mt-0">
-          <div className="relative mb-10 max-w-[160px] rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md">
+          <div className="relative mb-10 max-w-40 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md">
             ¿Elige tu sede mas cercana?
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
           </div>
