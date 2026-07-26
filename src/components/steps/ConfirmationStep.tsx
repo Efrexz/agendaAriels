@@ -268,7 +268,7 @@ export function ConfirmationStep({ formData, onBack: _onBack, onAddAnother, onRe
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         />
-        <h2 className="text-center text-[var(--text-step-title)] font-bold tracking-tight text-green-700">
+        <h2 className="text-center text-step-title font-display font-bold tracking-tight text-green-700">
           ¡Solicitud enviada con éxito!
         </h2>
         <p className="text-center text-gray-500">
@@ -324,7 +324,7 @@ export function ConfirmationStep({ formData, onBack: _onBack, onAddAnother, onRe
         transition={{ duration: 0.3 }}
         className="text-center"
       >
-        <h2 className="mb-2 text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-900">
+        <h2 className="mb-2 text-step-title font-display font-bold tracking-tight text-gray-900">
           Revisa y confirma tu reserva
         </h2>
         <p className="mx-auto max-w-md text-sm text-gray-500">

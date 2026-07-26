@@ -125,7 +125,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
   return (
     <div>
-      <h2 className="mb-6 sm:mb-8 text-center text-[var(--text-step-title)] font-display font-bold tracking-tight text-gray-800">
+      <h2 className="mb-6 sm:mb-8 text-center text-step-title font-display font-bold tracking-tight text-gray-800">
         Datos del cliente
       </h2>
 

@@ -1,6 +1,6 @@
 import type { FormData } from "../BookingWizard";
 import { LazyImage } from "../LazyImage";
-import { Dog, Cat, ChevronRight } from "lucide-react";
+import { Dog, Cat, ChevronRight, ArrowRight } from "lucide-react";
 
 interface ServiceTypeStepProps {
   formData: FormData;
@@ -33,7 +33,6 @@ const OPTIONS = [
 export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepProps) {
   const handleSelect = (value: "dog" | "cat") => {
     update("petType", value);
-    onNext();
   };
 
   return (
@@ -42,7 +41,7 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Selecciona a tu peludito
         </p>
-        <h2 className="text-[var(--text-step-title)] font-display font-bold tracking-tight text-[#1A2238]">
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#1A2238]">
           ¿Qué tipo de mascota es?
         </h2>
         <p className="mt-2 text-sm text-gray-500">
@@ -126,6 +125,21 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
             </button>
           );
         })}
+      </div>
+
+      <div className="mt-4 flex justify-end sm:mt-6">
+        <button
+          onClick={onNext}
+          disabled={!formData.petType}
+          className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-bold shadow-md transition-all ${
+            formData.petType
+              ? "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 text-white hover:shadow-lg active:scale-[0.97]"
+              : "cursor-not-allowed bg-gray-200 text-gray-400"
+          }`}
+        >
+          Continuar
+          <ArrowRight className="h-5 w-5" />
+        </button>
       </div>
     </div>
   );
