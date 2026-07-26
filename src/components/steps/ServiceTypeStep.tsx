@@ -1,5 +1,6 @@
 import type { FormData } from "../BookingWizard";
 import { LazyImage } from "../LazyImage";
+import { Dog, Cat, ChevronRight } from "lucide-react";
 
 interface ServiceTypeStepProps {
   formData: FormData;
@@ -17,6 +18,7 @@ const OPTIONS = [
     blurb: "Estilismo canino completo",
     image: "/images/petType/dog.webp",
     alt: "Perro recién bañado y cepillado",
+    icon: Dog,
   },
   {
     value: "cat" as const,
@@ -24,6 +26,7 @@ const OPTIONS = [
     blurb: "Estilismo felino a bajo estrés",
     image: "/images/petType/cat.webp",
     alt: "Gato con pelaje brillante tras el baño",
+    icon: Cat,
   },
 ];
 
@@ -42,22 +45,31 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
         <h2 className="text-[var(--text-step-title)] font-display font-bold tracking-tight text-[#1A2238]">
           ¿Qué tipo de mascota es?
         </h2>
+        <p className="mt-2 text-sm text-gray-500">
+          Esto nos ayuda a brindarle una mejor atención personalizada
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-        {OPTIONS.map(({ value, label, blurb, image, alt }) => {
+        {OPTIONS.map(({ value, label, blurb, image, alt, icon: Icon }) => {
           const selected = formData.petType === value;
+          const isDog = value === "dog";
+
           return (
             <button
               key={value}
               type="button"
               onClick={() => handleSelect(value)}
               aria-pressed={selected}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col overflow-hidden rounded-3xl bg-white text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? "border-blue-500 shadow-lg shadow-blue-100"
-                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
-              }`}
+                  ? isDog
+                    ? "ring-2 ring-blue-500 ring-offset-2 shadow-lg"
+                    : "ring-2 ring-orange-500 ring-offset-2 shadow-lg"
+                  : isDog
+                    ? "hover:shadow-blue-200/50"
+                    : "hover:shadow-orange-200/50"
+              } ${isDog ? "focus-visible:ring-blue-500" : "focus-visible:ring-orange-500"}`}
             >
               <div className="relative aspect-[4/3] w-full overflow-hidden">
                 <LazyImage
@@ -66,26 +78,50 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
                   className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
                 <div
-                  className={`absolute inset-0 transition-opacity duration-300 ${
-                    selected ? "bg-blue-900/10" : "bg-transparent"
-                  }`}
-                />
-                {selected && (
-                  <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md">
-                    ✓
-                  </span>
-                )}
-              </div>
-
-              <div className="flex flex-1 flex-col gap-1 p-5">
-                <span
-                  className={`text-lg font-semibold tracking-tight ${
-                    selected ? "text-blue-700" : "text-[#1A2238]"
+                  className={`absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition-colors duration-300 ${
+                    selected
+                      ? isDog
+                        ? "bg-blue-600"
+                        : "bg-orange-500"
+                      : "bg-white"
                   }`}
                 >
-                  {label}
-                </span>
-                <span className="text-xs leading-snug text-gray-500">{blurb}</span>
+                  <Icon
+                    className={`h-5 w-5 transition-colors duration-300 ${
+                      selected
+                        ? "text-white"
+                        : isDog
+                          ? "text-blue-600"
+                          : "text-orange-500"
+                    }`}
+                  />
+                </div>
+              </div>
+
+              <div
+                className={`flex items-center gap-3 p-5 ${
+                  isDog ? "bg-[#EAF2FB]" : "bg-[#FBF3E4]"
+                }`}
+              >
+                <div className="flex flex-1 flex-col gap-0.5">
+                  <span className="text-lg font-semibold tracking-tight text-[#1A2238]">
+                    {label}
+                  </span>
+                  <span className="text-xs leading-snug text-gray-500">{blurb}</span>
+                </div>
+                <div
+                  className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
+                    selected
+                      ? isDog
+                        ? "bg-blue-600 text-white"
+                        : "bg-orange-500 text-white"
+                      : `bg-white text-gray-400 ${isDog ? "group-hover:bg-blue-600 group-hover:text-white" : "group-hover:bg-orange-500 group-hover:text-white"}`
+                  }`}
+                >
+                  <ChevronRight
+                    className={`h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5`}
+                  />
+                </div>
               </div>
             </button>
           );
