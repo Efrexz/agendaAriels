@@ -1,6 +1,6 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck } from "lucide-react";
+import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck, ChevronRight, Lock, Pill, PawPrint, ArrowRight } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { ErrorModal } from "../ErrorModal";
 import { LazyImage } from "../LazyImage";
@@ -41,9 +41,9 @@ const BATH_OPTIONS = [
 ];
 
 const EXTRA_OPTIONS = [
-  { value: "deworming", label: "Desparasitación" },
-  { value: "antiflea", label: "Antipulgas" },
-  { value: "vaccine", label: "Vacuna" },
+  { value: "deworming", label: "Desparasitación", icon: Pill },
+  { value: "antiflea", label: "Antipulgas", icon: ShieldCheck },
+  { value: "vaccine", label: "Vacuna", icon: Syringe },
 ];
 
 const CORTE_OPTIONS = [
@@ -73,8 +73,6 @@ const ANTIFLEA_PRODUCTS_1M = [
     ],
   },
 ];
-
-const ANTIFLEA_PRODUCT_3M = { value: "3m_bravecto", label: "Bravecto", description: "Comprimido trimestral", petTypes: ["dog"] as const };
 
 const VACCINE_OPTIONS_DOG = [
   { value: "sextuple", label: "Séxtuple", description: "Moquillo, parvovirus, hepatitis, parainfluenza, leptospira (2 serovares) y adenovirus." },
@@ -199,17 +197,22 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <label className="mb-1 block text-sm font-medium text-[#1A2238]">
           Nombre de la mascota
         </label>
-        <motion.input
-          type="text"
-          value={formData.petName || ""}
-          onChange={(e) => { clearErrors(); update("petName", e.target.value); }}
-          placeholder="Ej: Firulais"
-          animate={invalidPetName && errors.length > 0 ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
-          transition={{ duration: 0.4 }}
-          className={`w-full rounded-xl border px-4 py-3 text-lg text-gray-800 outline-none transition-colors focus:ring-2 lg:px-5 lg:py-4 ${
-            invalidPetName && errors.length > 0 ? "border-red-500 focus:border-red-500 focus:ring-red-200"
-                  : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
-          }`} />
+        <div className="relative">
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
+            <PawPrint className="h-5 w-5" />
+          </span>
+          <motion.input
+            type="text"
+            value={formData.petName || ""}
+            onChange={(e) => { clearErrors(); update("petName", e.target.value); }}
+            placeholder="Ej: Firulais"
+            animate={invalidPetName && errors.length > 0 ? { x: [0, -6, 6, -4, 4, 0] } : { x: 0 }}
+            transition={{ duration: 0.4 }}
+            className={`w-full rounded-xl border py-3 pl-12 pr-4 text-lg text-gray-800 outline-none transition-colors focus:ring-2 lg:py-4 ${
+              invalidPetName && errors.length > 0 ? "border-red-500 focus:border-red-500 focus:ring-red-200"
+                    : "border-gray-300 focus:border-blue-500 focus:ring-blue-200"
+            }`} />
+        </div>
       </div>
 
       {/* Service Selection: Bath or Bath+Cut */}
@@ -220,6 +223,9 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <h2 className="text-step-title font-display font-bold tracking-tight text-[#1A2238]">
           ¿Qué servicio necesita?
         </h2>
+        <p className="mt-2 text-sm text-gray-500 sm:text-base">
+          Elige el servicio principal que deseas para tu mascota
+        </p>
       </div>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
@@ -255,18 +261,12 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   alt={alt}
                   className="transition-transform duration-500 ease-out group-hover:scale-105"
                 />
-                <div className="absolute inset-0 bg-linear-to-t from-blue-900/40 via-blue-800/5 to-transparent" />
-                {selected && (
-                  <span className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full bg-blue-600 text-sm font-bold text-white shadow-md">
-                    ✓
-                  </span>
-                )}
+                <span className="absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-md">
+                  <Icon className="h-5 w-5 text-blue-600" />
+                </span>
               </div>
 
-              <div className="flex flex-1 items-center gap-3 p-5 lg:gap-4 lg:p-7">
-                <Icon className={`h-6 w-6 shrink-0 transition-colors lg:h-7 lg:w-7 ${
-                  selected ? "text-blue-600" : "text-gray-500"
-                }`} />
+              <div className="flex flex-1 items-center justify-between gap-3 p-5 lg:gap-4 lg:p-7">
                 <div className="flex flex-col">
                   <span className={`text-base font-semibold tracking-tight lg:text-lg ${
                     selected ? "text-blue-700" : "text-[#1A2238]"
@@ -279,6 +279,13 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                       : "Limpieza profunda con productos especializados"}
                   </span>
                 </div>
+                <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
+                  selected
+                    ? "border-blue-600 bg-blue-600 text-white"
+                    : "border-gray-300 text-gray-400 group-hover:border-blue-300 group-hover:text-blue-400"
+                }`}>
+                  <ChevronRight className="h-4 w-4" />
+                </span>
               </div>
             </motion.button>
           );
@@ -305,7 +312,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                   animate={hasError ? { x: [0, -5, 5, -3, 3, 0] } : { x: 0 }}
                   transition={{ duration: 0.4 }}
                   onClick={() => { clearErrors(); update("bathType", value); }}
-                  className={`flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-5 lg:gap-4 lg:p-7 ${
+                  className={`relative flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-5 lg:gap-4 lg:p-7 ${
                     selected
                       ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
                       : hasError
@@ -313,6 +320,13 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                         : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
                   }`}
                 >
+                  <span className={`absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
+                    selected
+                      ? "border-blue-600 bg-blue-600 text-white"
+                      : "border-gray-300 bg-white"
+                  }`}>
+                    {selected && <span className="text-[10px] font-bold leading-none">✓</span>}
+                  </span>
                   <Icon className={`h-10 w-10 transition-colors lg:h-12 lg:w-12 ${selected ? "text-blue-600" : "text-gray-600"}`} />
                   <span className={`text-center text-sm font-semibold leading-tight lg:text-base ${selected ? "text-blue-700" : "text-gray-700"}`}>
                     {label}
@@ -337,7 +351,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
             </h3>
           </div>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-4 lg:gap-6">
-            {EXTRA_OPTIONS.map(({ value, label }) => {
+            {EXTRA_OPTIONS.map(({ value, label, icon: Icon }) => {
               const checked = isServiceActive(value);
               return (
                 <button key={value} type="button" onClick={() => toggleExtra(value)}
@@ -346,9 +360,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                             : "border-slate-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
                   }`}
                 >
-                  <span className={`flex h-5 w-5 items-center justify-center rounded-md border-2 text-xs font-bold transition-all lg:h-6 lg:w-6 ${
-                    checked ? "border-blue-500 bg-blue-500 text-white" : "border-slate-200 bg-white text-transparent"
-                  }`}>✓</span>
+                  <Icon className={`h-5 w-5 lg:h-6 lg:w-6 ${checked ? "text-blue-600" : "text-gray-400"}`} />
                   {label}
                 </button>
               );
@@ -537,6 +549,41 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
             </div>
           </div>
         </div>
+
+        <div className="my-6 border-t border-slate-200" />
+
+        {/* Perfume Aroma */}
+        <div>
+          <div className="mb-1 flex items-center gap-2">
+            <div className="h-1 w-6 rounded-full bg-orange-500" />
+            <h3 className="text-sm font-semibold uppercase tracking-wide text-orange-600">
+              Aroma del perfume
+            </h3>
+          </div>
+          <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:gap-6">
+            {(["fruital", "floral", "fresco"] as const).map((value) => {
+              const labels: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
+              const selected = formData.perfume === value;
+              return (
+                <button key={value} type="button"
+                  onClick={() => update("perfume", value)}
+                  className={`relative cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] lg:px-8 lg:py-4 lg:text-base ${
+                    selected
+                      ? "border-orange-500 bg-orange-50 text-orange-700 shadow-md"
+                      : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
+                  }`}
+                >
+                  {selected && (
+                    <span className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-orange-500 text-[10px] font-bold text-white shadow">
+                      ✓
+                    </span>
+                  )}
+                  {labels[value]}
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </div>
 
       {/* Corte Details (collapsible, only when bath_cut) */}
@@ -602,38 +649,14 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         </div>
       </div>
 
-      {/* Perfume Aroma */}
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm lg:p-8">
-        <div className="mb-1 flex items-center gap-2">
-          <div className="h-1 w-6 rounded-full bg-orange-500" />
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-orange-600">
-            Aroma del perfume
-          </h3>
-        </div>
-        <div className="flex flex-wrap justify-center gap-3 sm:gap-4 lg:gap-6">
-          {(["fruital", "floral", "fresco"] as const).map((value) => {
-            const labels: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
-            const selected = formData.perfume === value;
-            return (
-              <button key={value} type="button"
-                onClick={() => update("perfume", value)}
-                className={`cursor-pointer rounded-xl border-2 px-6 py-3 text-sm font-medium transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] lg:px-8 lg:py-4 lg:text-base ${
-                  selected
-                    ? "border-blue-500 bg-blue-50 text-blue-700 shadow-md"
-                    : "border-gray-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
-                }`}
-              >
-                {labels[value]}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       <button onClick={handleContinue}
-        className="mt-10 w-full cursor-pointer rounded-xl bg-blue-600 py-4 text-lg font-bold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98] lg:py-5 lg:text-xl">
-        Continuar
+        className="mt-10 w-full cursor-pointer rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 py-4 text-lg font-bold text-white shadow-md transition-all hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98] inline-flex items-center justify-center gap-2 lg:py-5 lg:text-xl">
+        Continuar <ArrowRight className="h-5 w-5 lg:h-6 lg:w-6" />
       </button>
+      <p className="mt-3 text-center text-xs text-gray-400">
+        <Lock className="mr-1 inline-block h-3 w-3" />
+        Tu información está segura con nosotros
+      </p>
 
       <ErrorModal
         open={showModal}
