@@ -52,6 +52,14 @@ const CORTE_OPTIONS = [
   { value: "tijera" as const, label: "Corte con Tijera / Estilo de la raza" },
 ];
 
+type AntifleaProduct = {
+  value: string;
+  label: string;
+  description: string;
+  petTypes: readonly string[];
+  requiresBranch?: string;
+};
+
 const ANTIFLEA_PRODUCTS_1M = [
   {
     name: "Pipetas",
@@ -63,14 +71,14 @@ const ANTIFLEA_PRODUCTS_1M = [
         description: "Pipeta tópica mensual. Solo para mascotas menores de 10 kg.",
         petTypes: ["dog", "cat"] as const,
       },
-    ],
+    ] satisfies AntifleaProduct[],
   },
   {
     name: "Pastillas",
     products: [
       { value: "1m_pastilla_atrevia", label: "Atrevia", description: "Comprimido oral mensual", petTypes: ["dog"] as const },
       { value: "1m_pastilla_simparica", label: "Simparica", description: "Comprimido oral mensual", petTypes: ["dog"] as const, requiresBranch: "san_miguel" },
-    ],
+    ] satisfies AntifleaProduct[],
   },
 ];
 
@@ -103,9 +111,9 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const filtered1mSections = ANTIFLEA_PRODUCTS_1M
     .map((section) => ({
       name: section.name,
-      products: section.products.filter((p) => {
+      products: section.products.filter((p: AntifleaProduct) => {
         if (p.requiresBranch && p.requiresBranch !== formData.branch) return false;
-        return (p.petTypes as readonly string[]).includes(formData.petType!);
+        return p.petTypes.includes(formData.petType!);
       }),
     }))
     .filter((section) => section.products.length > 0);

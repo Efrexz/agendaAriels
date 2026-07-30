@@ -1,7 +1,7 @@
 import { motion } from "framer-motion";
 import { CheckCircle, Heart, PawPrint, Scissors, Wind, Ruler, Droplets, Pencil, Plus, ArrowRight, ShieldCheck, Sparkles } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
-import { formatExtraLabel } from "../../data/labels";
+import { formatExtraLabel, PET_TYPE_LABELS, SERVICE_LABELS, SIZE_LABELS, PERFUME_LABELS } from "../../data/labels";
 
 interface MascotaAgregadaStepProps {
   formData: FormData;
@@ -13,11 +13,6 @@ interface MascotaAgregadaStepProps {
   continueLabel?: string;
   isEditing?: boolean;
 }
-
-const PET_TYPE_LABELS: Record<string, string> = { dog: "Perro", cat: "Gato" };
-const SERVICE_LABELS: Record<string, string> = { bath: "Baño", bath_cut: "Baño + Corte", bath_deslanado: "Baño + Deslanado" };
-const SIZE_LABELS: Record<string, string> = { small: "Pequeño", medium: "Mediano", large: "Grande" };
-const PERFUME_LABELS: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
 
 export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack, continueLabel, isEditing }: MascotaAgregadaStepProps) {
   const currentPet: PetData = {
@@ -113,7 +108,7 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack
         {!isEditing && onBack && (
           <button
             onClick={onBack}
-            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50"
+            className="inline-flex items-center gap-1 rounded-lg px-2 py-1 text-sm font-medium text-blue-600 transition-colors hover:bg-blue-50 cursor-pointer"
           >
             <Pencil className="h-3.5 w-3.5" />
             Editar información

@@ -211,7 +211,7 @@ function SectionCard({
   );
 }
 
-export function ConfirmationStep({ formData, onBack: _onBack, onAddAnother, onRemovePet, onEditPet }: ConfirmationStepProps) {
+export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPet }: ConfirmationStepProps) {
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitError, setSubmitError] = useState<string>("");
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
