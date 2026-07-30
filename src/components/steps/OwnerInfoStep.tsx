@@ -167,13 +167,13 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
           </div>
         </div>
 
-        <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-8 sm:right-0 sm:mt-0">
+        <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-6 sm:right-0 sm:mt-0">
           <div className="relative mb-10 max-w-44 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md">
             ¡Yo te ayudo!
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
           </div>
           <img
-            src="/images/vetMascot/copy.png"
+            src="/images/vetMascot/pesoMascota.png"
             alt="Asistente veterinario"
             className="h-24 sm:h-28 lg:h-32 select-none"
           />

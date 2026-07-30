@@ -163,13 +163,13 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
           </div>
         </div>
 
-        <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-8 sm:right-0 sm:mt-0">
-          <div className="relative mb-10 max-w-40 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md">
+        <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-8 sm:right-0 sm:mt-0 -mr-10">
+          <div className="relative mb-14 max-w-25 -mr-14 rounded-2xl bg-white px-3 py-1 text-xs font-bold leading-snug text-gray-600 shadow-md">
             Elige tu sede mas cercana
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
           </div>
           <img
-            src="/images/vetMascot/copy.png"
+            src="/images/vetMascot/map.png"
             alt="Asistente veterinario"
             className="h-24 sm:h-28 lg:h-32 select-none"
           />

@@ -495,9 +495,9 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         </div>
         <div className="absolute right-0 top-1/2 z-10 -translate-y-[70%] translate-x-[10%]">
           <motion.img
-            src="/images/vetMascot/copy.png"
+            src="/images/vetMascot/aprobado.png"
             alt="Asistente mascota"
-            className="h-28 w-28 object-contain drop-shadow-md sm:h-32 sm:w-32"
+            className="h-28 w-28 object-contain drop-shadow-md sm:h-34 sm:w-34"
             initial={{ opacity: 0, scale: 0.85, x: 12 }}
             animate={{ opacity: 1, scale: 1, x: 0 }}
             transition={{ duration: 0.3, delay: 0.15 }}
