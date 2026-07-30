@@ -1,6 +1,7 @@
 import { useRef, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from "@react-google-maps/api";
 import type { FormData } from "../BookingWizard";
+import { validateOwnerInfo } from "../../state/schemas";
 
 interface ReviewStepProps {
   formData: FormData;
@@ -108,17 +109,20 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
   };
 
   const isValid = () => {
-    if (formData.hasHistory === true) {
-      return formData.ownerDni.trim() !== "" && formData.ownerName.trim() !== "" && formData.registeredPhone.trim() !== "";
-    }
-    if (formData.hasHistory === false) {
-      const baseValid = formData.ownerDni.trim() !== "" && formData.ownerName.trim() !== "" && formData.ownerAddress.trim() !== "" && formData.ownerPhone.trim() !== "" && formData.registeredPetName.trim() !== "" && formData.petBirthDate.trim() !== "" && formData.petSpecies !== null && formData.petBreed.trim() !== "";
-      if (formData.mobilityPhoneDifferent) {
-        return baseValid && formData.mobilityPhone.trim() !== "";
-      }
-      return baseValid;
-    }
-    return false;
+    return validateOwnerInfo({
+      ownerDni: formData.ownerDni,
+      ownerName: formData.ownerName,
+      ownerAddress: formData.ownerAddress,
+      ownerPhone: formData.ownerPhone,
+      registeredPhone: formData.registeredPhone,
+      registeredPetName: formData.registeredPetName,
+      petBirthDate: formData.petBirthDate,
+      petSpecies: formData.petSpecies,
+      petBreed: formData.petBreed,
+      hasHistory: formData.hasHistory,
+      mobilityPhoneDifferent: formData.mobilityPhoneDifferent,
+      mobilityPhone: formData.mobilityPhone,
+    });
   };
 
   const lastPetName = formData.pets.length > 0 ? formData.pets[formData.pets.length - 1].petName : formData.petName;

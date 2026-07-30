@@ -6,6 +6,7 @@ import { ErrorModal } from "../ErrorModal";
 import { LazyImage } from "../LazyImage";
 import { EXTRA_VARIANT_LABELS } from "../../data/labels";
 import { uploadFile } from "../../services/uploadImage";
+import { validatePetDraft } from "../../state/schemas";
 
 interface PetInfoStepProps {
   formData: FormData;
@@ -129,14 +130,15 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const invalidCorteType = showCorte && !formData.corteType;
 
   const handleContinue = () => {
-    const found: string[] = [];
-    if (invalidPetName) found.push("El nombre de la mascota necesita al menos 3 letras");
-    if (invalidService) found.push("Elige un servicio principal (Baño o Baño y Corte)");
-    if (invalidBathType) found.push("Elige un tipo de baño");
-    if (invalidCorteType) found.push("Elige un tipo de corte");
+    const validationErrors = validatePetDraft({
+      petName: formData.petName,
+      service: formData.service,
+      bathType: formData.bathType,
+      corteType: formData.corteType,
+    });
 
-    if (found.length > 0) {
-      setErrors(found);
+    if (validationErrors.length > 0) {
+      setErrors(validationErrors);
       setShowModal(true);
       return;
     }
