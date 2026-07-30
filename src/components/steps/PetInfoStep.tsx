@@ -1,10 +1,11 @@
 import { useState, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck, ChevronRight, Lock, Pill, PawPrint, ArrowRight } from "lucide-react";
+import { ShowerHead, Scissors, Wind, Upload, Trash2, Sparkles, BriefcaseMedical, Droplets, Syringe, ShieldCheck, ChevronRight, Lock, Pill, PawPrint, ArrowRight, Loader2 } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { ErrorModal } from "../ErrorModal";
 import { LazyImage } from "../LazyImage";
 import { EXTRA_VARIANT_LABELS } from "../../data/labels";
+import { uploadFile } from "../../services/uploadImage";
 
 interface PetInfoStepProps {
   formData: FormData;
@@ -98,6 +99,8 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const [errors, setErrors] = useState<string[]>([]);
   const [showModal, setShowModal] = useState(false);
   const [antifleaDuration, setAntifleaDuration] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const isCat = formData.petType === "cat";
@@ -186,15 +189,25 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
     const file = e.target.files?.[0];
     if (!file) return;
     if (!file.type.startsWith("image/")) return;
-    const reader = new FileReader();
-    reader.onload = () => {
-      update("corteImage", reader.result as string);
-    };
-    reader.readAsDataURL(file);
+
+    setIsUploading(true);
+    setUploadError(null);
+
+    uploadFile(file).then((url) => {
+      setIsUploading(false);
+      if (url) {
+        update("corteImage", url);
+      } else {
+        setUploadError("No se pudo subir la imagen. Intenta de nuevo.");
+      }
+      if (fileInputRef.current) fileInputRef.current.value = "";
+    });
   };
 
   const handleRemoveImage = () => {
     update("corteImage", "");
+    setUploadError(null);
+    setIsUploading(false);
     if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
@@ -637,12 +650,25 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
           </div>
           <div>
             <label className="mb-1 block text-sm font-medium text-gray-700">Foto referencial</label>
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <input ref={fileInputRef} type="file" accept="image/*" onChange={handleImageUpload} className="hidden" />
-              <button type="button" onClick={() => fileInputRef.current?.click()}
-                className="flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-white px-5 py-3 text-sm font-medium text-gray-600 transition-all hover:border-blue-500 hover:text-blue-600">
-                <Upload className="h-5 w-5" /> Subir foto
+              <button type="button" onClick={() => fileInputRef.current?.click()} disabled={isUploading}
+                className={`flex cursor-pointer items-center gap-2 rounded-xl border-2 border-dashed border-blue-300 bg-white px-5 py-3 text-sm font-medium transition-all hover:border-blue-500 hover:text-blue-600 ${
+                  isUploading ? "cursor-wait opacity-60" : ""
+                }`}>
+                {isUploading ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin" /> Subiendo...
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-5 w-5" /> Subir foto
+                  </>
+                )}
               </button>
+              {uploadError && (
+                <span className="text-xs text-red-500">{uploadError}</span>
+              )}
               {formData.corteImage && (
                 <div className="relative">
                   <img src={formData.corteImage} alt="Referencia de corte" className="h-16 w-16 rounded-lg border border-gray-300 object-cover" />

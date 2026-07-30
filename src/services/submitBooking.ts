@@ -82,18 +82,7 @@ export async function submitBooking(formData: FormData): Promise<SubmitResult> {
     return { ok: false, error: "URL del webhook no configurada" };
   }
 
-  const { uploadImage } = await import("./uploadImage");
-
-  const petsWithUrls = await Promise.all(
-    formData.pets.map(async (pet) => {
-      if (!pet.corteImage) return pet;
-      const url = await uploadImage(pet.corteImage);
-      return { ...pet, corteImage: url ?? "" };
-    })
-  );
-
-  const formDataWithUrls: FormData = { ...formData, pets: petsWithUrls };
-  const payload = buildBookingPayload(formDataWithUrls);
+  const payload = buildBookingPayload(formData);
 
   try {
     const response = await fetch(webhookUrl, {
