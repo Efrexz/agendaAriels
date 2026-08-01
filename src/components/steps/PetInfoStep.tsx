@@ -252,6 +252,20 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         />
       </div>
 
+      {/* Observaciones de la mascota */}
+      <div className="mt-10">
+        <label className="mb-1 block text-sm font-medium text-gray-700">
+          Observaciones de la mascota
+        </label>
+        <textarea
+          rows={4}
+          value={formData.petNotes}
+          onChange={(e) => update("petNotes", e.target.value)}
+          placeholder={isCat ? "Ej: Mi gato se pone nervioso con la secadora..." : "Ej: Mi perro se pone nervioso con la secadora..."}
+          className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
+        />
+      </div>
+
       <button onClick={handleContinue}
         className="mt-10 w-full cursor-pointer rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 py-4 text-lg font-bold text-white shadow-md transition-all hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98] inline-flex items-center justify-center gap-2 lg:py-5 lg:text-xl">
         Continuar <ArrowRight className="h-5 w-5 lg:h-6 lg:w-6" />

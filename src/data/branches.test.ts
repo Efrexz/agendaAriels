@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { BRANCHES, BRANCH_BY_VALUE, isBranchOpen } from "./branches";
+import { BRANCHES, BRANCH_BY_VALUE, BRANCH_COORDS, MAX_PICKUP_DISTANCE_KM, isBranchOpen } from "./branches";
 
 describe("BRANCHES", () => {
   it("has three branches", () => {
@@ -13,6 +13,18 @@ describe("BRANCHES", () => {
       expect(branch.address).toBeTruthy();
       expect(branch.phone).toBeTruthy();
       expect(branch.opensAt).toBeLessThan(branch.closesAt);
+      expect(branch.coords).toBeDefined();
+      expect(typeof branch.coords.lat).toBe("number");
+      expect(typeof branch.coords.lng).toBe("number");
+    }
+  });
+
+  it("each branch has coordinates within Lima area", () => {
+    for (const branch of BRANCHES) {
+      expect(branch.coords.lat).toBeLessThan(-11.9);
+      expect(branch.coords.lat).toBeGreaterThan(-12.2);
+      expect(branch.coords.lng).toBeLessThan(-77.0);
+      expect(branch.coords.lng).toBeGreaterThan(-77.2);
     }
   });
 });
@@ -25,6 +37,20 @@ describe("BRANCH_BY_VALUE", () => {
 
   it("returns undefined for invalid value", () => {
     expect(BRANCH_BY_VALUE["invalid"]).toBeUndefined();
+  });
+});
+
+describe("BRANCH_COORDS", () => {
+  it("maps each branch value to its coordinates", () => {
+    for (const branch of BRANCHES) {
+      expect(BRANCH_COORDS[branch.value]).toEqual(branch.coords);
+    }
+  });
+});
+
+describe("MAX_PICKUP_DISTANCE_KM", () => {
+  it("is a positive number", () => {
+    expect(MAX_PICKUP_DISTANCE_KM).toBeGreaterThan(0);
   });
 });
 

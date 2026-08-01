@@ -7,7 +7,10 @@ export interface Branch {
   hours: string;
   opensAt: number;
   closesAt: number;
+  coords: { lat: number; lng: number };
 }
+
+export const MAX_PICKUP_DISTANCE_KM = 8;
 
 export const BRANCHES: Branch[] = [
   {
@@ -19,6 +22,7 @@ export const BRANCHES: Branch[] = [
     hours: "Lun - Dom: 8:00 am - 9:00 pm",
     opensAt: 8,
     closesAt: 21,
+    coords: { lat: -12.0206241, lng: -77.0865714 },
   },
   {
     value: "los_olivos",
@@ -29,6 +33,7 @@ export const BRANCHES: Branch[] = [
     hours: "Lun - Dom: 8:00 am - 9:00 pm",
     opensAt: 8,
     closesAt: 21,
+    coords: { lat: -12.0085609, lng: -77.0710131 },
   },
   {
     value: "san_miguel",
@@ -39,6 +44,7 @@ export const BRANCHES: Branch[] = [
     hours: "Lun - Dom: 8:00 am - 9:00 pm",
     opensAt: 8,
     closesAt: 21,
+    coords: { lat: -12.0774344, lng: -77.0934137 },
   },
 ];
 
@@ -49,4 +55,8 @@ export function isBranchOpen(branch: Branch, now = new Date()): boolean {
 
 export const BRANCH_BY_VALUE: Record<string, Branch> = Object.fromEntries(
   BRANCHES.map((b) => [b.value, b]),
+);
+
+export const BRANCH_COORDS: Record<string, { lat: number; lng: number }> = Object.fromEntries(
+  BRANCHES.map((b) => [b.value, b.coords]),
 );

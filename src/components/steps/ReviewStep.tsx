@@ -2,6 +2,8 @@ import { useRef, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from "@react-google-maps/api";
 import type { FormData } from "../BookingWizard";
 import { validateOwnerInfo } from "../../state/schemas";
+import { BRANCH_COORDS, MAX_PICKUP_DISTANCE_KM } from "../../data/branches";
+import { haversineKm } from "../../utils/geo";
 
 interface ReviewStepProps {
   formData: FormData;
@@ -13,12 +15,6 @@ interface ReviewStepProps {
 }
 
 const LIMA_CENTER = { lat: -12.046374, lng: -77.042793 };
-
-const BRANCH_COORDS: Record<string, { lat: number; lng: number }> = {
-  san_martin: { lat: -12.0194, lng: -77.0712 },
-  los_olivos: { lat: -11.9815, lng: -77.0739 },
-  san_miguel: { lat: -12.0783, lng: -77.0904 },
-};
 
 const MAP_LIBRARIES: ("places")[] = ["places"];
 
@@ -61,6 +57,24 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
   });
 
   const [inputValue, setInputValue] = useState(formData.ownerAddress || "");
+  const [distanceKm, setDistanceKm] = useState<number | null>(null);
+
+  const computeDistance = useCallback(
+    (lat: number, lng: number) => {
+      const branch = formData.branch;
+      if (!branch || !BRANCH_COORDS[branch]) return null;
+      return haversineKm(BRANCH_COORDS[branch], { lat, lng });
+    },
+    [formData.branch],
+  );
+
+  useEffect(() => {
+    if (formData.ownerLat !== null && formData.ownerLng !== null) {
+      setDistanceKm(computeDistance(formData.ownerLat, formData.ownerLng));
+    }
+  }, [formData.branch, formData.ownerLat, formData.ownerLng, computeDistance]);
+
+  const outOfRange = distanceKm !== null && distanceKm > MAX_PICKUP_DISTANCE_KM;
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -80,6 +94,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
     setMapCenter({ lat, lng });
     mapRef.current?.panTo({ lat, lng });
     mapRef.current?.setZoom(18);
+    setDistanceKm(computeDistance(lat, lng));
   };
 
   const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
@@ -89,6 +104,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
     update("ownerLat", lat);
     update("ownerLng", lng);
     setMarkerPos({ lat, lng });
+    setDistanceKm(computeDistance(lat, lng));
     if (!geocoderRef.current) {
       geocoderRef.current = new google.maps.Geocoder();
     }
@@ -109,6 +125,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
   };
 
   const isValid = () => {
+    if (outOfRange) return false;
     return validateOwnerInfo({
       ownerDni: formData.ownerDni,
       ownerName: formData.ownerName,
@@ -139,7 +156,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
             Dirección de recojo <span className="text-red-500">*</span>
           </label>
           <p className="mb-3 text-xs text-gray-500">
-            Escribe tu dirección en Lima para que podamos recoger a tu mascota.
+            Escribe tu dirección en Lima (máximo {MAX_PICKUP_DISTANCE_KM} km de la sede) para que podamos recoger a tu mascota.
           </p>
           {isLoaded ? (
             <Autocomplete
@@ -185,6 +202,25 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 />
               )}
             </GoogleMap>
+          </div>
+        )}
+
+        {distanceKm !== null && outOfRange && (
+          <div className="rounded-xl border-2 border-orange-300 bg-orange-50 p-4 shadow-sm">
+            <p className="text-sm font-bold text-orange-700">
+              Lo sentimos, no llegamos hasta esa zona
+            </p>
+            <p className="mt-1 text-xs leading-relaxed text-orange-600">
+              Tu dirección está a {distanceKm.toFixed(1)} km de la sede, pero solo cubrimos un radio de {MAX_PICKUP_DISTANCE_KM} km. Intenta con una dirección más cercana.
+            </p>
+          </div>
+        )}
+
+        {distanceKm !== null && !outOfRange && (
+          <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2.5 shadow-sm">
+            <p className="text-sm font-medium text-emerald-700">
+              Estás a {distanceKm.toFixed(1)} km de la sede — dentro del rango de cobertura
+            </p>
           </div>
         )}
 
@@ -434,19 +470,6 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 />
               </div>
             )}
-
-            <div>
-              <label className="mb-1 block text-sm font-medium text-gray-700">
-                Observaciones de la mascota
-              </label>
-              <textarea
-                rows={4}
-                value={formData.petNotes}
-                onChange={(e) => update("petNotes", e.target.value)}
-                placeholder={isCat ? "Ej: Mi gato se pone nervioso con la secadora..." : "Ej: Mi perro se pone nervioso con la secadora..."}
-                className="w-full resize-none rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
-              />
-            </div>
 
             <button
               onClick={onNext}

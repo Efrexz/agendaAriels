@@ -92,7 +92,7 @@ export function ErrorModal({
                 <span className="absolute -top-2 left-10 h-0 w-0 border-x-8 border-b-8 border-x-transparent border-b-blue-50 sm:hidden" />
                 <div className="mb-3 flex items-center gap-2">
                   <span className="h-1 w-5 rounded-full bg-orange-500" />
-                  <h3 id="error-modal-title" className="text-sm font-bold uppercase tracking-wide text-orange-600">
+                  <h3 id="error-modal-title" className="text-md font-bold uppercase tracking-wide text-orange-600">
                     {title}
                   </h3>
                 </div>
