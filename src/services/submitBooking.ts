@@ -73,6 +73,7 @@ export function buildBookingPayload(formData: FormData) {
     petCastrated: formData.petCastrated,
     mobilityPhoneDifferent: formData.mobilityPhoneDifferent,
     mobilityPhone: formData.mobilityPhone || "-",
+    ownerEmail: formData.ownerEmail || "-",
   };
 }
 

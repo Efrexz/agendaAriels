@@ -51,6 +51,7 @@ export interface FormData {
   mobilityPhoneDifferent: boolean;
   mobilityPhone: string;
   legalAgeConfirmed: boolean;
+  ownerEmail: string;
 }
 
 export const INITIAL_PET_FIELDS = {
@@ -95,6 +96,7 @@ export const INITIAL_FORM_DATA: FormData = {
   mobilityPhoneDifferent: false,
   mobilityPhone: "",
   legalAgeConfirmed: false,
+  ownerEmail: "",
 };
 
 export type StepId = "branch" | "petType" | "petInfo" | "size" | "petAdded" | "schedule" | "owner" | "review";

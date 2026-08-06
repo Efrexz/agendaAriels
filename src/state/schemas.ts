@@ -64,6 +64,7 @@ export function validateOwnerInfo(data: {
   mobilityPhoneDifferent: boolean;
   mobilityPhone: string;
   legalAgeConfirmed: boolean;
+  ownerEmail: string;
 }): boolean {
   if (data.hasHistory === null) return false;
 
@@ -107,6 +108,10 @@ export function validateOwnerInfo(data: {
   }
 
   if (data.mobilityPhoneDifferent && data.mobilityPhone.trim() === "") {
+    return false;
+  }
+
+  if (data.ownerEmail.trim() !== "" && !z.string().email().safeParse(data.ownerEmail).success) {
     return false;
   }
 
