@@ -9,6 +9,8 @@ import { MascotaAgregadaStep } from "./steps/MascotaAgregadaStep";
 import { ScheduleStep } from "./steps/ScheduleStep";
 import { ReviewStep } from "./steps/ReviewStep";
 import { ConfirmationStep } from "./steps/ConfirmationStep";
+import { WhatsAppButton } from "./WhatsAppButton";
+import { BRANCH_BY_VALUE } from "../data/branches";
 import type { FormData } from "../state/wizardReducer";
 import {
   wizardReducer,
@@ -59,6 +61,8 @@ export function BookingWizard() {
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     dispatch({ type: "UPDATE_FIELD", field, value });
   };
+
+  const branch = state.formData.branch ? BRANCH_BY_VALUE[state.formData.branch] : null;
 
   return (
     <div className="flex min-h-screen items-center justify-center p-2 sm:p-4">
@@ -143,6 +147,8 @@ export function BookingWizard() {
           )}
         </div>
       </div>
+
+      {branch && <WhatsAppButton phone={branch.phone} />}
     </div>
   );
 }
