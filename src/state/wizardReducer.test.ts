@@ -227,7 +227,7 @@ describe("wizardReducer", () => {
       expect(next.mode).toBe("initial");
     });
 
-    it("removes last pet when going back from schedule", () => {
+    it("removes last pet when going back from schedule and restores its data to the form", () => {
       const pet1 = buildPet(dogForm({ petName: "Rex" }));
       const pet2 = buildPet(dogForm({ petName: "Luna" }));
       const s = state({
@@ -237,6 +237,8 @@ describe("wizardReducer", () => {
       const next = wizardReducer(s, { type: "BACK" });
       expect(next.formData.pets).toHaveLength(1);
       expect(next.formData.pets[0].petName).toBe("Rex");
+      expect(next.formData.petName).toBe("Luna");
+      expect(next.formData.service).toBe("bath_cut");
     });
 
     it("resets pet fields when going back to branch or petType", () => {

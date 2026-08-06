@@ -193,6 +193,24 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       const step = prevStep(state.step, state.formData);
 
       if (state.step === "schedule") {
+        const lastPet = formData.pets[formData.pets.length - 1];
+        if (lastPet) {
+          formData = {
+            ...formData,
+            petType: lastPet.petType,
+            service: lastPet.service,
+            extraServices: lastPet.extraServices,
+            size: lastPet.size,
+            coat: lastPet.coat,
+            petNotes: lastPet.petNotes,
+            petName: lastPet.petName,
+            corteType: lastPet.corteType,
+            corteSpecs: lastPet.corteSpecs,
+            corteImage: lastPet.corteImage,
+            bathType: lastPet.bathType,
+            perfume: lastPet.perfume,
+          };
+        }
         formData.pets = formData.pets.slice(0, -1);
       }
 
