@@ -63,6 +63,7 @@ export function validateOwnerInfo(data: {
   hasHistory: boolean | null;
   mobilityPhoneDifferent: boolean;
   mobilityPhone: string;
+  legalAgeConfirmed: boolean;
 }): boolean {
   if (data.hasHistory === null) return false;
 
@@ -83,6 +84,8 @@ export function validateOwnerInfo(data: {
     const result = schema.safeParse({ ...baseFields, registeredPhone: data.registeredPhone });
     if (!result.success) return false;
   } else {
+    if (!data.legalAgeConfirmed) return false;
+
     const schema = baseSchema.extend({
       ownerAddress: z.string().min(1),
       ownerPhone: z.string().min(1),

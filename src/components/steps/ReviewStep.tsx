@@ -18,6 +18,17 @@ const LIMA_CENTER = { lat: -12.046374, lng: -77.042793 };
 
 const MAP_LIBRARIES: ("places")[] = ["places"];
 
+function maskDni(value: string): string {
+  return value.replace(/\D/g, "").slice(0, 8);
+}
+
+function maskPhone(value: string): string {
+  const digits = value.replace(/\D/g, "").slice(0, 9);
+  if (digits.length <= 3) return digits;
+  if (digits.length <= 6) return `${digits.slice(0, 3)}-${digits.slice(3)}`;
+  return `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`;
+}
+
 function getDefaultCenter(branch: string | null) {
   if (branch && BRANCH_COORDS[branch]) return BRANCH_COORDS[branch];
   return LIMA_CENTER;
@@ -139,6 +150,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
       hasHistory: formData.hasHistory,
       mobilityPhoneDifferent: formData.mobilityPhoneDifferent,
       mobilityPhone: formData.mobilityPhone,
+      legalAgeConfirmed: formData.legalAgeConfirmed,
     });
   };
 
@@ -274,7 +286,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 <input
                   type="text"
                   value={formData.ownerDni}
-                  onChange={(e) => update("ownerDni", e.target.value)}
+                  onChange={(e) => update("ownerDni", maskDni(e.target.value))}
                   placeholder="Ej: 12345678"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
@@ -287,10 +299,11 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                   type="tel"
                   value={formData.registeredPhone}
                   onChange={(e) => {
-                    update("registeredPhone", e.target.value);
-                    update("ownerPhone", e.target.value);
+                    const masked = maskPhone(e.target.value);
+                    update("registeredPhone", masked);
+                    update("ownerPhone", masked);
                   }}
-                  placeholder="Ej: 555-123-4567"
+                  placeholder="Ej: 999-888-777"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
@@ -312,7 +325,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 <input
                   type="text"
                   value={formData.ownerDni}
-                  onChange={(e) => update("ownerDni", e.target.value)}
+                  onChange={(e) => update("ownerDni", maskDni(e.target.value))}
                   placeholder="Ej: 12345678"
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
                 />
@@ -339,8 +352,8 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 <input
                   type="tel"
                   value={formData.ownerPhone}
-                  onChange={(e) => update("ownerPhone", e.target.value)}
-                  placeholder="Ej: 555-123-4567"
+                  onChange={(e) => update("ownerPhone", maskPhone(e.target.value))}
+                  placeholder="Ej: 999-888-777"
                   className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
                 />
               </div>
@@ -438,6 +451,19 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 </div>
               </div>
             </div>
+
+            <label htmlFor="legalAgeConfirmed" className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg py-2 hover:bg-sky-100/50 sm:items-center">
+              <input
+                type="checkbox"
+                id="legalAgeConfirmed"
+                checked={formData.legalAgeConfirmed}
+                onChange={(e) => update("legalAgeConfirmed", e.target.checked)}
+                className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 sm:mt-0"
+              />
+              <span className="text-sm font-medium leading-snug text-gray-700">
+                Confirmo que soy mayor de edad y autorizo el registro de la historia clínica
+              </span>
+            </label>
           </div>
         )}
 
@@ -464,8 +490,8 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                 <input
                   type="tel"
                   value={formData.mobilityPhone}
-                  onChange={(e) => update("mobilityPhone", e.target.value)}
-                  placeholder="Ej: 555-987-6543"
+                  onChange={(e) => update("mobilityPhone", maskPhone(e.target.value))}
+                  placeholder="Ej: 999-888-777"
                   className="w-full rounded-xl border border-gray-300 px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>

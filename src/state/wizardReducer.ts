@@ -50,6 +50,7 @@ export interface FormData {
   petCastrated: boolean;
   mobilityPhoneDifferent: boolean;
   mobilityPhone: string;
+  legalAgeConfirmed: boolean;
 }
 
 export const INITIAL_PET_FIELDS = {
@@ -93,6 +94,7 @@ export const INITIAL_FORM_DATA: FormData = {
   petCastrated: false,
   mobilityPhoneDifferent: false,
   mobilityPhone: "",
+  legalAgeConfirmed: false,
 };
 
 export type StepId = "branch" | "petType" | "petInfo" | "size" | "petAdded" | "schedule" | "owner" | "review";
