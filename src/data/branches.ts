@@ -10,7 +10,7 @@ export interface Branch {
   coords: { lat: number; lng: number };
 }
 
-export const MAX_PICKUP_DISTANCE_KM = 8;
+export const MAX_PICKUP_DISTANCE_KM = 2;
 
 export const BRANCHES: Branch[] = [
   {
