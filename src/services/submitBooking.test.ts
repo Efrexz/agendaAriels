@@ -150,4 +150,9 @@ describe("buildBookingPayload", () => {
     expect(payload.mobilityPhoneDifferent).toBe(true);
     expect(payload.mobilityPhone).toBe("987-6543");
   });
+
+  it("generates a booking code in format VA-XXXXX", () => {
+    const payload = buildBookingPayload(form({ branch: "los_olivos" }));
+    expect(payload.bookingCode).toMatch(/^VA-[A-Z0-9]{5}$/);
+  });
 });

@@ -16,11 +16,17 @@ import {
 export interface SubmitResult {
   ok: boolean;
   error?: string;
+  bookingCode?: string;
 }
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + "T12:00:00");
   return format(d, "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
+}
+
+function generateBookingCode(): string {
+  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
+  return `VA-${rand}`;
 }
 
 function labelOr(map: Record<string, string>, key: string | null | undefined): string {
@@ -35,8 +41,10 @@ function buildMapsUrl(lat: number | null, lng: number | null): string | null {
 
 export function buildBookingPayload(formData: FormData) {
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
+  const bookingCode = generateBookingCode();
 
   return {
+    bookingCode,
     submittedAt: new Date().toISOString(),
     branch: formData.branch,
     branchLabel: branch?.label ?? "-",
@@ -96,7 +104,7 @@ export async function submitBooking(formData: FormData): Promise<SubmitResult> {
       return { ok: false, error: `Error del servidor (${response.status})` };
     }
 
-    return { ok: true };
+    return { ok: true, bookingCode: payload.bookingCode };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Error de conexión" };
   }

@@ -214,6 +214,7 @@ function SectionCard({
 export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPet }: ConfirmationStepProps) {
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitError, setSubmitError] = useState<string>("");
+  const [bookingCode, setBookingCode] = useState<string>("");
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
 
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
@@ -251,6 +252,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
     const result = await submitBooking(formData);
     if (result.ok) {
       setSubmitState("success");
+      setBookingCode(result.bookingCode ?? "");
     } else {
       setSubmitState("error");
       setSubmitError(result.error ?? "Ocurrió un error inesperado");
@@ -271,8 +273,21 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         <h2 className="text-center text-step-title font-display font-bold tracking-tight text-green-700">
           ¡Solicitud enviada con éxito!
         </h2>
+
+        {bookingCode && (
+          <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4 text-center">
+            <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
+            <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{bookingCode}</p>
+            <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+          </div>
+        )}
+
         <p className="text-center text-gray-500">
           Su mascotita ya fue agendada. Estaremos en contacto con usted cuando pasen por su domicilio. Recordarle que la movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada 🐾🐶🐱
+        </p>
+
+        <p className="text-center text-sm text-gray-400">
+          El tiempo de demora varía según la cantidad de mascotas del día, ya que se atiende por orden de llegada.
         </p>
       </div>
     );
