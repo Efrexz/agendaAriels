@@ -28,6 +28,8 @@ import {
   Plus,
   Trash2,
   Pencil,
+  FileText,
+  ChevronDown,
   type LucideIcon,
 } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
@@ -44,6 +46,7 @@ import {
   BRANCH_LABELS,
 } from "../../data/labels";
 import { submitBooking } from "../../services/submitBooking";
+import { PRIVACY_NOTICE } from "../../data/legal";
 
 interface ConfirmationStepProps {
   formData: FormData;
@@ -215,6 +218,8 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitError, setSubmitError] = useState<string>("");
   const [bookingCode, setBookingCode] = useState<string>("");
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
+  const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
 
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
@@ -520,9 +525,57 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         </div>
       </motion.div>
 
+      <div className="space-y-3">
+        <label htmlFor="privacyAccepted" className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg py-2 hover:bg-blue-50/40 sm:items-center">
+          <input
+            type="checkbox"
+            id="privacyAccepted"
+            checked={privacyAccepted}
+            onChange={(e) => setPrivacyAccepted(e.target.checked)}
+            className="mt-0.5 h-5 w-5 shrink-0 cursor-pointer rounded border-gray-300 text-blue-600 focus:ring-blue-500 sm:mt-0"
+          />
+          <span className="text-sm font-medium leading-snug text-gray-700">
+            He leído y acepto el{" "}
+            <button
+              type="button"
+              onClick={() => setShowPrivacyNotice(!showPrivacyNotice)}
+              className="inline-flex items-center gap-1 text-blue-600 underline decoration-blue-300 hover:decoration-blue-600 cursor-pointer"
+            >
+              aviso de privacidad
+              <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${showPrivacyNotice ? "rotate-180" : ""}`} />
+            </button>
+          </span>
+        </label>
+
+        {showPrivacyNotice && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+            transition={{ duration: 0.2 }}
+            className="overflow-hidden rounded-2xl border border-blue-100 bg-blue-50/60 p-5"
+          >
+            <div className="mb-4 flex items-center gap-2.5">
+              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-100 text-blue-600">
+                <FileText className="h-4 w-4" />
+              </span>
+              <h4 className="text-base font-semibold text-gray-900">{PRIVACY_NOTICE.title}</h4>
+            </div>
+            <div className="space-y-4">
+              {PRIVACY_NOTICE.sections.map((section) => (
+                <div key={section.heading}>
+                  <p className="text-sm font-semibold text-gray-800">{section.heading}</p>
+                  <p className="mt-0.5 text-sm leading-relaxed text-gray-600">{section.body}</p>
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        )}
+      </div>
+
       <button
         onClick={handleSubmit}
-        disabled={submitState === "loading" || hasNoPets}
+        disabled={submitState === "loading" || hasNoPets || !privacyAccepted}
         className={`flex min-h-[60px] w-full items-center justify-center gap-2.5 rounded-2xl text-lg font-bold text-white transition-all ${
           submitState === "loading"
             ? "cursor-wait bg-blue-400"
