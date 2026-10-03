@@ -74,7 +74,7 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack
           <PawPrint className="h-3 w-3 sm:h-3.5 sm:w-3.5" />
         </motion.span>
         <motion.img
-          src="/images/vetMascot/copy.png"
+          src="/images/vetMascot/copy.webp"
           alt="Mascota agregada a la lista"
           className="relative z-10 h-48 w-48 object-contain sm:h-64 sm:w-64"
           initial={{ opacity: 0, scale: 0.8, y: 10 }}

@@ -54,6 +54,8 @@ export function validateOwnerInfo(data: {
   ownerDni: string;
   ownerName: string;
   ownerAddress: string;
+  ownerLat: number | null;
+  ownerLng: number | null;
   ownerPhone: string;
   registeredPhone: string;
   registeredPetName: string;
@@ -67,6 +69,12 @@ export function validateOwnerInfo(data: {
   ownerEmail: string;
 }): boolean {
   if (data.hasHistory === null) return false;
+
+  const pickupMissing =
+    data.ownerAddress.trim() === "" ||
+    data.ownerLat === null ||
+    data.ownerLng === null;
+  if (pickupMissing) return false;
 
   const baseFields = {
     ownerDni: data.ownerDni,

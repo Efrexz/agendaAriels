@@ -1,3 +1,5 @@
+import { getLimaHour } from "../utils/limaTime";
+
 export interface Branch {
   value: "san_martin" | "los_olivos" | "san_miguel";
   label: string;
@@ -48,14 +50,16 @@ export const BRANCHES: Branch[] = [
   },
 ];
 
-export function isBranchOpen(branch: Branch, now = new Date()): boolean {
-  const h = now.getHours();
+export function isBranchOpen(branch: Branch, now: Date = new Date()): boolean {
+  const h = getLimaHour(now);
   return h >= branch.opensAt && h < branch.closesAt;
 }
 
 export const BRANCH_BY_VALUE: Record<string, Branch> = Object.fromEntries(
   BRANCHES.map((b) => [b.value, b]),
 );
+
+export const MAX_ADVANCE_DAYS = 14;
 
 export const BRANCH_COORDS: Record<string, { lat: number; lng: number }> = Object.fromEntries(
   BRANCHES.map((b) => [b.value, b.coords]),

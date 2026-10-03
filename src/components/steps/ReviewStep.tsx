@@ -1,4 +1,4 @@
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from "@react-google-maps/api";
 import { MapPin, Navigation } from "lucide-react";
 import type { FormData } from "../BookingWizard";
@@ -36,14 +36,18 @@ function getDefaultCenter(branch: string | null) {
 }
 
 export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
-  const isCat = formData.petType === "cat";
+  const uniformPetType = useMemo(() => {
+    const types = new Set(formData.pets.map((pet) => pet.petType));
+    return types.size === 1 ? formData.pets[0].petType : null;
+  }, [formData.pets]);
+  const isCat = uniformPetType === "cat";
 
-  // Auto-select species to match petType when not yet set or inconsistent
+  // Auto-select species to match the booked pet(s) when consistent
   useEffect(() => {
-    if (isCat && formData.petSpecies !== "cat") {
-      update("petSpecies", "cat");
+    if (uniformPetType && formData.petSpecies !== uniformPetType) {
+      update("petSpecies", uniformPetType);
     }
-  }, [isCat, formData.petSpecies, update]);
+  }, [uniformPetType, formData.petSpecies, update]);
 
   const { isLoaded } = useJsApiLoader({
     googleMapsApiKey: import.meta.env.VITE_GOOGLE_MAPS_API_KEY,
@@ -69,7 +73,6 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
   });
 
   const [inputValue, setInputValue] = useState(formData.ownerAddress || "");
-  const [distanceKm, setDistanceKm] = useState<number | null>(null);
   const [showBranchLocation, setShowBranchLocation] = useState(false);
 
   const branchCoords = formData.branch ? BRANCH_COORDS[formData.branch] : null;
@@ -83,13 +86,18 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
     [formData.branch],
   );
 
-  useEffect(() => {
-    if (formData.ownerLat !== null && formData.ownerLng !== null) {
-      setDistanceKm(computeDistance(formData.ownerLat, formData.ownerLng));
-    }
-  }, [formData.branch, formData.ownerLat, formData.ownerLng, computeDistance]);
+  const distanceKm = useMemo(
+    () =>
+      formData.ownerLat !== null && formData.ownerLng !== null
+        ? computeDistance(formData.ownerLat, formData.ownerLng)
+        : null,
+    [formData.ownerLat, formData.ownerLng, computeDistance],
+  );
 
   const outOfRange = distanceKm !== null && distanceKm > MAX_PICKUP_DISTANCE_KM;
+  const pickupMissing =
+    formData.ownerAddress.trim() !== "" &&
+    (formData.ownerLat === null || formData.ownerLng === null);
 
   const onMapLoad = useCallback((map: google.maps.Map) => {
     mapRef.current = map;
@@ -109,7 +117,6 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
     setMapCenter({ lat, lng });
     mapRef.current?.panTo({ lat, lng });
     mapRef.current?.setZoom(18);
-    setDistanceKm(computeDistance(lat, lng));
   };
 
   const onMarkerDragEnd = (e: google.maps.MapMouseEvent) => {
@@ -119,7 +126,6 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
     update("ownerLat", lat);
     update("ownerLng", lng);
     setMarkerPos({ lat, lng });
-    setDistanceKm(computeDistance(lat, lng));
     if (!geocoderRef.current) {
       geocoderRef.current = new google.maps.Geocoder();
     }
@@ -141,10 +147,13 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
   const isValid = () => {
     if (outOfRange) return false;
+    if (pickupMissing) return false;
     return validateOwnerInfo({
       ownerDni: formData.ownerDni,
       ownerName: formData.ownerName,
       ownerAddress: formData.ownerAddress,
+      ownerLat: formData.ownerLat,
+      ownerLng: formData.ownerLng,
       ownerPhone: formData.ownerPhone,
       registeredPhone: formData.registeredPhone,
       registeredPetName: formData.registeredPetName,
@@ -175,6 +184,11 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
           <p className="mb-3 text-xs text-gray-500">
             Escribe tu dirección en Lima (máximo {MAX_PICKUP_DISTANCE_KM} km de la sede) para que podamos recoger a tu mascota.
           </p>
+          {pickupMissing && (
+            <p className="mt-1 text-xs font-medium text-orange-600">
+              Elige una dirección de la lista o arrastra el pin en el mapa para confirmar tu ubicación.
+            </p>
+          )}
           {isLoaded ? (
             <Autocomplete
               onLoad={(ref) => { autocompleteRef.current = ref; }}

@@ -268,7 +268,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
     return (
       <div className="flex flex-col items-center gap-4 py-6">
         <motion.img
-          src="/images/vetMascot/agendado.png"
+          src="/images/vetMascot/agendado.webp"
           alt="Bulldog feliz manejando la movilidad"
           className="h-auto w-72 object-contain sm:w-[28rem]"
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -302,7 +302,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
     return (
       <div className="flex flex-col items-center gap-4 py-6">
         <motion.img
-          src="/images/vetMascot/errorAgenda.png"
+          src="/images/vetMascot/errorAgenda.webp"
           alt="Bulldog mirando con cara preocupada"
           className="h-auto w-72 object-contain sm:w-[28rem]"
           initial={{ opacity: 0, scale: 0.8, y: 10 }}
@@ -515,7 +515,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         </div>
         <div className="absolute right-0 top-1/2 z-10 -translate-y-[70%] translate-x-[10%]">
           <motion.img
-            src="/images/vetMascot/aprobado.png"
+            src="/images/vetMascot/aprobado.webp"
             alt="Asistente mascota"
             className="h-28 w-28 object-contain drop-shadow-md sm:h-34 sm:w-34"
             initial={{ opacity: 0, scale: 0.85, x: 12 }}

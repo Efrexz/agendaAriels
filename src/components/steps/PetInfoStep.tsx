@@ -4,7 +4,7 @@ import { ShowerHead, Scissors, Wind, ChevronRight, Lock, PawPrint, ArrowRight } 
 import type { FormData } from "../BookingWizard";
 import { ErrorModal } from "../ErrorModal";
 import { LazyImage } from "../LazyImage";
-import { uploadFile } from "../../services/uploadImage";
+import { uploadFile, isUploadTooLarge } from "../../services/uploadImage";
 import { validatePetDraft } from "../../state/schemas";
 import { BathTypePicker } from "./petInfo/BathTypePicker";
 import { ExtraServicesPicker } from "./petInfo/ExtraServicesPicker";
@@ -66,8 +66,16 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = "";
     if (!file) return;
-    if (!file.type.startsWith("image/")) return;
+    if (!file.type.startsWith("image/")) {
+      setUploadError("El archivo no es una imagen.");
+      return;
+    }
+    if (isUploadTooLarge(file)) {
+      setUploadError("La foto pesa más de 5 MB. Elige una más liviana o tómala en menor resolución.");
+      return;
+    }
 
     setIsUploading(true);
     setUploadError(null);
@@ -77,8 +85,11 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       if (url) {
         update("corteImage", url);
       } else {
-        setUploadError("No se pudo subir la imagen. Intenta de nuevo.");
+        setUploadError("No se pudo subir la imagen. Revisa tu conexión e intenta de nuevo.");
       }
+    }).catch(() => {
+      setIsUploading(false);
+      setUploadError("No se pudo subir la imagen. Intenta de nuevo.");
     });
   };
 

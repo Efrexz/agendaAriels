@@ -169,7 +169,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
           </div>
           <img
-            src="/images/vetMascot/map.png"
+            src="/images/vetMascot/map.webp"
             alt="Asistente veterinario"
             className="h-24 sm:h-28 lg:h-32 select-none"
           />

@@ -1,14 +1,16 @@
 import { useState, useMemo } from "react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
-  isSameDay, isBefore, startOfDay, addMonths, subMonths,
-  getDay, parseISO
+  isSameDay, isBefore, addMonths, subMonths,
+  getDay, parseISO, addDays, isAfter
 } from "date-fns";
 import { es } from "date-fns/locale";
 import { ChevronLeft, ChevronRight, PawPrint, CheckCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { FormData } from "../BookingWizard";
 import { LazyImage } from "../LazyImage";
+import { MAX_ADVANCE_DAYS } from "../../data/branches";
+import { getLimaDayKey, getLimaHour, limaToday } from "../../utils/limaTime";
 
 interface ScheduleStepProps {
   formData: FormData;
@@ -26,6 +28,7 @@ const TIME_SLOTS = [
     sub: "Turno mañana",
     timeKey: "morning" as const,
     alt: "Horario de mañana",
+    startHour: 9,
   },
   {
     value: "11-14" as const,
@@ -33,13 +36,17 @@ const TIME_SLOTS = [
     sub: "Turno mediodía",
     timeKey: "noon" as const,
     alt: "Horario de mediodía",
+    startHour: 11,
   },
 ];
 
 const dayNames = ["Do", "Lu", "Ma", "Mi", "Ju", "Vi", "Sa"];
 
 export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
-  const today = startOfDay(new Date());
+  const [today] = useState(() => limaToday());
+  const todayKey = getLimaDayKey();
+  const nowHour = getLimaHour();
+  const maxDay = addDays(today, MAX_ADVANCE_DAYS);
   const [currentMonth, setCurrentMonth] = useState(today);
 
   const { days, blanks } = useMemo(() => {
@@ -49,6 +56,9 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
     const firstDay = getDay(start);
     return { days: monthDays, blanks: firstDay };
   }, [currentMonth]);
+
+  const canGoPrev = isBefore(startOfMonth(currentMonth), startOfMonth(today));
+  const canGoNext = isBefore(startOfMonth(currentMonth), startOfMonth(maxDay));
 
   const prevMonth = () => setCurrentMonth((m) => subMonths(m, 1));
   const nextMonth = () => setCurrentMonth((m) => addMonths(m, 1));
@@ -86,7 +96,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
           {/* Columna izquierda: mascota con calendario */}
           <div className="relative flex items-center justify-center bg-gradient-to-br from-blue-50 to-[#FBF8F4] p-3 sm:p-4 md:p-5 min-h-60 sm:min-h-72">
             <img
-              src="/images/vetMascot/calendar.png"
+              src="/images/vetMascot/calendar.webp"
               alt="Mascota de Veterinaria Ariel con un calendario"
               className="h-full w-full max-h-[340px] object-contain"
             />
@@ -97,8 +107,9 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
             <div className="mb-4 flex items-center justify-between">
               <button
                 onClick={prevMonth}
+                disabled={!canGoPrev}
                 aria-label="Mes anterior"
-                className="rounded-full p-2 transition-colors hover:bg-blue-100"
+                className="rounded-full p-2 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <ChevronLeft className="h-5 w-5 text-blue-700" />
               </button>
@@ -107,13 +118,17 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
               </span>
               <button
                 onClick={nextMonth}
+                disabled={!canGoNext}
                 aria-label="Mes siguiente"
-                className="rounded-full p-2 transition-colors hover:bg-blue-100"
+                className="rounded-full p-2 transition-colors hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-30"
               >
                 <ChevronRight className="h-5 w-5 text-blue-700" />
               </button>
             </div>
 
+            <div className="mt-2 text-center text-[11px] text-gray-400">
+              Puedes reservar con hasta {MAX_ADVANCE_DAYS} días de anticipación.
+            </div>
             <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500">
               {dayNames.map((d) => (
                 <div key={d} className="py-1">{d}</div>
@@ -123,9 +138,10 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
               ))}
               {days.map((day) => {
                 const isPast = isBefore(day, today) && !isSameDay(day, today);
+                const isBeyondMax = isAfter(day, maxDay);
                 const dayStr = format(day, "yyyy-MM-dd");
                 const selected = formData.date === dayStr;
-                const disabled = isPast;
+                const disabled = isPast || isBeyondMax;
 
                 return (
                   <button
@@ -178,17 +194,22 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
             </p>
 
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-              {TIME_SLOTS.map(({ value, label, sub, timeKey, alt }) => {
+              {TIME_SLOTS.map(({ value, label, sub, timeKey, alt, startHour }) => {
                 const selected = formData.timeRange === value;
+                const blocked = formData.date === todayKey && nowHour >= startHour;
                 const image = `/images/pickUpTime/${petType}/${timeKey}.webp`;
                 return (
                   <button
                     key={value}
                     onClick={() => handleSelectTime(value)}
-                    className={`group relative flex cursor-pointer flex-row items-stretch overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
-                      selected
-                        ? "border-blue-500 shadow-lg shadow-blue-100"
-                        : "border-gray-200 shadow-sm hover:border-blue-300"
+                    disabled={blocked}
+                    title={blocked ? "Esta franja ya inició el día de hoy" : undefined}
+                    className={`group relative flex cursor-pointer flex-row items-stretch overflow-hidden rounded-2xl text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                      blocked
+                        ? "cursor-not-allowed border-2 border-gray-200 bg-gray-50 opacity-60"
+                        : selected
+                          ? "border-2 border-blue-500 bg-white shadow-lg shadow-blue-100 -translate-y-1"
+                          : "border-2 border-gray-200 bg-white shadow-sm hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl"
                     }`}
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden sm:h-24 sm:w-24">
@@ -200,16 +221,20 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                             e.currentTarget.src = `/images/pickUpTime/dog/${timeKey}.webp`;
                           }
                         }}
-                        className="h-full w-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                        className={`h-full w-full object-cover transition-transform duration-500 ease-out ${
+                          blocked ? "" : "group-hover:scale-105"
+                        }`}
                       />
                     </div>
-                    <div className="flex flex-1 flex-col justify-center gap-1 px-3 py-2 sm:px-4">
+                    <div className={`flex flex-1 flex-col justify-center gap-1 px-3 py-2 sm:px-4 ${
+                      blocked ? "hidden sm:flex" : ""
+                    }`}>
                       <span
                         className={`text-xs font-semibold uppercase tracking-wide ${
                           selected ? "text-orange-600" : "text-gray-500"
                         }`}
                       >
-                        {sub}
+                        {blocked ? "Ya no disponible" : sub}
                       </span>
                       <span
                         className={`text-base font-semibold sm:text-lg ${
@@ -219,7 +244,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                         {label}
                       </span>
                     </div>
-                    {selected && (
+                    {selected && !blocked && (
                       <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
                         <CheckCircle className="h-4 w-4 fill-white text-blue-600" />
                       </span>
