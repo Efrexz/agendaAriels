@@ -21,7 +21,7 @@ export function getLimaHour(date: Date = new Date()): number {
   return Number(hourFormatter.format(date));
 }
 
-export function limaToday(): Date {
-  const [y, m, d] = getLimaDayKey().split("-").map(Number);
+export function limaToday(date: Date = new Date()): Date {
+  const [y, m, d] = getLimaDayKey(date).split("-").map(Number);
   return new Date(y, m - 1, d);
 }

@@ -86,22 +86,21 @@ export function buildBookingPayload(formData: FormData) {
 }
 
 export async function submitBooking(formData: FormData): Promise<SubmitResult> {
-  const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
-  if (!webhookUrl) {
-    return { ok: false, error: "URL del webhook no configurada" };
-  }
-
   const payload = buildBookingPayload(formData);
 
+  const devWebhook = import.meta.env.VITE_N8N_WEBHOOK_URL;
+  const endpoint = import.meta.env.DEV && devWebhook ? devWebhook : "/api/booking";
+
   try {
-    const response = await fetch(webhookUrl, {
+    const response = await fetch(endpoint, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
     if (!response.ok) {
-      return { ok: false, error: `Error del servidor (${response.status})` };
+      const data = (await response.json().catch(() => null)) as { error?: string } | null;
+      return { ok: false, error: data?.error ?? `Error del servidor (${response.status})` };
     }
 
     return { ok: true, bookingCode: payload.bookingCode };
