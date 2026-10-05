@@ -12,7 +12,7 @@ const MAX_PICKUP_DISTANCE_KM = 2;
 const MAX_ADVANCE_DAYS = 14;
 const DISTANCE_TOLERANCE_KM = 0.02;
 const EVOLUTION_RETRIES = 3;
-const ATTEMPT_TIMEOUT_MS = 5_000;
+const ATTEMPT_TIMEOUT_MS = 10_000;
 const RETRY_DELAYS_MS = [400, 1200];
 const CLOUDINARY_PREFIX = "https://res.cloudinary.com/";
 
