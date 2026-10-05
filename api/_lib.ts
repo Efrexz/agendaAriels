@@ -1,8 +1,28 @@
 import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
-import { BRANCH_BY_VALUE, MAX_ADVANCE_DAYS, MAX_PICKUP_DISTANCE_KM } from "../data/branches";
-import { haversineKm } from "../utils/geo";
-import { getLimaDayKey, getLimaHour, limaToday } from "../utils/limaTime";
+
+// ─────────────────────────────────────────────────────────────
+// Módulo compartido interno de la función api/booking.ts.
+// Auto-contenido a propósito: Vercel solo incluye en el bundle
+// lo que vive dentro de api/. La fuente de verdad de sedes y
+// constantes es src/data/branches.ts (mantener en sincronía).
+// ─────────────────────────────────────────────────────────────
+
+const MAX_PICKUP_DISTANCE_KM = 2;
+const MAX_ADVANCE_DAYS = 14;
+const DISTANCE_TOLERANCE_KM = 0.02;
+const EVOLUTION_RETRIES = 3;
+const ATTEMPT_TIMEOUT_MS = 5_000;
+const RETRY_DELAYS_MS = [400, 1200];
+const CLOUDINARY_PREFIX = "https://res.cloudinary.com/";
+
+const BRANCH_COORDS: Record<string, { lat: number; lng: number }> = {
+  san_martin: { lat: -12.0206241, lng: -77.0865714 },
+  los_olivos: { lat: -12.0085609, lng: -77.0710131 },
+  san_miguel: { lat: -12.0774344, lng: -77.0934137 },
+};
+
+const SLOT_START_HOUR: Record<string, number> = { "9-11": 9, "11-14": 11 };
 
 export interface BookingEnv {
   EVOLUTION_API_URL?: string;
@@ -18,10 +38,52 @@ export interface BookingResult {
   body: { ok: boolean; error?: string; bookingCode?: string };
 }
 
-const CLOUDINARY_PREFIX = "https://res.cloudinary.com/";
-const DISTANCE_TOLERANCE_KM = 0.02;
-const EVOLUTION_RETRIES = 3;
-const RETRY_DELAYS_MS = [400, 1200];
+// ── Tiempo Lima ──────────────────────────────────────────────
+
+const dayFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Lima",
+  year: "numeric",
+  month: "2-digit",
+  day: "2-digit",
+});
+
+const hourFormatter = new Intl.DateTimeFormat("en-CA", {
+  timeZone: "America/Lima",
+  hour: "2-digit",
+  hourCycle: "h23",
+});
+
+function getLimaDayKey(date: Date = new Date()): string {
+  return dayFormatter.format(date);
+}
+
+function getLimaHour(date: Date = new Date()): number {
+  return Number(hourFormatter.format(date));
+}
+
+function limaToday(date: Date = new Date()): Date {
+  const [y, m, d] = getLimaDayKey(date).split("-").map(Number);
+  return new Date(y, m - 1, d);
+}
+
+// ── Geo ──────────────────────────────────────────────────────
+
+const EARTH_RADIUS_KM = 6371;
+
+function haversineKm(
+  a: { lat: number; lng: number },
+  b: { lat: number; lng: number },
+): number {
+  const toRad = (deg: number) => (deg * Math.PI) / 180;
+  const dLat = toRad(b.lat - a.lat);
+  const dLng = toRad(b.lng - a.lng);
+  const hav =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a.lat)) * Math.cos(toRad(b.lat)) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_RADIUS_KM * Math.asin(Math.sqrt(hav));
+}
+
+// ── Contrato del payload ─────────────────────────────────────
 
 const petSchema = z.object({
   name: z.string().min(1).max(60),
@@ -46,9 +108,11 @@ const petSchema = z.object({
 export const bookingPayloadSchema = z.object({
   bookingCode: z.string().regex(/^VA-[A-Z0-9]{5}$/),
   submittedAt: z.string().min(1).max(48),
-  branch: z.string().min(1).max(40).refine((v) => !!BRANCH_BY_VALUE[v], {
-    message: "Sede desconocida",
-  }),
+  branch: z
+    .string()
+    .min(1)
+    .max(40)
+    .refine((v) => !!BRANCH_COORDS[v], { message: "Sede desconocida" }),
   branchLabel: z.string().min(1).max(80),
   branchPhone: z.string().max(40),
   pets: z.array(petSchema).min(1).max(8),
@@ -83,7 +147,7 @@ export const bookingPayloadSchema = z.object({
 
 export type BookingPayload = z.infer<typeof bookingPayloadSchema>;
 
-const slotStartHour: Record<string, number> = { "9-11": 9, "11-14": 11 };
+// ── Validaciones de negocio ──────────────────────────────────
 
 export function validateScheduleWindow(
   date: string,
@@ -94,7 +158,7 @@ export function validateScheduleWindow(
   if (date < todayKey) return "La fecha de reserva ya pasó.";
   const maxDayKey = format(addDays(limaToday(now), MAX_ADVANCE_DAYS), "yyyy-MM-dd");
   if (date > maxDayKey) return "La fecha supera el máximo de 14 días de anticipación.";
-  if (date === todayKey && getLimaHour(now) >= (slotStartHour[timeRange] ?? 0)) {
+  if (date === todayKey && getLimaHour(now) >= (SLOT_START_HOUR[timeRange] ?? 0)) {
     return "La franja horaria de hoy ya inició.";
   }
   return null;
@@ -104,12 +168,17 @@ function buildMapsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
+// ── Plantilla del mensaje WhatsApp (réplica del flujo n8n) ───
+
 function section(label: string, lines: string[]): string {
   return `*${label}*\n\n${lines.join("\n")}`;
 }
 
 export function buildBookingMessages(data: BookingPayload): string[] {
-  const clientLines = [`Nombre: ${data.ownerName}`, `Celular: ${data.ownerPhone}`];
+  const clientLines: string[] = [
+    `Nombre: ${data.ownerName}`,
+    `Celular: ${data.ownerPhone}`,
+  ];
   if (data.mobilityPhoneDifferent && data.mobilityPhone && data.mobilityPhone !== "-") {
     clientLines.push(`Celular alterno: ${data.mobilityPhone}`);
   }
@@ -121,7 +190,7 @@ export function buildBookingMessages(data: BookingPayload): string[] {
   }
 
   const petBlocks = data.pets.map((pet, i) => {
-    const lines = [
+    const lines: string[] = [
       `Tipo: ${pet.type}`,
       `Servicio: ${pet.service}`,
       `Tamaño: ${pet.size}`,
@@ -148,7 +217,7 @@ export function buildBookingMessages(data: BookingPayload): string[] {
     return `*${i + 1}. ${pet.name.toUpperCase()}*\n\n${lines.join("\n")}`;
   });
 
-  const blocks = [
+  const blocks: string[] = [
     `*NUEVA RESERVA*`,
     `Código: ${data.bookingCode}`,
     data.branchLabel,
@@ -162,15 +231,17 @@ export function buildBookingMessages(data: BookingPayload): string[] {
   ];
 
   if (data.hasHistory === false) {
-    const registryLines = [
-      `Mascota: ${data.registeredPetName}`,
-      `Nacimiento: ${data.petBirthDate}`,
-      `Especie: ${data.petSpecies}`,
-      `Raza: ${data.petBreed}`,
-      `Castrado: ${data.petCastrated ? "Sí" : "No"}`,
-      `Correo: ${data.ownerEmail}`,
-    ];
-    blocks.push("━━━━━━━━━━━━━━━━━━", section("REGISTRO NUEVO", registryLines));
+    blocks.push(
+      "━━━━━━━━━━━━━━━━━━",
+      section("REGISTRO NUEVO", [
+        `Mascota: ${data.registeredPetName}`,
+        `Nacimiento: ${data.petBirthDate}`,
+        `Especie: ${data.petSpecies}`,
+        `Raza: ${data.petBreed}`,
+        `Castrado: ${data.petCastrated ? "Sí" : "No"}`,
+        `Correo: ${data.ownerEmail}`,
+      ]),
+    );
   }
 
   const messages = [blocks.join("\n")];
@@ -182,9 +253,14 @@ export function buildBookingMessages(data: BookingPayload): string[] {
   return messages;
 }
 
-const DEFAULT_FETCH = typeof fetch === "function" ? fetch : undefined;
+// ── Entrega ──────────────────────────────────────────────────
 
-type FetchLike = (url: string, init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal }) => Promise<Response>;
+type FetchLike = (
+  url: string,
+  init: { method: string; headers: Record<string, string>; body: string; signal?: AbortSignal },
+) => Promise<Response>;
+
+export type Fetcher = FetchLike;
 
 async function sleep(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
@@ -193,47 +269,44 @@ async function sleep(ms: number): Promise<void> {
 export async function sendViaEvolution(
   messages: string[],
   env: BookingEnv,
-  fetcher: FetchLike = DEFAULT_FETCH as FetchLike,
+  fetcher: FetchLike = fetch,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const url = `${env.EVOLUTION_API_URL!.replace(/\/+$/, "")}/message/sendText/${env.EVOLUTION_INSTANCE}`;
   const headers = { "Content-Type": "application/json", apikey: env.EVOLUTION_API_KEY! };
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), 10_000);
 
-  try {
-    for (const text of messages) {
-      let lastStatus = 0;
-      let sent = false;
-      for (let attempt = 0; attempt < EVOLUTION_RETRIES && !sent; attempt++) {
-        if (attempt > 0) await sleep(RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)]);
-        try {
-          const res = await fetcher(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ number: env.WHATSAPP_DESTINO, text, delay: 1200 }),
-            signal: controller.signal,
-          });
-          lastStatus = res.status;
-          sent = res.ok;
-        } catch {
-          sent = false;
-        }
-      }
-      if (!sent) {
-        return { ok: false, error: `No se pudo entregar la reserva al WhatsApp de la veterinaria (intento final: ${lastStatus || "sin respuesta"}).` };
+  for (const text of messages) {
+    let lastStatus = 0;
+    let sent = false;
+    for (let attempt = 0; attempt < EVOLUTION_RETRIES && !sent; attempt++) {
+      if (attempt > 0) await sleep(RETRY_DELAYS_MS[Math.min(attempt - 1, RETRY_DELAYS_MS.length - 1)]);
+      try {
+        const res = await fetcher(url, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ number: env.WHATSAPP_DESTINO, text, delay: 1200 }),
+          signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
+        });
+        lastStatus = res.status;
+        sent = res.ok;
+      } catch {
+        sent = false;
       }
     }
-    return { ok: true };
-  } finally {
-    clearTimeout(timeout);
+    if (!sent) {
+      return {
+        ok: false,
+        error: `No se pudo entregar la reserva al WhatsApp de la veterinaria (código ${lastStatus || "sin respuesta"}).`,
+      };
+    }
   }
+  return { ok: true };
 }
 
 export async function sendToBackupWebhook(
   payload: BookingPayload,
   delivered: boolean,
   env: BookingEnv,
-  fetcher: FetchLike = DEFAULT_FETCH as FetchLike,
+  fetcher: FetchLike = fetch,
 ): Promise<void> {
   if (!env.BACKUP_WEBHOOK_URL) return;
   try {
@@ -241,10 +314,9 @@ export async function sendToBackupWebhook(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, whatsappDelivered: delivered }),
-      signal: undefined,
     });
   } catch {
-    /* el respaldo nunca debe romper el flujo principal */
+    /* el respaldo nunca rompe el flujo principal */
   }
 }
 
@@ -255,7 +327,7 @@ export async function handleBooking(options: {
   fetcher?: FetchLike;
 }): Promise<BookingResult> {
   const { body, env, now = new Date() } = options;
-  const fetcher = options.fetcher ?? DEFAULT_FETCH as FetchLike;
+  const fetcher = options.fetcher ?? fetch;
 
   const parsed = bookingPayloadSchema.safeParse(body);
   if (!parsed.success) {
@@ -275,7 +347,7 @@ export async function handleBooking(options: {
     return { status: 400, body: { ok: false, error: "Falta la dirección en el mapa." } };
   }
 
-  const branchCoords = BRANCH_BY_VALUE[payload.branch]?.coords;
+  const branchCoords = BRANCH_COORDS[payload.branch];
   if (!branchCoords) {
     return { status: 400, body: { ok: false, error: "Sede desconocida." } };
   }
@@ -284,12 +356,18 @@ export async function handleBooking(options: {
     return { status: 400, body: { ok: false, error: "Dirección fuera del radio de cobertura." } };
   }
 
-  const normalized: BookingPayload = { ...payload, mapsUrl: buildMapsUrl(payload.ownerLat, payload.ownerLng) };
+  const normalized: BookingPayload = {
+    ...payload,
+    mapsUrl: buildMapsUrl(payload.ownerLat, payload.ownerLng),
+  };
   const messages = buildBookingMessages(normalized);
 
-  const evolutionReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE && env.WHATSAPP_DESTINO);
-  const n8nFallbackReady = !!env.VITE_N8N_WEBHOOK_URL;
-
+  const evolutionReady = !!(
+    env.EVOLUTION_API_URL &&
+    env.EVOLUTION_API_KEY &&
+    env.EVOLUTION_INSTANCE &&
+    env.WHATSAPP_DESTINO
+  );
   let delivered = false;
   let error: string | undefined;
 
@@ -297,9 +375,9 @@ export async function handleBooking(options: {
     const sent = await sendViaEvolution(messages, env, fetcher);
     delivered = sent.ok;
     if (!sent.ok) error = sent.error;
-  } else if (n8nFallbackReady) {
+  } else if (env.VITE_N8N_WEBHOOK_URL) {
     try {
-      const res = await fetcher(env.VITE_N8N_WEBHOOK_URL!, {
+      const res = await fetcher(env.VITE_N8N_WEBHOOK_URL, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(normalized),
@@ -312,7 +390,10 @@ export async function handleBooking(options: {
   } else {
     return {
       status: 500,
-      body: { ok: false, error: "El servidor no tiene la configuración de notificaciones. Contacta a la veterinaria." },
+      body: {
+        ok: false,
+        error: "El servidor no tiene la configuración de notificaciones. Contacta a la veterinaria.",
+      },
     };
   }
 

@@ -1,4 +1,4 @@
-import { handleBooking, type BookingEnv } from "../src/lib/bookingApi";
+import { handleBooking, type BookingEnv } from "./_lib";
 
 interface Req {
   method?: string;
@@ -40,6 +40,8 @@ class RateBucket {
 }
 
 const bucket = new RateBucket();
+
+export const maxDuration = 30;
 
 function clientIp(req: Req): string {
   const forwarded = req.headers["x-forwarded-for"];
