@@ -7,7 +7,7 @@ import {
   validateScheduleWindow,
   type BookingEnv,
   type BookingPayload,
-} from "./_lib";
+} from "./booking";
 
 const NOW = new Date("2026-10-05T15:00:00Z");
 
