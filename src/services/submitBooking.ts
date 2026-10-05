@@ -1,6 +1,6 @@
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
-import type { FormData } from "../components/BookingWizard";
+import type { FormData } from "../state/wizardReducer";
 import { BRANCH_BY_VALUE } from "../data/branches";
 import {
   PET_TYPE_LABELS,
@@ -64,6 +64,7 @@ export function buildBookingPayload(formData: FormData) {
     })),
     date: formData.date ?? null,
     dateLabel: formData.date ? formatDate(formData.date) : "-",
+    timeRange: formData.timeRange,
     timeRangeLabel: labelOr(TIME_LABELS, formData.timeRange),
     ownerName: formData.ownerName || "-",
     ownerDni: formData.ownerDni || "-",

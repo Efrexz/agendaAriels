@@ -331,6 +331,11 @@ export async function handleBooking(options: {
 
   const parsed = bookingPayloadSchema.safeParse(body);
   if (!parsed.success) {
+    const rejected = parsed.error.issues
+      .map((issue) => `${issue.path.join(".")}: ${issue.message}`)
+      .slice(0, 10)
+      .join(" | ");
+    console.warn(`[booking] payload rechazado → ${rejected || "sin detalles"}`);
     return {
       status: 400,
       body: { ok: false, error: "Datos de reserva inválidos o incompletos." },
