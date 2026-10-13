@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useCallback, useEffect } from "react";
 import { useJsApiLoader, Autocomplete, GoogleMap, Marker } from "@react-google-maps/api";
-import { MapPin, Navigation } from "lucide-react";
+import { MapPin, Navigation, ShieldCheck } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { validateOwnerInfo } from "../../state/schemas";
 import { BRANCH_COORDS, MAX_PICKUP_DISTANCE_KM, BRANCH_BY_VALUE } from "../../data/branches";
@@ -172,9 +172,13 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
 
   return (
     <div>
-      <h2 className="mb-6 sm:mb-8 text-center text-step-title font-display font-bold tracking-tight text-gray-800">
+      <h2 className="mb-2 text-center text-step-title font-display font-bold tracking-tight text-[#475AAB]">
         Datos del cliente
       </h2>
+      <p className="mb-6 flex items-center justify-center gap-2 text-center text-xs font-medium text-blue-700 sm:mb-8">
+        <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
+        Guardamos estos datos en tu navegador para que tus próximas reservas tomen menos de un minuto.
+      </p>
 
       <div className="space-y-5">
         <div>
@@ -581,11 +585,11 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
               disabled={!isValid()}
               className={`w-full rounded-xl py-3 text-lg font-semibold text-white transition-all ${
                 isValid()
-                  ? "cursor-pointer bg-blue-600 shadow-md hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
+                  ? "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
                   : "cursor-not-allowed bg-gray-300"
               }`}
             >
-              Siguiente
+              Continuar
             </button>
           </>
         )}

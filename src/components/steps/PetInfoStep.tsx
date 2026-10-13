@@ -125,12 +125,18 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
 
   return (
     <div>
-      {/* Pet Name Input */}
-      <div className="mb-6">
-        <label className="mb-1 block text-sm font-medium text-[#1A2238]">
-          Nombre de la mascota
-        </label>
-        <div className="relative">
+      {/* Identidad de la mascota */}
+      <div className="mb-6 sm:mb-8 text-center">
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
+          Identidad
+        </p>
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
+          ¿Cómo se llama tu <span className="text-orange-500">peludito</span>?
+        </h2>
+        <p className="mt-2 text-sm text-[#546A8E] sm:text-base">
+          Así lo saludamos cuando pasemos por él
+        </p>
+        <div className="relative mx-auto mt-5 max-w-md">
           <span className="absolute left-4 top-1/2 -translate-y-1/2 text-blue-500">
             <PawPrint className="h-5 w-5" />
           </span>
@@ -153,10 +159,10 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Servicio principal
         </p>
-        <h2 className="text-step-title font-display font-bold tracking-tight text-[#1A2238]">
-          ¿Qué servicio necesita?
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
+          ¿Qué <span className="text-orange-500">servicio</span> necesita?
         </h2>
-        <p className="mt-2 text-sm text-gray-500 sm:text-base">
+        <p className="mt-2 text-sm text-[#546A8E] sm:text-base">
           Elige el servicio principal que deseas para tu mascota
         </p>
       </div>

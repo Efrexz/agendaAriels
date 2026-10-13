@@ -56,10 +56,10 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Tamaño
         </p>
-        <h2 className="text-step-title font-display font-bold tracking-tight text-[#1A2238]">
-          ¿Qué tamaño tiene tu peludito?
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
+          ¿Qué <span className="text-orange-500">tamaño</span> tiene tu peludito?
         </h2>
-        <p className="mt-3 text-sm text-gray-500 sm:text-base">
+        <p className="mt-3 text-sm text-[#546A8E] sm:text-base">
           Esto nos ayuda a adaptar el servicio ideal para su comodidad y bienestar
         </p>
       </div>

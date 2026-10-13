@@ -3,7 +3,16 @@ interface PerfumePickerProps {
   onSelect: (value: "fruital" | "floral" | "fresco") => void;
 }
 
-const LABELS: Record<string, string> = { fruital: "🍓 Frutal", floral: "🌸 Floral", fresco: "🍃 Fresco" };
+// Nota: sin emojis en las opciones — en celulares sin fuente de emojis se ven
+// como recuadros vacíos. Los LABELS con emoji siguen en data/labels.ts para el
+// resumen y el mensaje de WhatsApp (ahí sí se renderiza bien).
+const OPTIONAL_DOTS: Record<string, string> = {
+  fruital: "bg-rose-400",
+  floral: "bg-pink-400",
+  fresco: "bg-emerald-400",
+};
+
+const LABELS: Record<string, string> = { fruital: "Frutal", floral: "Floral", fresco: "Fresco" };
 
 export function PerfumePicker({ value, onSelect }: PerfumePickerProps) {
   return (
@@ -31,7 +40,10 @@ export function PerfumePicker({ value, onSelect }: PerfumePickerProps) {
                   ✓
                 </span>
               )}
-              {LABELS[key]}
+              <span className="flex items-center gap-2">
+                <span className={`h-2.5 w-2.5 rounded-full ${OPTIONAL_DOTS[key]}`} />
+                {LABELS[key]}
+              </span>
             </button>
           );
         })}

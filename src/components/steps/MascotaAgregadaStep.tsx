@@ -86,11 +86,11 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack
         </div>
       </div>
       <div className="text-center">
-        <h2 className="text-step-title font-display font-bold tracking-tight text-gray-800">
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
           {isEditing ? "¡Mascota actualizada!" : "¡Mascota agregada!"}
         </h2>
         {!isEditing && (
-          <p className="mt-1 text-sm text-gray-500 sm:text-base">
+          <p className="mt-1 text-sm text-[#546A8E] sm:text-base">
             Hemos guardado la información de tu peludito correctamente.
           </p>
         )}

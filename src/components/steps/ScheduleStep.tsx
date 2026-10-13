@@ -86,8 +86,8 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
 
   return (
     <div>
-      <h2 className="mb-6 text-center text-step-title font-display font-bold tracking-tight text-gray-800">
-        Elige fecha y horario
+      <h2 className="mb-6 text-center text-step-title font-display font-bold tracking-tight text-[#475AAB]">
+        Elige <span className="text-orange-500">fecha y horario</span>
       </h2>
 
       <div className="overflow-hidden rounded-2xl border border-[#E7E2D8] bg-white shadow-sm">
@@ -272,7 +272,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
             disabled={!canContinue}
             className={`w-full rounded-xl py-3 text-lg font-semibold text-white transition-all ${
               canContinue
-                ? "cursor-pointer bg-blue-600 shadow-md hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
+                ? "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
                 : "cursor-not-allowed bg-gray-300"
             }`}
           >

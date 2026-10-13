@@ -41,10 +41,10 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
         <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">
           Selecciona a tu peludito
         </p>
-        <h2 className="text-step-title font-display font-bold tracking-tight text-[#1A2238]">
-          ¿Qué tipo de mascota es?
+        <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
+          ¿Qué <span className="text-orange-500">tipo de mascota</span> es?
         </h2>
-        <p className="mt-2 text-sm text-gray-500">
+        <p className="mt-2 text-sm text-[#546A8E]">
           Esto nos ayuda a brindarle una mejor atención personalizada
         </p>
       </div>
