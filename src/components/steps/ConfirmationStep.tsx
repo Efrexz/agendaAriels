@@ -5,7 +5,7 @@ import { es } from "date-fns/locale";
 import {
   MapPin,
   ExternalLink,
-  Loader2,
+  Navigation,
   Phone,
   PhoneCall,
   Calendar,
@@ -15,6 +15,7 @@ import {
   User,
   ShieldCheck,
   CircleCheck,
+  Loader2,
   Scissors,
   Droplets,
   StickyNote,
@@ -366,32 +367,44 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.3, delay: 0.05 }}
-          className="relative min-h-[180px] overflow-hidden rounded-[20px] shadow-xl shadow-blue-900/20 sm:min-h-[190px]"
+          className="grid grid-cols-1 overflow-hidden rounded-[20px] shadow-lg shadow-blue-900/15 md:grid-cols-[1fr_minmax(220px,lg:42%)] md:grid-cols-[1fr_42%]"
         >
-          <img
-            src={branch.image}
-            alt={branch.label}
-            className="absolute inset-0 h-full w-full scale-105 object-cover blur-[2px] saturate-[0.6]"
-          />
-          <div className="absolute inset-0 bg-gradient-to-r from-blue-950/80 via-blue-900/65 to-blue-900/30" />
-          <div className="relative flex h-full min-h-[180px] flex-col justify-center p-5 sm:min-h-[190px] sm:p-6">
-            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white backdrop-blur-sm">
+          {/* Texto: panel de gradiente de marca — legible con cualquier foto */}
+          <div className="relative bg-gradient-to-br from-blue-700 via-blue-800 to-[#1E3A8A] p-5 sm:p-6">
+            <span className="inline-flex w-fit items-center gap-2 rounded-full bg-white/15 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.12em] text-white">
               <MapPin className="h-3.5 w-3.5" />
               Sede seleccionada
             </span>
-            <h3 className="mt-4 text-2xl font-bold tracking-tight text-white sm:text-3xl">
+            <h3 className="mt-3 text-2xl font-bold tracking-tight text-white sm:text-3xl">
               {BRANCH_LABELS[formData.branch!]}
             </h3>
-            <div className="mt-4 flex flex-col gap-3 text-sm text-blue-50">
+            <div className="mt-4 flex flex-col gap-2.5 text-sm text-blue-50">
               <p className="flex items-center gap-2.5">
-                <MapPin className="h-4 w-4 text-white" />
+                <MapPin className="h-4 w-4 shrink-0 text-white" />
                 {branch.address}
               </p>
               <p className="flex items-center gap-2.5">
-                <Phone className="h-4 w-4 text-white" />
+                <Phone className="h-4 w-4 shrink-0 text-white" />
                 {branch.phone}
               </p>
             </div>
+            <a
+              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${branch.label} ${branch.address}`)}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="mt-5 inline-flex w-fit items-center gap-1.5 rounded-full bg-white/15 px-3.5 py-2 text-xs font-semibold text-white transition-colors hover:bg-white/25 active:scale-[0.98]"
+            >
+              <Navigation className="h-3.5 w-3.5" />
+              Cómo llegar
+            </a>
+          </div>
+          {/* Foto de la sede: contenedor dedicado, se ve completa sin blur */}
+          <div className="relative min-h-40 bg-blue-100 md:min-h-[190px]">
+            <img
+              src={branch.image}
+              alt={branch.label}
+              className="absolute inset-0 h-full w-full object-cover"
+            />
           </div>
         </motion.section>
       )}
