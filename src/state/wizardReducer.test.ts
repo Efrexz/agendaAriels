@@ -6,6 +6,7 @@ import {
   buildPet,
   INITIAL_STATE,
   INITIAL_FORM_DATA,
+  createInitialState,
   type WizardState,
   type FormData,
   type PetData,
@@ -73,8 +74,9 @@ describe("nextStep", () => {
     expect(nextStep("schedule", dogForm())).toBe("owner");
   });
 
-  it("owner → review", () => {
-    expect(nextStep("owner", dogForm())).toBe("review");
+  it("owner → review cuando hay fecha; sin fecha va a schedule", () => {
+    expect(nextStep("owner", dogForm({ date: "2026-10-20" }))).toBe("review");
+    expect(nextStep("owner", dogForm())).toBe("schedule");
   });
 
   it("review stays on review", () => {
@@ -452,7 +454,7 @@ describe("wizardReducer", () => {
 
   describe("full flow simulation", () => {
     it("completes a dog booking end to end", () => {
-      let s = state({ formData: INITIAL_FORM_DATA });
+      let s = state({ step: "branch", formData: INITIAL_FORM_DATA });
 
       // Select branch
       s = wizardReducer(s, { type: "UPDATE_FIELD", field: "branch", value: "san_martin" });
@@ -497,7 +499,7 @@ describe("wizardReducer", () => {
     });
 
     it("completes a cat booking (skips size)", () => {
-      let s = state({ formData: INITIAL_FORM_DATA });
+      let s = state({ step: "branch", formData: INITIAL_FORM_DATA });
 
       s = wizardReducer(s, { type: "UPDATE_FIELD", field: "branch", value: "los_olivos" });
       s = wizardReducer(s, { type: "NEXT" });
@@ -576,5 +578,238 @@ describe("wizardReducer", () => {
       expect(s.step).toBe("review");
       expect(s.formData.pets[0].petName).toBe("Rex Editado");
     });
+  });
+});
+
+describe("flujo de bienvenida (perfil guardado)", () => {
+  it("paso welcome existe en nextStep/prevStep", () => {
+    expect(nextStep("welcome", INITIAL_FORM_DATA)).toBe("schedule");
+    expect(prevStep("welcome", INITIAL_FORM_DATA)).toBe("welcome");
+  });
+
+  function profile(): { owner: Partial<FormData>; pets: FormData["pets"] } {
+    const formData: FormData = {
+      ...INITIAL_FORM_DATA,
+      branch: "san_miguel",
+      ownerName: "María López",
+      ownerAddress: "Av. Algo 222",
+      ownerLat: -12.1,
+      ownerLng: -77.05,
+      pets: [dogPet()],
+    };
+    return { owner: { ...formData }, pets: formData.pets };
+  }
+
+  function dogPet(): PetData {
+    return {
+      petType: "dog",
+      service: "bath",
+      extraServices: [],
+      size: "small",
+      coat: "normal",
+      petNotes: "",
+      petName: "Firulais",
+      corteType: null,
+      corteSpecs: "",
+      corteImage: "",
+      bathType: "tradicional",
+      perfume: null,
+    };
+  }
+
+  function catPet(): PetData {
+    return {
+      petType: "cat",
+      service: "bath_deslanado",
+      extraServices: [],
+      size: null,
+      coat: "normal",
+      petNotes: "",
+      petName: "Michi",
+      corteType: null,
+      corteSpecs: "",
+      corteImage: "",
+      bathType: "tradicional",
+      perfume: "floral",
+    };
+  }
+
+  it("createInitialState arranca en welcome con datos prellenados si hay perfil", () => {
+    const s = createInitialState(() => profile());
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("quick");
+    expect(s.formData.ownerName).toBe("María López");
+    expect(s.formData.pets).toHaveLength(1);
+  });
+
+  it("createInitialState arranca en branch sin perfil", () => {
+    const s = createInitialState(() => null);
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("initial");
+    expect(s.formData).toEqual(INITIAL_FORM_DATA);
+  });
+
+  it("createInitialState arranca en welcome modo intro si el perfil no tiene mascotas", () => {
+    const s = createInitialState(() => ({ owner: {}, pets: [] }));
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("initial");
+  });
+
+  it("USE_PROFILE lleva a schedule con las mascotas elegidas", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "USE_PROFILE", pets: [dogPet()] });
+    expect(s.step).toBe("schedule");
+    expect(s.formData.pets).toHaveLength(1);
+  });
+
+  it("USE_PROFILE con subset no toca profilePets (la desmarcada sigue guardada)", () => {
+    let s = createInitialState(() => profile());
+    s.formData.pets = [dogPet(), catPet()];
+    s.profilePets = [dogPet(), catPet()];
+    s = wizardReducer(s, { type: "USE_PROFILE", pets: [catPet()] });
+    expect(s.step).toBe("schedule");
+    expect(s.formData.pets).toHaveLength(1);
+    expect(s.formData.pets[0].petName).toBe("Michi");
+    expect(s.profilePets).toHaveLength(2);
+  });
+
+  it("USE_PROFILE con nada elegido se queda en welcome", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "USE_PROFILE", pets: [] });
+    expect(s.step).toBe("welcome");
+  });
+
+  it("DELETE_SAVED_PET saca la mascota de profilePets y de la reserva actual por nombre", () => {
+    let s = createInitialState(() => profile());
+    s.formData.pets = [dogPet(), catPet()];
+    s.profilePets = [dogPet(), catPet()];
+
+    // Eliminar a Michi (índice 1 de profilePets)
+    s = wizardReducer(s, { type: "DELETE_SAVED_PET", index: 1 });
+    expect(s.profilePets).toHaveLength(1);
+    expect(s.profilePets[0].petName).toBe("Firulais");
+    expect(s.formData.pets).toHaveLength(1);
+    expect(s.formData.pets[0].petName).toBe("Firulais");
+  });
+
+  it("START_BOOKING lleva a branch en modo intro", () => {
+    const s = wizardReducer(createInitialState(() => null), { type: "START_BOOKING" });
+    expect(s.step).toBe("branch");
+    expect(s.mode).toBe("initial");
+  });
+
+  it("ADD_PET_FROM_WELCOME va a petType y limpia los campos de mascota", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "ADD_PET_FROM_WELCOME" });
+    expect(s.step).toBe("petType");
+    expect(s.mode).toBe("quick");
+    expect(s.formData.petName).toBe("");
+    expect(s.formData.pets).toHaveLength(1);
+    s.formData.service = "bath";
+    s.formData.petName = "Rex";
+    s = wizardReducer(s, { type: "CONTINUE" });
+    expect(s.step).toBe("schedule");
+    expect(s.formData.pets).toHaveLength(2);
+    expect(s.formData.pets[1].petName).toBe("Rex");
+    // La nueva mascota también entra al listado guardado
+    expect(s.profilePets).toHaveLength(2);
+  });
+
+  it("BACK en modo quick tiene mapa explícito", () => {
+    // Desde petType (registrar nueva mascota abortada) → welcome, descartando lo tecleado
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "ADD_PET_FROM_WELCOME" });
+    s = wizardReducer(s, { type: "UPDATE_FIELD", field: "petName", value: "Rex" });
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("welcome");
+    expect(s.formData.petName).toBe("");
+    expect(s.formData.pets).toHaveLength(1);
+
+    // Desde schedule → welcome, conservando las mascotas
+    s = wizardReducer(s, { type: "USE_PROFILE", pets: [dogPet()] });
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("welcome");
+    expect(s.formData.pets).toHaveLength(1);
+
+    // Desde owner → schedule
+    s = wizardReducer(s, { type: "USE_PROFILE", pets: [dogPet()] });
+    s = wizardReducer(s, { type: "NEXT" }); // schedule → owner
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("schedule");
+
+    // Desde review → owner
+    s = wizardReducer(s, { type: "NEXT" }); // schedule → owner
+    s = wizardReducer(s, { type: "UPDATE_FIELD", field: "date", value: "2026-10-20" });
+    s = wizardReducer(s, { type: "NEXT" }); // owner → review (con fecha)
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("owner");
+  });
+
+  it("BACK del alta de mascota retrocede paso a paso conservando lo escrito", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "ADD_PET_FROM_WELCOME" });
+    // Llena el borrador de la nueva mascota
+    s.formData.petName = "Rex";
+    s.formData.service = "bath";
+
+    s = wizardReducer(s, { type: "NEXT" }); // petType → petInfo
+    s = wizardReducer(s, { type: "UPDATE_FIELD", field: "size", value: "small" });
+    s = wizardReducer(s, { type: "NEXT" }); // petInfo → size (perro)
+    s = wizardReducer(s, { type: "NEXT" }); // size → petAdded
+
+    s = wizardReducer(s, { type: "BACK" }); // petAdded → size, conserva lo escrito
+    expect(s.step).toBe("size");
+    expect(s.formData.petName).toBe("Rex");
+    expect(s.formData.size).toBe("small");
+
+    s = wizardReducer(s, { type: "BACK" }); // size → petInfo
+    expect(s.step).toBe("petInfo");
+    expect(s.formData.petName).toBe("Rex");
+
+    s = wizardReducer(s, { type: "BACK" }); // petInfo → petType, se descarta el borrador
+    expect(s.step).toBe("petType");
+    expect(s.formData.petName).toBe("");
+
+    s = wizardReducer(s, { type: "BACK" }); // petType → welcome
+    expect(s.step).toBe("welcome");
+  });
+
+  it("BACK del alta de gato desde petAdded vuelve a petInfo", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "ADD_PET_FROM_WELCOME" });
+    s = wizardReducer(s, { type: "UPDATE_FIELD", field: "petType", value: "cat" });
+    s = wizardReducer(s, { type: "NEXT" }); // petType → petInfo
+    s = wizardReducer(s, { type: "NEXT" }); // petInfo → petAdded (gato omite tamaño)
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("petInfo");
+  });
+
+  it("START_FRESH reinicia todo", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "START_FRESH", formData: INITIAL_FORM_DATA });
+    expect(s.step).toBe("branch");
+    expect(s.mode).toBe("initial");
+    expect(s.formData.ownerName).toBe("");
+    expect(s.formData.pets).toHaveLength(0);
+  });
+
+  it("EDIT_OWNER salta a 'Tus datos' y elija fecha si falta", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "EDIT_OWNER" });
+    expect(s.step).toBe("owner");
+
+    // Sin fecha aún: el siguiente paso debe ser schedule (no review sin fecha)
+    s = wizardReducer(s, { type: "UPDATE_FIELD", field: "date", value: null });
+    expect(nextStep("owner", s.formData)).toBe("schedule");
+  });
+
+  it("owner → review cuando la fecha ya existe", () => {
+    expect(nextStep("owner", { ...INITIAL_FORM_DATA, date: "2026-11-01" })).toBe("review");
+    expect(nextStep("owner", { ...INITIAL_FORM_DATA, date: null })).toBe("schedule");
+  });
+
+  it("el flujo sin perfil arranca en la intro de bienvenida", () => {
+    expect(INITIAL_STATE.step).toBe("welcome");
+    expect(INITIAL_STATE.mode).toBe("initial");
   });
 });

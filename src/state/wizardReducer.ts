@@ -99,25 +99,29 @@ export const INITIAL_FORM_DATA: FormData = {
   ownerEmail: "",
 };
 
-export type StepId = "branch" | "petType" | "petInfo" | "size" | "petAdded" | "schedule" | "owner" | "review";
+export type StepId = "welcome" | "branch" | "petType" | "petInfo" | "size" | "petAdded" | "schedule" | "owner" | "review";
 
-export type Mode = "initial" | "addingFromSummary" | "editing";
+export type Mode = "initial" | "addingFromSummary" | "editing" | "quick";
 
 export function nextStep(step: StepId, formData: FormData): StepId {
   switch (step) {
+    case "welcome": return "schedule";
     case "branch": return "petType";
     case "petType": return "petInfo";
     case "petInfo": return formData.petType === "cat" ? "petAdded" : "size";
     case "size": return "petAdded";
     case "petAdded": return "schedule";
     case "schedule": return "owner";
-    case "owner": return "review";
+    // Defensa: si se salta directo a "Tus datos" (editar datos desde la
+    // bienvenida) sin haber elegido fecha, el siguiente paso es elegir fecha.
+    case "owner": return formData.date ? "review" : "schedule";
     case "review": return "review";
   }
 }
 
 export function prevStep(step: StepId, formData: FormData): StepId {
   switch (step) {
+    case "welcome": return "welcome";
     case "branch": return "branch";
     case "petType": return "branch";
     case "petInfo": return "petType";
@@ -148,13 +152,6 @@ export function buildPet(formData: FormData): PetData {
   };
 }
 
-export type WizardState = {
-  step: StepId;
-  mode: Mode;
-  editingIndex: number | null;
-  formData: FormData;
-};
-
 export type WizardAction =
   | { type: "NEXT" }
   | { type: "BACK" }
@@ -163,14 +160,56 @@ export type WizardAction =
   | { type: "ADD_FROM_CONFIRMATION" }
   | { type: "EDIT_PET"; index: number }
   | { type: "REMOVE_PET"; index: number }
-  | { type: "UPDATE_FIELD"; field: keyof FormData; value: FormData[keyof FormData] };
+  | { type: "UPDATE_FIELD"; field: keyof FormData; value: FormData[keyof FormData] }
+  | { type: "USE_PROFILE"; pets: FormData["pets"] }
+  | { type: "DELETE_SAVED_PET"; index: number }
+  | { type: "ADD_PET_FROM_WELCOME" }
+  | { type: "START_BOOKING" }
+  | { type: "EDIT_OWNER" }
+  | { type: "START_FRESH"; formData: FormData };
+
+export type WizardState = {
+  step: StepId;
+  mode: Mode;
+  editingIndex: number | null;
+  formData: FormData;
+  /** Todas las mascotas guardadas del perfil (independiente de lo que va en ESTA reserva). */
+  profilePets: FormData["pets"];
+};
 
 export const INITIAL_STATE: WizardState = {
-  step: "branch",
+  step: "welcome",
   mode: "initial",
   editingIndex: null,
   formData: INITIAL_FORM_DATA,
+  profilePets: [],
 };
+
+/**
+ * Estado inicial del wizard: siempre arranca en la pantalla de bienvenida.
+ * Si el navegador guarda un perfil de cliente válido con mascotas, la muestra
+ * en variante "cliente recurrente" (modo quick, datos prellenados); si no,
+ * en variante intro ("solo la primera vez pediremos tus datos").
+ */
+export function createInitialState(loadProfile: () => WizardProfileLike | null): WizardState {
+  const profile = loadProfile();
+  if (profile && profile.pets.length > 0) {
+    return {
+      step: "welcome",
+      mode: "quick",
+      editingIndex: null,
+      formData: { ...INITIAL_FORM_DATA, ...profile.owner, pets: profile.pets },
+      profilePets: [...profile.pets],
+    };
+  }
+  return INITIAL_STATE;
+}
+
+/** Subconjunto del perfil guardado que usa createInitialState. */
+export interface WizardProfileLike {
+  owner: Partial<FormData>;
+  pets: FormData["pets"];
+}
 
 export function wizardReducer(state: WizardState, action: WizardAction): WizardState {
   switch (action.type) {
@@ -181,6 +220,40 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, step: nextStep(state.step, state.formData) };
 
     case "BACK": {
+      // Flujo recurrente (modo quick): mapa explícito de retroceso.
+      if (state.mode === "quick") {
+        // Alta de mascota desde la bienvenida: se retrocede PASO A PASO
+        // conservando lo ya escrito; solo al salir del alta (hacia la
+        // bienvenida) se descarta el borrador.
+        if (
+          state.step === "petAdded" ||
+          state.step === "size" ||
+          state.step === "petInfo" ||
+          state.step === "petType"
+        ) {
+          const backTarget = prevStep(state.step, state.formData);
+          const leavingAddFlow = backTarget !== "petInfo" && backTarget !== "size" && backTarget !== "petType";
+          const resetPetFields = leavingAddFlow || backTarget === "petType";
+          return {
+            ...state,
+            step: leavingAddFlow ? ("welcome" as StepId) : (backTarget as StepId),
+            formData: resetPetFields
+              ? { ...state.formData, ...INITIAL_PET_FIELDS }
+              : state.formData,
+          };
+        }
+
+        const QUICK_BACK_TARGET: Partial<Record<StepId, StepId>> = {
+          schedule: "welcome",
+          owner: "schedule",
+          review: "owner",
+        };
+        const target = QUICK_BACK_TARGET[state.step];
+        if (target) {
+          return { ...state, step: target };
+        }
+      }
+
       if (state.mode !== "initial") {
         return {
           ...state,
@@ -231,7 +304,7 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
 
       const newFormData = { ...state.formData, pets, ...INITIAL_PET_FIELDS };
 
-      if (state.mode !== "initial") {
+      if (state.mode === "editing" || state.mode === "addingFromSummary") {
         return {
           ...state,
           step: "review" as StepId,
@@ -241,10 +314,16 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
         };
       }
 
+      // modo quick (se llegó por la bienvenida o se está agregando una mascota
+      // desde ahí): tras guardar la mascota se elige fecha y horario; la nueva
+      // mascota también queda en el listado guardado (profilePets).
       return {
         ...state,
         step: "schedule" as StepId,
+        mode: "initial" as Mode,
+        editingIndex: null,
         formData: newFormData,
+        profilePets: [...state.profilePets, pet],
       };
     }
 
@@ -307,6 +386,56 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
           pets: state.formData.pets.filter((_, i) => i !== action.index),
         },
         editingIndex: state.editingIndex === action.index ? null : state.editingIndex,
+      };
+
+    case "USE_PROFILE": {
+      return {
+        ...state,
+        step: action.pets.length > 0 ? ("schedule" as StepId) : ("welcome" as StepId),
+        formData: { ...state.formData, pets: action.pets },
+      };
+    }
+
+    case "DELETE_SAVED_PET": {
+      const inProfile = state.profilePets.filter((_, i) => i !== action.index);
+      const removed = state.profilePets[action.index];
+      const removedKey = removed ? `${removed.petType}:${removed.petName.trim().toLowerCase()}` : null;
+      return {
+        ...state,
+        profilePets: inProfile,
+        formData: {
+          ...state.formData,
+          pets: state.formData.pets.filter(
+            (pet) => `${pet.petType}:${pet.petName.trim().toLowerCase()}` !== removedKey,
+          ),
+        },
+      };
+    }
+
+    case "START_BOOKING":
+      return { ...state, step: "branch" as StepId };
+
+    case "EDIT_OWNER":
+      // Salto directo al paso "Tus datos" (prellenado) desde la bienvenida.
+      return { ...state, step: "owner" as StepId };
+
+    case "ADD_PET_FROM_WELCOME":
+      return {
+        ...state,
+        step: "petType" as StepId,
+        mode: "quick" as Mode,
+        editingIndex: null,
+        formData: { ...state.formData, ...INITIAL_PET_FIELDS },
+      };
+
+    case "START_FRESH":
+      return {
+        ...state,
+        step: "branch" as StepId,
+        mode: "initial" as Mode,
+        editingIndex: null,
+        formData: action.formData,
+        profilePets: [],
       };
 
     default:

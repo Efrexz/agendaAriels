@@ -14,6 +14,10 @@ export const PRIVACY_NOTICE = {
       body: "Veterinaria Ariel no comparte, vende ni transfiere tus datos personales a terceros. Toda la información es de uso exclusivo interno.",
     },
     {
+      heading: "Guardado local en tu navegador",
+      body: "Para que tus próximas reservas sean más rápidas, tu navegador guarda una copia de estos datos de forma local (localStorage). Esta información reside solo en tu dispositivo, no en nuestros servidores, y no se envía a ningún tercero. Si borras los datos de navegación de tu navegador, esta copia se elimina junto con ellos.",
+    },
+    {
       heading: "Contacto",
       body: "Si tienes dudas sobre este aviso, puedes contactarnos en cualquiera de nuestras sedes o al WhatsApp de tu sede seleccionada.",
     },

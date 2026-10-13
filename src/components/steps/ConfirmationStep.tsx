@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -46,6 +46,7 @@ import {
   BRANCH_LABELS,
 } from "../../data/labels";
 import { submitBooking } from "../../services/submitBooking";
+import { saveClientProfileMerged } from "../../services/clientProfile";
 import { PRIVACY_NOTICE } from "../../data/legal";
 
 interface ConfirmationStepProps {
@@ -221,6 +222,8 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
+  // Candado síncrono: dos clicks en milésimas no generan dos envíos.
+  const submittingRef = useRef(false);
 
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
   const branchPhone = branch?.phone ?? null;
@@ -251,16 +254,22 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   }, [petToRemove]);
 
   const handleSubmit = async () => {
-    if (submitState === "loading" || hasNoPets) return;
+    if (submittingRef.current || submitState === "loading" || hasNoPets) return;
+    submittingRef.current = true;
     setSubmitState("loading");
     setSubmitError("");
     const result = await submitBooking(formData);
     if (result.ok) {
+      // Perfil guardado en unión: lo agendado ahora + las mascotas anteriores
+      // que no van esta vez no se pierden para próximas reservas.
+      saveClientProfileMerged(formData);
       setSubmitState("success");
       setBookingCode(result.bookingCode ?? "");
     } else {
       setSubmitState("error");
       setSubmitError(result.error ?? "Ocurrió un error inesperado");
+      // Permitir reintentar tras un fallo.
+      submittingRef.current = false;
     }
   };
 
@@ -318,7 +327,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         <div className="flex flex-col gap-3 sm:flex-row">
           <button
             onClick={() => setSubmitState("idle")}
-            className="cursor-pointer rounded-xl bg-blue-600 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:bg-blue-700 hover:shadow-lg active:scale-[0.98]"
+            className="cursor-pointer rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 px-6 py-3 text-base font-semibold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
           >
             Reintentar
           </button>
@@ -344,7 +353,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         transition={{ duration: 0.3 }}
         className="text-center"
       >
-        <h2 className="mb-2 text-step-title font-display font-bold tracking-tight text-gray-900">
+        <h2 className="mb-2 text-step-title font-display font-bold tracking-tight text-[#475AAB]">
           Revisa y confirma tu reserva
         </h2>
         <p className="mx-auto max-w-md text-sm text-gray-500">
@@ -581,7 +590,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
             ? "cursor-wait bg-blue-400"
             : hasNoPets
               ? "cursor-not-allowed bg-gray-300"
-              : "cursor-pointer bg-brand-blue hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-200/50 hover:-translate-y-0.5 active:scale-[0.98]"
+              : "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 hover:shadow-lg hover:shadow-blue-200/50 hover:-translate-y-0.5 active:scale-[0.98]"
         }`}
       >
         {submitState === "loading" ? (
