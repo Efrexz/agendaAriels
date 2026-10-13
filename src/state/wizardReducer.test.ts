@@ -808,6 +808,32 @@ describe("flujo de bienvenida (perfil guardado)", () => {
     expect(nextStep("owner", { ...INITIAL_FORM_DATA, date: null })).toBe("schedule");
   });
 
+  it("EDIT_OWNER abre 'Tus datos' en modo edición de datos", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "EDIT_OWNER" });
+    expect(s.step).toBe("owner");
+    expect(s.mode).toBe("ownerEdit");
+
+    // Confirmar (NEXT) regresa a la bienvenida en modo recurrente
+    s = wizardReducer(s, { type: "NEXT" });
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("quick");
+  });
+
+  it("ownerEdit: BACK y CONTINUE también vuelven a la bienvenida", () => {
+    let s = createInitialState(() => profile());
+    s = wizardReducer(s, { type: "EDIT_OWNER" });
+
+    s = wizardReducer(s, { type: "BACK" });
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("quick");
+
+    s = wizardReducer(s, { type: "EDIT_OWNER" });
+    s = wizardReducer(s, { type: "CONTINUE" });
+    expect(s.step).toBe("welcome");
+    expect(s.mode).toBe("quick");
+  });
+
   it("el flujo sin perfil arranca en la intro de bienvenida", () => {
     expect(INITIAL_STATE.step).toBe("welcome");
     expect(INITIAL_STATE.mode).toBe("initial");

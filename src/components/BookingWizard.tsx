@@ -82,6 +82,18 @@ export function BookingWizard() {
     dispatch(action);
   };
 
+  /**
+   * "Actualizar datos" (modo ownerEdit, desde la bienvenida sin agendar):
+   * al confirmar se persisten en localStorage de inmediato y el reducer
+   * redirige a la bienvenida.
+   */
+  const handleNext = () => {
+    if (state.mode === "ownerEdit" && state.step === "owner") {
+      overwriteClientProfile(state.formData, state.profilePets);
+    }
+    guardTransition({ type: "NEXT" });
+  };
+
   const branch = state.formData.branch ? BRANCH_BY_VALUE[state.formData.branch] : null;
 
   return (
@@ -144,7 +156,7 @@ export function BookingWizard() {
                   <StepComponent
                     formData={state.formData}
                     update={update}
-                    onNext={() => guardTransition({ type: "NEXT" })}
+                    onNext={handleNext}
                     onBack={() => guardTransition({ type: "BACK" })}
                     onAddAnother={
                       state.step === "review"
@@ -158,7 +170,9 @@ export function BookingWizard() {
                       ? { continueLabel: "Finalizar edición", isEditing: true }
                       : state.mode === "addingFromSummary"
                         ? { continueLabel: "Finalizar y volver al resumen" }
-                        : {})}
+                        : state.mode === "ownerEdit"
+                          ? { continueLabel: "Actualizar datos" }
+                          : {})}
                   />
                 ) : (
                   <WelcomeBackStep

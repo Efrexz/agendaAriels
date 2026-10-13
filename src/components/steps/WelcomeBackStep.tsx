@@ -15,6 +15,7 @@ import {
   LogIn,
   ShieldCheck,
   X,
+  TriangleAlert,
   type LucideIcon,
 } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
@@ -93,15 +94,16 @@ function BranchPicker({
                 {selected && <span className="ml-1.5 text-[11px] font-medium text-orange-600">(tu sede)</span>}
               </span>
               {outOfRange && (
-                <span className="flex items-center gap-1 text-[11px] text-gray-500">
-                  ⚠ Fuera de cobertura de recojo ({MAX_PICKUP_DISTANCE_KM} km máx.)
+                <span className="flex items-center gap-1 text-[11px] font-medium text-red-600">
+                  <TriangleAlert className="h-3 w-3 shrink-0" />
+                  Fuera de cobertura de recojo ({MAX_PICKUP_DISTANCE_KM} km máx.)
                 </span>
               )}
             </span>
             {distance !== null && (
               <span
-                className={`shrink-0 text-[11px] font-medium ${
-                  outOfRange ? "text-gray-500" : "text-[#546A8E]"
+                className={`shrink-0 text-[11px] font-semibold ${
+                  outOfRange ? "text-red-500" : "text-emerald-600"
                 }`}
               >
                 a {distance.toFixed(1)} km

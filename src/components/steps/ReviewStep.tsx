@@ -10,9 +10,11 @@ interface ReviewStepProps {
   formData: FormData;
   update: <K extends keyof FormData>(field: K, value: FormData[K]) => void;
   onNext: () => void;
-  onBack: () => void;
+  onBack?: () => void;
   onAddAnother?: () => void;
   onContinue?: () => void;
+  /** Texto del botón principal (por modo: "Actualizar datos" en edición de datos). */
+  continueLabel?: string;
 }
 
 const LIMA_CENTER = { lat: -12.046374, lng: -77.042793 };
@@ -35,7 +37,7 @@ function getDefaultCenter(branch: string | null) {
   return LIMA_CENTER;
 }
 
-export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
+export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewStepProps) {
   const uniformPetType = useMemo(() => {
     const types = new Set(formData.pets.map((pet) => pet.petType));
     return types.size === 1 ? formData.pets[0].petType : null;
@@ -589,7 +591,7 @@ export function ReviewStep({ formData, update, onNext }: ReviewStepProps) {
                   : "cursor-not-allowed bg-gray-300"
               }`}
             >
-              Continuar
+              {continueLabel ?? "Continuar"}
             </button>
           </>
         )}

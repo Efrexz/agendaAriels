@@ -101,7 +101,7 @@ export const INITIAL_FORM_DATA: FormData = {
 
 export type StepId = "welcome" | "branch" | "petType" | "petInfo" | "size" | "petAdded" | "schedule" | "owner" | "review";
 
-export type Mode = "initial" | "addingFromSummary" | "editing" | "quick";
+export type Mode = "initial" | "addingFromSummary" | "editing" | "quick" | "ownerEdit";
 
 export function nextStep(step: StepId, formData: FormData): StepId {
   switch (step) {
@@ -216,10 +216,22 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     case "UPDATE_FIELD":
       return { ...state, formData: { ...state.formData, [action.field]: action.value } };
 
-    case "NEXT":
+    case "NEXT": {
+      // Modo "actualizar mis datos" (estamos desde la bienvenida sin agendar):
+      // confirmar regresa a la bienvenida con los datos ya en el estado.
+      if (state.mode === "ownerEdit" && state.step === "owner") {
+        return { ...state, step: "welcome" as StepId, mode: "quick" as Mode };
+      }
       return { ...state, step: nextStep(state.step, state.formData) };
+    }
 
     case "BACK": {
+      // Modo edición de datos sin agendar: atrás también manda a la bienvenida
+      // (sin considerar lo tocado: solo se persiste al confirmar "Actualizar datos").
+      if (state.mode === "ownerEdit") {
+        return { ...state, step: "welcome" as StepId, mode: "quick" as Mode };
+      }
+
       // Flujo recurrente (modo quick): mapa explícito de retroceso.
       if (state.mode === "quick") {
         // Alta de mascota desde la bienvenida: se retrocede PASO A PASO
@@ -297,6 +309,11 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
     }
 
     case "CONTINUE": {
+      // Defensa: en modo edición de datos el objetivo siempre es bienvenida.
+      if (state.mode === "ownerEdit") {
+        return { ...state, step: "welcome" as StepId, mode: "quick" as Mode };
+      }
+
       const pet = buildPet(state.formData);
       const pets = state.editingIndex !== null
         ? state.formData.pets.map((p, i) => (i === state.editingIndex ? pet : p))
@@ -416,8 +433,9 @@ export function wizardReducer(state: WizardState, action: WizardAction): WizardS
       return { ...state, step: "branch" as StepId };
 
     case "EDIT_OWNER":
-      // Salto directo al paso "Tus datos" (prellenado) desde la bienvenida.
-      return { ...state, step: "owner" as StepId };
+      // Salto directo al paso "Tus datos" (prellenado) desde la bienvenida,
+      // en modo edición: confirmar actualiza y regresa a la bienvenida.
+      return { ...state, step: "owner" as StepId, mode: "ownerEdit" as Mode };
 
     case "ADD_PET_FROM_WELCOME":
       return {

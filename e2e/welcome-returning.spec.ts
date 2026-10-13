@@ -64,6 +64,28 @@ test.describe("Bienvenida - cliente recurrente (datos guardados)", () => {
     await expect(page.getByRole("button", { name: /Agendar con 3 mascotas/ })).toBeEnabled();
   });
 
+  test("editar datos y confirmar: botón 'Actualizar datos' persiste y regresa", async ({ page }) => {
+    await page.getByRole("button", { name: /Editar datos/ }).click();
+
+    // El paso "Tus datos" abre en modo edición: el botón dice "Actualizar datos"
+    await expect(page.getByRole("heading", { name: /Datos del cliente/ })).toBeVisible();
+    const updateButton = page.getByRole("button", { name: /Actualizar datos/ });
+    await expect(updateButton).toBeVisible();
+
+    // Cambia el nombre del titular y actualiza
+    await page.getByPlaceholder("Ej: Juan Pérez").fill("Ana Actualizada");
+
+    // Validación: pasamos por la dirección y teléfono? (se puede actualizar sin tocar el resto)
+    await updateButton.click();
+
+    // Debe volver a la bienvenida mostrando el dato nuevo
+    await expect(page.getByRole("heading", { name: /¡Qué gusto verte, Ana!/ })).toBeVisible();
+
+    // Persistencia real: recargar SIN demo → el perfil actualizado está en localStorage
+    await page.goto("/");
+    await expect(page.getByText("Ana Actualizada")).toBeVisible();
+  });
+
   test("eliminar mascota guardada con confirmación y persiste al recargar", async ({ page }) => {
     // Trash de Rocky: botón con aria-label que incluye su nombre
     await page.locator('button[aria-label*="Rocky"]').click();
