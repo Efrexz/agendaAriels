@@ -1,8 +1,11 @@
-import { describe, it, expect, vi } from "vitest";
+import { describe, it, expect, vi, beforeEach } from "vitest";
 import {
   bookingPayloadSchema,
   buildBookingMessages,
+  buildClientReceiptMessage,
   handleBooking,
+  normalizePhoneDest,
+  resetBookingDedupe,
   sendViaEvolution,
   validateScheduleWindow,
   type BookingEnv,
@@ -70,9 +73,10 @@ const ENV_FULL: BookingEnv = {
 };
 
 function fetchOk() {
-  const calls: string[] = [];
+  const calls: Array<{ number: string; text: string }> = [];
   const fn = vi.fn(async (_url: string, init: { body: string }) => {
-    calls.push(JSON.parse(init.body).text);
+    const parsed = JSON.parse(init.body) as { number: string; text: string };
+    calls.push(parsed);
     return new Response(JSON.stringify({ ok: true }), { status: 200 });
   });
   return { fn, calls };
@@ -196,6 +200,10 @@ describe("buildBookingMessages", () => {
 describe("handleBooking", () => {
   const base = { date: "2026-10-10", timeRange: "9-11" as const };
 
+  beforeEach(() => {
+    resetBookingDedupe();
+  });
+
   it("retorna 400 con payload inválido", async () => {
     const result = await handleBooking({ body: { foo: 1 }, env: ENV_FULL, now: NOW });
     expect(result.status).toBe(400);
@@ -254,9 +262,14 @@ describe("handleBooking", () => {
     });
     expect(result.status).toBe(200);
     expect(result.body).toEqual({ ok: true, bookingCode: "VA-TEST1" });
-    expect(calls).toHaveLength(2);
-    expect(calls[0]).toContain("*NUEVA RESERVA*");
-    expect(calls[1]).toContain("📍");
+    // 2 mensajes a la veterinaria (resumen + Maps) + comprobante al cliente
+    expect(calls).toHaveLength(3);
+    expect(calls[0].text).toContain("*NUEVA RESERVA*");
+    expect(calls[0].number).toBe("51986985047");
+    expect(calls[1].text).toContain("📍");
+    expect(calls[2].number).toBe("51999123456");
+    expect(calls[2].text).toContain("¡Reserva registrada, Juan!");
+    expect(calls[2].text).toContain("VA-TEST1");
   });
 
   it("reintenta ante fallos de red y entrega al 3er intento", async () => {
@@ -272,7 +285,44 @@ describe("handleBooking", () => {
       fetcher: fn,
     });
     expect(result.status).toBe(200);
+    // main (3er intento) + Maps + comprobante al cliente
+    expect(calls).toHaveLength(3);
+  });
+
+  it("devuelve el mismo código si la misma reserva llega dos veces en 60s (sin reenvío)", async () => {
+    const { fn, calls } = fetchOk();
+    const body = payload({ ...base, ownerLat: -12.0206, ownerLng: -77.0865 });
+    const first = await handleBooking({ body, env: ENV_FULL, now: NOW, fetcher: fn });
+    expect(first.status).toBe(200);
+
+    // Doble click: distinto bookingCode (se genera nuevo), mismos datos clave
+    const again = await handleBooking({ body: payload({ ...base, ownerLat: -12.0206, ownerLng: -77.0865 }), env: ENV_FULL, now: NOW, fetcher: fn });
+    expect(again.status).toBe(200);
+    expect(again.body.bookingCode).toBe(first.body.bookingCode);
+    // No se volvió a enviar nada a la veterinaria
+    expect(calls).toHaveLength(3);
+  });
+
+  it("pasado el dedupe de 60s permite reservar de nuevo normalmente", async () => {
+    const { fn, calls } = fetchOk();
+    const body = payload({ ...base, ownerLat: -12.02, ownerLng: -77.08 });
+    await handleBooking({ body, env: ENV_FULL, now: NOW, fetcher: fn });
+    const later = await handleBooking({ body, env: ENV_FULL, now: new Date(NOW.getTime() + 120_000), fetcher: fn });
+    expect(later.status).toBe(200);
+    expect(calls.length).toBeGreaterThan(3);
+  });
+
+  it("CLIENT_COPY_ENABLED=false omite el comprobante al cliente", async () => {
+    const { fn, calls } = fetchOk();
+    const result = await handleBooking({
+      body: payload({ ...base, ownerLat: -12.0206, ownerLng: -77.0865 }),
+      env: { ...ENV_FULL, CLIENT_COPY_ENABLED: "false" },
+      now: NOW,
+      fetcher: fn,
+    });
+    expect(result.status).toBe(200);
     expect(calls).toHaveLength(2);
+    expect(calls.every((c) => c.number === "51986985047")).toBe(true);
   });
 
   it("usa el fallback n8n si no hay Evolution configurada", async () => {
@@ -345,5 +395,65 @@ describe("sendViaEvolution", () => {
     const parsed = JSON.parse(seen[0].init.body);
     expect(parsed.number).toBe("51986985047");
     expect(parsed.text).toBe("hola");
+  });
+
+  it("respeta el destino explícito (comprobante al cliente)", async () => {
+    const seen: Array<{ init: { body: string } }> = [];
+    const fn = vi.fn(async (_url: string, init: { body: string }) => {
+      seen.push({ init });
+      return new Response("{}", { status: 200 });
+    });
+    await sendViaEvolution(["hola"], ENV_FULL, fn, "51999123456");
+    expect(JSON.parse(seen[0].init.body).number).toBe("51999123456");
+  });
+
+  it("EVOLUTION_DRY_RUN imprime el mensaje en consola y responde ok", async () => {
+    const logs: string[] = [];
+    const spy = vi.spyOn(console, "log").mockImplementation((...args: unknown[]) => {
+      logs.push(args.join(" "));
+    });
+    const { fn, calls } = fetchOk();
+    const ok = await sendViaEvolution(["mensaje de prueba"], { ...ENV_FULL, EVOLUTION_DRY_RUN: "true" }, fn);
+    spy.mockRestore();
+    expect(ok.ok).toBe(true);
+    expect(calls).toHaveLength(0);
+    expect(logs.join("\n")).toContain("mensaje de prueba");
+    expect(logs.join("\n")).toContain("[booking][DRY-RUN]");
+  });
+});
+
+describe("normalizePhoneDest", () => {
+  it("agrega código de país a un celular de 9 dígitos", () => {
+    expect(normalizePhoneDest("999-123-456")).toBe("51999123456");
+  });
+
+  it("acepta teléfono ya con código de país", () => {
+    expect(normalizePhoneDest("+51 999 123 456")).toBe("51999123456");
+    expect(normalizePhoneDest("51999123456")).toBe("51999123456");
+  });
+
+  it("devuelve null para teléfonos no reconocibles", () => {
+    expect(normalizePhoneDest("123")).toBeNull();
+    expect(normalizePhoneDest("")).toBeNull();
+  });
+});
+
+describe("buildClientReceiptMessage", () => {
+  it("contiene los datos clave del comprobante", () => {
+    const msg = buildClientReceiptMessage(payload());
+    expect(msg).toContain("¡Reserva registrada, Juan!");
+    expect(msg).toContain("sábado 10 de octubre de 2026");
+    expect(msg).toContain("9:00 am – 11:00 am");
+    expect(msg).toContain("Sede San Martín de Porres");
+    expect(msg).toContain("🐾 Rex – Baño + Corte");
+    expect(msg).toContain("Av. Proceres 500");
+    expect(msg).toContain("VA-TEST1");
+    expect(msg).toContain("+51 986 985 047");
+  });
+  it("lista todas las mascotas", () => {
+    const dos = payload({ pets: [raw().pets, raw().pets].flat() as never });
+    const msg = buildClientReceiptMessage(dos);
+    const petLines = msg.split("\n").filter((l) => l.startsWith("🐾 ") && l.includes("–"));
+    expect(petLines).toHaveLength(2);
   });
 });

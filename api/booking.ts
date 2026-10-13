@@ -31,6 +31,10 @@ export interface BookingEnv {
   WHATSAPP_DESTINO?: string;
   BACKUP_WEBHOOK_URL?: string;
   VITE_N8N_WEBHOOK_URL?: string;
+  /** "true"/"1": registra los mensajes por consola en vez de enviarlos por WhatsApp. */
+  EVOLUTION_DRY_RUN?: string;
+  /** "false": desactiva el comprobante al cliente (default activado). */
+  CLIENT_COPY_ENABLED?: string;
 }
 
 export interface BookingResult {
@@ -168,6 +172,121 @@ function buildMapsUrl(lat: number, lng: number): string {
   return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
 }
 
+// ── Comprobante al cliente ───────────────────────────────────
+
+function firstOwnerName(fullName: string): string {
+  return fullName.trim().split(/\s+/)[0] ?? "";
+}
+
+/**
+ * Normaliza el teléfono del cliente al formato internacional que espera
+ * Evolution (ej. "999-123-456" → "51999123456"). Devuelve null si no es un
+ * celular peruano reconocible.
+ */
+export function normalizePhoneDest(phone: string): string | null {
+  const digits = phone.replace(/\D/g, "");
+  if (digits.length === 9) return `51${digits}`;
+  if (digits.length === 11 && digits.startsWith("51")) return digits;
+  return null;
+}
+
+/** Comprobante que recibe el cliente en su WhatsApp tras confirmar. */
+export function buildClientReceiptMessage(data: BookingPayload): string {
+  const petsLines = data.pets.map((pet) => `🐾 ${pet.name} – ${pet.service}`);
+  const lines = [
+    `🐾 *¡Reserva registrada, ${firstOwnerName(data.ownerName)}!*`,
+    "",
+    `🗓 *${data.dateLabel}*`,
+    `⏰ ${data.timeRangeLabel}`,
+    `🏥 ${data.branchLabel}`,
+    "",
+    ...petsLines,
+    `📍 Domicilio: ${data.ownerAddress}`,
+    `🔖 Código de reserva: *${data.bookingCode}*`,
+    "",
+    `☎ Consultas: ${data.branchPhone}`,
+    "",
+    "Confirmaremos tu horario exacto por este medio. ¡Gracias por agendar con nosotros! 🐶✨",
+  ];
+  return lines.join("\n");
+}
+
+type ReceiptOutcome = "sent" | "skipped" | "failed";
+
+/**
+ * Envía el comprobante al cliente (best effort): un fallo no debe romper
+ * la reserva, que ya fue entregada a la veterinaria.
+ */
+export async function sendClientReceipt(
+  data: BookingPayload,
+  env: BookingEnv,
+  fetcher: FetchLike = fetch,
+): Promise<{ outcome: ReceiptOutcome; reason?: string }> {
+  if (env.CLIENT_COPY_ENABLED === "false") {
+    return { outcome: "skipped", reason: "CLIENT_COPY_ENABLED=false" };
+  }
+  const dest = normalizePhoneDest(data.ownerPhone);
+  if (!dest) {
+    console.warn("[booking] comprobante omitido: teléfono del cliente no reconocible");
+    return { outcome: "skipped", reason: "teléfono inválido" };
+  }
+  // Si el "cliente" es el mismo WhatsApp de la veterinaria (pruebas), no
+  // reenviamos el mismo contenido dos veces al mismo número.
+  const clinicDest = normalizePhoneDest(env.WHATSAPP_DESTINO ?? "");
+  if (clinicDest && dest === clinicDest) {
+    return { outcome: "skipped", reason: "teléfono del cliente = veterinaria" };
+  }
+  const evolutionReady = !!(
+    env.EVOLUTION_API_URL &&
+    env.EVOLUTION_API_KEY &&
+    env.EVOLUTION_INSTANCE
+  );
+  if (!evolutionReady && !isDryRun(env)) {
+    return { outcome: "skipped", reason: "Evolution no configurada" };
+  }
+  const sent = await sendViaEvolution([buildClientReceiptMessage(data)], env, fetcher, dest);
+  if (!sent.ok) {
+    console.warn(`[booking] comprobante al cliente falló: ${sent.error}`);
+    return { outcome: "failed", reason: sent.error };
+  }
+  return { outcome: "sent" };
+}
+
+// ── Dedupe: misma reserva enviada dos veces en segundos ──────
+
+const DEDUPE_WINDOW_MS = 60_000;
+const MAX_DEDUPE_ENTRIES = 200;
+
+const recentBookings = new Map<string, { code: string; at: number }>();
+
+function bookingDedupeKey(payload: BookingPayload): string {
+  const digits = payload.ownerPhone.replace(/\D/g, "");
+  return `${digits}|${payload.branch}|${payload.date}|${payload.timeRange}`;
+}
+
+export function resetBookingDedupe(): void {
+  recentBookings.clear();
+}
+
+function findRecentDuplicate(payload: BookingPayload, now: number): string | null {
+  const cutoff = now - DEDUPE_WINDOW_MS;
+  for (const [key, value] of recentBookings) {
+    if (value.at < cutoff) recentBookings.delete(key);
+  }
+  const hit = recentBookings.get(bookingDedupeKey(payload));
+  return hit ? hit.code : null;
+}
+
+function rememberBooking(payload: BookingPayload, now: number): void {
+  // El mismo teléfono + fecha + franja dentro de 60s ya tiene código: al
+  // repetirse (doble click) se devuelve el código original sin reenviar.
+  if (recentBookings.size >= MAX_DEDUPE_ENTRIES) {
+    const oldest = recentBookings.keys().next().value;
+    if (oldest) recentBookings.delete(oldest);
+  }
+  recentBookings.set(bookingDedupeKey(payload), { code: payload.bookingCode, at: now });
+}
+
 // ── Plantilla del mensaje WhatsApp (réplica del flujo n8n) ───
 
 function section(label: string, lines: string[]): string {
@@ -266,13 +385,34 @@ async function sleep(ms: number): Promise<void> {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+function isDryRun(env: BookingEnv): boolean {
+  return env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
+}
+
+const DRY_TAG = "[booking][DRY-RUN]";
+
+/**
+ * Envía los mensajes a un número de WhatsApp vía Evolution API.
+ * `destination` es el teléfono de destino (por defecto, el de la veterinaria).
+ * Con EVOLUTION_DRY_RUN no envía nada: imprime el texto exacto en los logs
+ * (útil para pruebas y demos sin WhatsApp conectado).
+ */
 export async function sendViaEvolution(
   messages: string[],
   env: BookingEnv,
   fetcher: FetchLike = fetch,
+  destination?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
+  const dest = destination ?? env.WHATSAPP_DESTINO;
   const url = `${env.EVOLUTION_API_URL!.replace(/\/+$/, "")}/message/sendText/${env.EVOLUTION_INSTANCE}`;
   const headers = { "Content-Type": "application/json", apikey: env.EVOLUTION_API_KEY! };
+
+  if (isDryRun(env)) {
+    for (const text of messages) {
+      console.log(`${DRY_TAG} → ${dest}\n${text}\n${DRY_TAG} fin del mensaje`);
+    }
+    return { ok: true };
+  }
 
   for (const text of messages) {
     let lastStatus = 0;
@@ -283,7 +423,7 @@ export async function sendViaEvolution(
         const res = await fetcher(url, {
           method: "POST",
           headers,
-          body: JSON.stringify({ number: env.WHATSAPP_DESTINO, text, delay: 1200 }),
+          body: JSON.stringify({ number: dest, text, delay: 1200 }),
           signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
         });
         lastStatus = res.status;
@@ -361,6 +501,14 @@ export async function handleBooking(options: {
     return { status: 400, body: { ok: false, error: "Dirección fuera del radio de cobertura." } };
   }
 
+  const nowMs = now.getTime();
+  const duplicateCode = findRecentDuplicate(payload, nowMs);
+  if (duplicateCode) {
+    // Doble click rápido: misma reserva ya está en camino a la veterinaria.
+    console.warn("[booking] reserva duplicada detectada, se devuelve el código original");
+    return { status: 200, body: { ok: true, bookingCode: duplicateCode } };
+  }
+
   const normalized: BookingPayload = {
     ...payload,
     mapsUrl: buildMapsUrl(payload.ownerLat, payload.ownerLng),
@@ -409,6 +557,14 @@ export async function handleBooking(options: {
       status: 502,
       body: { ok: false, error: error ?? "No se pudo entregar la reserva. Intenta de nuevo." },
     };
+  }
+
+  rememberBooking(payload, nowMs);
+
+  // Comprobante al cliente: best effort, nunca rompe la reserva.
+  const receipt = await sendClientReceipt(normalized, env, fetcher);
+  if (receipt.outcome === "failed") {
+    console.warn(`[booking] ${receipt.reason}`);
   }
 
   return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
