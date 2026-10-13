@@ -46,6 +46,24 @@ test.describe("Bienvenida - cliente recurrente (datos guardados)", () => {
     await expect(page.getByRole("button", { name: /Agendar con 3 mascotas/ })).toBeVisible();
   });
 
+  test("cambiar de sede desde la bienvenida: alterna el selector y marca cobertura", async ({ page }) => {
+    // La demo viene con San Martín; el selector muestra distancias reales
+    await page.getByRole("button", { name: /Cambiar sede/ }).click();
+    await expect(page.getByText(/Sede para esta reserva/)).toBeVisible();
+
+    // Con la dirección demo (San Martín de Porres): la sede actual está marcada,
+    // y las otras dos quedan fuera del radio de recojo → deshabilitadas.
+    await expect(page.getByText("(tu sede)")).toBeVisible();
+    await expect(page.getByRole("button", { name: /San Miguel/ })).toBeDisabled();
+    await expect(page.getByRole("button", { name: /Los Olivos/ })).toBeDisabled();
+    await expect(page.getByText(/Fuera de cobertura/)).toHaveCount(2);
+
+    // Cerrar el picker no rompe el flujo y el CTA sigue disponible
+    await page.getByRole("button", { name: /Cambiar sede/ }).click();
+    await expect(page.getByText(/Sede para esta reserva/)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /Agendar con 3 mascotas/ })).toBeEnabled();
+  });
+
   test("eliminar mascota guardada con confirmación y persiste al recargar", async ({ page }) => {
     // Trash de Rocky: botón con aria-label que incluye su nombre
     await page.locator('button[aria-label*="Rocky"]').click();

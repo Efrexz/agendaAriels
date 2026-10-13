@@ -14,15 +14,19 @@ import {
   Pencil,
   LogIn,
   ShieldCheck,
+  X,
   type LucideIcon,
 } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
 import { PET_TYPE_LABELS, SIZE_LABELS, SERVICE_LABELS, BRANCH_LABELS } from "../../data/labels";
+import { BRANCHES, MAX_PICKUP_DISTANCE_KM } from "../../data/branches";
+import { haversineKm } from "../../utils/geo";
 
 interface WelcomeBackStepProps {
   formData: FormData;
   /** Todas las mascotas guardadas del perfil (no solo las de esta reserva). */
   savedPets: PetData[];
+  update: <K extends keyof FormData>(field: K, value: FormData[K]) => void;
   onUseProfile: (pets: PetData[]) => void;
   onRemoveSavedPet: (index: number) => void;
   onAddPet: () => void;
@@ -38,6 +42,76 @@ function firstName(fullName: string): string {
 
 function petKey(pet: PetData): string {
   return `${pet.petType}:${pet.petName.trim().toLowerCase()}`;
+}
+
+/**_distancia redondeada con 1 decimal entre la dirección guardada y una sede. */
+function distanceToBranch(
+  ownerCoords: { lat: number | null; lng: number | null },
+  branchCoords: { lat: number; lng: number },
+): number | null {
+  if (ownerCoords.lat === null || ownerCoords.lng === null) return null;
+  return haversineKm(branchCoords, { lat: ownerCoords.lat, lng: ownerCoords.lng });
+}
+
+function BranchPicker({
+  currentBranch,
+  ownerCoords,
+  onSelect,
+}: {
+  currentBranch: FormData["branch"];
+  ownerCoords: { lat: number | null; lng: number | null };
+  onSelect: (branch: FormData["branch"]) => void;
+}) {
+  return (
+    <div className="mt-3 space-y-2 rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] p-3">
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-[#546A8E]">
+        Sede para esta reserva — según tu dirección guardada:
+      </p>
+      {BRANCHES.map((branch) => {
+        const selected = currentBranch === branch.value;
+        const distance = distanceToBranch(ownerCoords, branch.coords);
+        const outOfRange = distance !== null && distance > MAX_PICKUP_DISTANCE_KM;
+        return (
+          <button
+            key={branch.value}
+            type="button"
+            disabled={outOfRange}
+            onClick={() => !outOfRange && onSelect(branch.value)}
+            aria-pressed={selected}
+            title={outOfRange ? `Tu dirección queda a ${distance?.toFixed(1)} km: fuera del radio de recojo` : undefined}
+            className={`flex w-full items-center justify-between gap-3 rounded-lg border px-3 py-2 text-left text-sm transition-all ${
+              outOfRange
+                ? "cursor-not-allowed border-gray-200 bg-gray-50 opacity-70"
+                : selected
+                  ? "cursor-pointer border-orange-400 bg-orange-50 shadow-sm"
+                  : "cursor-pointer border-gray-200 bg-white hover:border-orange-300 hover:bg-orange-50/50"
+            }`}
+          >
+            <span className="flex min-w-0 flex-col gap-0.5">
+              <span className={`truncate font-semibold ${selected ? "text-orange-700" : "text-[#1A2238]"}`}>
+                {branch.label.replace("Sede ", "")}
+                {selected && <span className="ml-1.5 text-[11px] font-medium text-orange-600">(tu sede)</span>}
+              </span>
+              {outOfRange && (
+                <span className="flex items-center gap-1 text-[11px] text-gray-500">
+                  ⚠ Fuera de cobertura de recojo ({MAX_PICKUP_DISTANCE_KM} km máx.)
+                </span>
+              )}
+            </span>
+            {distance !== null && (
+              <span
+                className={`shrink-0 text-[11px] font-medium ${
+                  outOfRange ? "text-gray-500" : "text-[#546A8E]"
+                }`}
+              >
+                a {distance.toFixed(1)} km
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  );
 }
 
 /** Ilustración completa de la familia (perrito + gatito + mancha + rayitas
@@ -149,6 +223,7 @@ function PetCard({
 export function WelcomeBackStep({
   formData,
   savedPets,
+  update,
   onUseProfile,
   onRemoveSavedPet,
   onAddPet,
@@ -157,6 +232,7 @@ export function WelcomeBackStep({
   onEditOwner,
 }: WelcomeBackStepProps) {
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
+  const [showBranchPicker, setShowBranchPicker] = useState(false);
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(() => new Set(savedPets.map(petKey)));
   const name = firstName(formData.ownerName);
   const hasPets = savedPets.length > 0;
@@ -286,13 +362,13 @@ export function WelcomeBackStep({
       </div>
 
       <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4">
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
               <UserRound className="h-5 w-5" />
             </span>
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-[#475AAB]">
+              <p className="min-w-0 break-words text-sm font-semibold text-[#475AAB]">
                 {formData.ownerName}
                 <span className="font-normal text-gray-400"> · {formData.registeredPhone || formData.ownerPhone}</span>
               </p>
@@ -300,22 +376,47 @@ export function WelcomeBackStep({
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563EB]" />
                 <span className="leading-snug">{formData.ownerAddress}</span>
               </p>
-              {branchLabel && (
+              {branchLabel && !showBranchPicker && (
                 <p className="mt-1 text-[11px] text-gray-400">
                   Sede de tu última reserva: {branchLabel}
                 </p>
               )}
             </div>
           </div>
-          <button
-            type="button"
-            onClick={onEditOwner}
-            className="flex shrink-0 cursor-pointer items-center gap-1 rounded-lg px-2 py-1.5 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700"
-          >
-            <Pencil className="h-3.5 w-3.5" />
-            Editar datos
-          </button>
+          <div className="flex shrink-0 items-center gap-1 sm:mt-0">
+            <button
+              type="button"
+              onClick={() => setShowBranchPicker((v) => !v)}
+              aria-expanded={showBranchPicker}
+              className={`flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg px-2 py-2 text-xs font-semibold transition-colors ${
+                showBranchPicker
+                  ? "bg-orange-50 text-orange-600 hover:bg-orange-100"
+                  : "border border-blue-100 text-blue-600 hover:bg-blue-50 hover:text-blue-700"
+              } sm:flex-none sm:px-2 sm:py-1.5 sm:border-0`}
+            >
+              {showBranchPicker ? <X className="h-3.5 w-3.5" /> : <MapPin className="h-3.5 w-3.5" />}
+              Cambiar sede
+            </button>
+            <button
+              type="button"
+              onClick={onEditOwner}
+              className="flex flex-1 cursor-pointer items-center justify-center gap-1 rounded-lg border border-blue-100 px-2 py-2 text-xs font-semibold text-blue-600 transition-colors hover:bg-blue-50 hover:text-blue-700 sm:flex-none sm:border-0 sm:px-2 sm:py-1.5"
+            >
+              <Pencil className="h-3.5 w-3.5" />
+              Editar datos
+            </button>
+          </div>
         </div>
+        {showBranchPicker && (
+          <BranchPicker
+            currentBranch={formData.branch}
+            ownerCoords={{ lat: formData.ownerLat, lng: formData.ownerLng }}
+            onSelect={(branch) => {
+              update("branch", branch);
+              setShowBranchPicker(false);
+            }}
+          />
+        )}
       </div>
 
       <button

@@ -164,6 +164,7 @@ export function BookingWizard() {
                   <WelcomeBackStep
                     formData={state.formData}
                     savedPets={state.profilePets.length > 0 ? state.profilePets : state.formData.pets}
+                    update={update}
                     onUseProfile={(pets) => dispatch({ type: "USE_PROFILE", pets })}
                     onAddPet={() => dispatch({ type: "ADD_PET_FROM_WELCOME" })}
                     onEditOwner={() => guardTransition({ type: "EDIT_OWNER" })}
