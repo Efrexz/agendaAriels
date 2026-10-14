@@ -90,11 +90,11 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
         Elige <span className="text-orange-500">fecha y horario</span>
       </h2>
 
-      <div className="overflow-hidden rounded-2xl border border-[#E7E2D8] bg-white shadow-sm">
+      <div className="overflow-hidden rounded-2xl border border-[#DCEBFF] bg-white shadow-sm">
         {/* Sección superior: mascota + calendario */}
         <div className="grid grid-cols-1 md:grid-cols-2">
           {/* Columna izquierda: mascota con calendario */}
-          <div className="relative flex items-center justify-center bg-gradient-to-br from-blue-50 to-[#FBF8F4] p-3 sm:p-4 md:p-5 min-h-60 sm:min-h-72">
+          <div className="relative flex items-center justify-center bg-gradient-to-br from-[#EFF6FF] to-white p-3 sm:p-4 md:p-5 min-h-60 sm:min-h-72">
             <img
               src="/images/vetMascot/calendar.webp"
               alt="Mascota de Veterinaria Ariel con un calendario"
@@ -103,7 +103,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
           </div>
 
           {/* Columna derecha: calendario estilizado */}
-          <div className="border-t border-[#E7E2D8] bg-[#FBF8F4] p-4 sm:p-5 md:border-l md:border-t-0">
+          <div className="border-t border-[#DCEBFF] bg-[#F7FBFF] p-4 sm:p-5 md:border-l md:border-t-0">
             <div className="mb-4 flex items-center justify-between">
               <button
                 onClick={prevMonth}
@@ -129,7 +129,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
             <div className="mt-2 text-center text-[11px] text-gray-400">
               Puedes reservar con hasta {MAX_ADVANCE_DAYS} días de anticipación.
             </div>
-            <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-gray-500">
+            <div className="grid grid-cols-7 gap-1 text-center text-xs font-semibold text-[#546A8E]">
               {dayNames.map((d) => (
                 <div key={d} className="py-1">{d}</div>
               ))}
@@ -152,8 +152,8 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                       disabled
                         ? "cursor-not-allowed text-gray-300"
                         : selected
-                          ? "bg-blue-600 text-white shadow-md"
-                          : "text-gray-800 hover:-translate-y-0.5 hover:bg-blue-100"
+                          ? "bg-orange-500 text-white shadow-md shadow-orange-200"
+                          : "text-gray-800 hover:-translate-y-0.5 hover:bg-[#EFF6FF]"
                     }`}
                   >
                     <span>{format(day, "d")}</span>
@@ -161,7 +161,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                       <PawPrint
                         className={`mt-0.5 h-2.5 w-2.5 transition-opacity duration-200 ${
                           selected
-                            ? "text-orange-300 opacity-100"
+                            ? "text-white/80 opacity-100"
                             : "text-orange-400 opacity-0 group-hover:opacity-70"
                         }`}
                         aria-hidden="true"
@@ -175,7 +175,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
         </div>
 
         {/* Separador */}
-        <div className="h-px w-full bg-[#E7E2D8]" />
+        <div className="h-px w-full bg-[#DCEBFF]" />
 
         {/* Sección inferior: horarios (condicional) */}
         {formData.date ? (
@@ -187,7 +187,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
           >
             <p className="mb-4 text-center text-sm font-medium text-gray-600 sm:mb-5 sm:text-base">
               ¡Perfecto! Elige tu horario para el{" "}
-              <span className="font-semibold capitalize text-blue-700">
+              <span className="font-semibold capitalize text-[#475AAB]">
                 {selectedDateLabel}
               </span>
               :
@@ -204,12 +204,12 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                     onClick={() => handleSelectTime(value)}
                     disabled={blocked}
                     title={blocked ? "Esta franja ya inició el día de hoy" : undefined}
-                    className={`group relative flex cursor-pointer flex-row items-stretch overflow-hidden rounded-2xl text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 ${
+                    className={`group relative flex cursor-pointer flex-row items-stretch overflow-hidden rounded-2xl text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
                       blocked
                         ? "cursor-not-allowed border-2 border-gray-200 bg-gray-50 opacity-60"
                         : selected
-                          ? "border-2 border-blue-500 bg-white shadow-lg shadow-blue-100 -translate-y-1"
-                          : "border-2 border-gray-200 bg-white shadow-sm hover:-translate-y-1 hover:border-blue-300 hover:shadow-xl"
+                          ? "border-2 border-orange-400 bg-[#FFF7EE] shadow-lg shadow-orange-100 -translate-y-1"
+                          : "border-2 border-gray-200 bg-white shadow-sm hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl"
                     }`}
                   >
                     <div className="relative h-20 w-20 shrink-0 overflow-hidden sm:h-24 sm:w-24">
@@ -231,22 +231,22 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                     }`}>
                       <span
                         className={`text-xs font-semibold uppercase tracking-wide ${
-                          selected ? "text-orange-600" : "text-gray-500"
+                          selected ? "text-orange-600" : "text-[#546A8E]"
                         }`}
                       >
                         {blocked ? "Ya no disponible" : sub}
                       </span>
                       <span
                         className={`text-base font-semibold sm:text-lg ${
-                          selected ? "text-blue-700" : "text-gray-800"
+                          selected ? "text-[#475AAB]" : "text-gray-800"
                         }`}
                       >
                         {label}
                       </span>
                     </div>
                     {selected && !blocked && (
-                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-white shadow-md">
-                        <CheckCircle className="h-4 w-4 fill-white text-blue-600" />
+                      <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
+                        <CheckCircle className="h-4 w-4 fill-white text-orange-500" />
                       </span>
                     )}
                   </button>
@@ -263,7 +263,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
         )}
 
         {/* Separador */}
-        <div className="h-px w-full bg-[#E7E2D8]" />
+        <div className="h-px w-full bg-[#DCEBFF]" />
 
         {/* Botón Continuar */}
         <div className="p-4 sm:p-6">

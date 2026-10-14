@@ -186,11 +186,11 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                 }
               }}
               aria-pressed={selected}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col items-stretch overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? "border-blue-500 shadow-lg shadow-blue-100"
+                  ? "border-orange-400 shadow-lg shadow-orange-100"
                   : hasErr ? "border-red-500 shadow-sm"
-                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
+                  : "border-[#DCEBFF] shadow-sm hover:border-orange-300"
               }`}
             >
               <div className="relative aspect-[16/9] w-full overflow-hidden">
@@ -201,12 +201,14 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                 </span>
               </div>
 
-              <div className="flex flex-1 items-center justify-between gap-3 p-5 lg:gap-4 lg:p-7">
+              <div className={`flex flex-1 items-center justify-between gap-3 p-5 transition-colors lg:gap-4 lg:p-7 ${
+                selected ? "bg-[#FFF7EE]" : "bg-white"
+              }`}>
                 <div className="flex flex-col">
-                  <span className={`text-base font-semibold tracking-tight lg:text-lg ${selected ? "text-blue-700" : "text-[#1A2238]"}`}>
+                  <span className={`text-base font-semibold tracking-tight lg:text-lg ${selected ? "text-[#475AAB]" : "text-[#1A2238]"}`}>
                     {label}
                   </span>
-                  <span className="text-xs leading-snug text-gray-500 lg:text-sm">
+                  <span className="text-xs leading-snug text-[#546A8E] lg:text-sm">
                     {value === "bath_cut"
                       ? "Estilismo con corte de pelaje a elección"
                       : "Limpieza profunda con productos especializados"}
@@ -214,8 +216,8 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
                 </div>
                 <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                   selected
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-gray-300 text-gray-400 group-hover:border-blue-300 group-hover:text-blue-400"
+                    ? "border-orange-500 bg-orange-500 text-white"
+                    : "border-gray-300 text-gray-400 group-hover:border-orange-300 group-hover:text-orange-400"
                 }`}>
                   <ChevronRight className="h-4 w-4" />
                 </span>
@@ -226,14 +228,14 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Services detail card: Bath type + Extras + Perfume */}
-      <div className="mt-10 rounded-2xl border border-slate-200 bg-slate-50 p-6 shadow-sm lg:p-8">
+      <div className="mt-10 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-6 shadow-sm lg:p-8">
         <BathTypePicker
           value={formData.bathType}
           onSelect={(v) => { clearErrors(); update("bathType", v); }}
           hasError={invalidBathType && errors.length > 0}
         />
 
-        <div className="my-6 border-t border-slate-200" />
+        <div className="my-6 border-t border-[#DCEBFF]" />
 
         <ExtraServicesPicker
           extraServices={formData.extraServices || []}
@@ -243,7 +245,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
           onSelectVariant={selectExtraVariant}
         />
 
-        <div className="my-6 border-t border-slate-200" />
+        <div className="my-6 border-t border-[#DCEBFF]" />
 
         <PerfumePicker
           value={formData.perfume}

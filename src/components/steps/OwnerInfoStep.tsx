@@ -73,10 +73,10 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
               type="button"
               onClick={() => handleSelect(value)}
               aria-pressed={selected}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col items-stretch overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? "border-blue-500 shadow-lg shadow-blue-100"
-                  : "border-[#E7E2D8] shadow-sm hover:border-blue-300"
+                  ? "border-orange-400 shadow-lg shadow-orange-100"
+                  : "border-[#DCEBFF] shadow-sm hover:border-orange-300"
               }`}
             >
               <div className="relative aspect-[4/5] w-full overflow-hidden">
@@ -87,7 +87,7 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
                 />
                 <div
                   className={`absolute inset-0 transition-opacity duration-300 ${
-                    selected ? "bg-blue-900/10" : "bg-transparent"
+                    selected ? "bg-orange-400/10" : "bg-transparent"
                   }`}
                 />
                 {selected && (
@@ -107,23 +107,25 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
                 )}
               </div>
 
-              <div className="flex items-center justify-between gap-2 bg-[#EAF1F8] p-3 sm:p-4">
+              <div className={`flex items-center justify-between gap-2 p-3 sm:p-4 transition-colors ${
+                selected ? "bg-[#FFF7EE]" : "bg-[#F7FBFF]"
+              }`}>
                 <div className="flex flex-col gap-0.5 text-left">
                   <span
                     className={`text-sm font-semibold tracking-tight sm:text-base ${
-                      selected ? "text-blue-700" : "text-[#1A2238]"
+                      selected ? "text-[#475AAB]" : "text-[#1A2238]"
                     }`}
                   >
                     {label}
                   </span>
-                  <span className="text-[11px] leading-snug text-gray-500 sm:text-xs">
+                  <span className="text-[11px] leading-snug text-[#546A8E] sm:text-xs">
                     {weight}
                   </span>
                 </div>
                 <span
                   className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full border-2 transition-colors ${
                     selected
-                      ? "border-blue-600 bg-blue-600"
+                      ? "border-orange-500 bg-orange-500"
                       : "border-gray-300 bg-transparent"
                   }`}
                 >
@@ -151,16 +153,16 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
       </div>
 
       <div className="relative mt-6">
-        <div className="rounded-2xl bg-[#E9EDF9] p-4 pr-28 sm:p-5 sm:pr-40">
+        <div className="rounded-2xl bg-[#EFF6FF] p-4 pr-28 sm:p-5 sm:pr-40">
           <div className="flex items-center gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
               <ShieldCheck className="h-5 w-5 text-blue-600" />
             </span>
             <div>
-              <p className="text-sm font-semibold text-gray-800">
+              <p className="text-sm font-semibold text-[#475AAB]">
                 El tamaño de tu peludito importa
               </p>
-              <p className="text-xs text-gray-500">
+              <p className="text-xs text-[#546A8E]">
                 Nos ayuda a calcular el costo exacto del servicio, ya que varía según el peso y el tipo de pelaje.
               </p>
             </div>

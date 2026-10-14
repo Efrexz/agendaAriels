@@ -33,24 +33,24 @@ export function BathTypePicker({ value, onSelect, hasError }: BathTypePickerProp
               onClick={() => onSelect(opt)}
               className={`relative flex cursor-pointer flex-col items-center gap-3 rounded-2xl border-2 p-4 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-5 lg:gap-4 lg:p-7 ${
                 selected
-                  ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
+                  ? "border-orange-500 bg-[#FFF7EE] shadow-md shadow-orange-100"
                   : hasError
                     ? "border-red-500 bg-white shadow-sm"
-                    : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                    : "border-gray-200 bg-white shadow-sm hover:border-orange-300 hover:shadow-md hover:shadow-gray-200"
               }`}
             >
               <span className={`absolute right-3 top-3 flex h-5 w-5 items-center justify-center rounded-full border-2 transition-colors ${
                 selected
-                  ? "border-blue-600 bg-blue-600 text-white"
+                  ? "border-orange-500 bg-orange-500 text-white"
                   : "border-gray-300 bg-white"
               }`}>
                 {selected && <span className="text-[10px] font-bold leading-none">✓</span>}
               </span>
-              <Icon className={`h-10 w-10 transition-colors lg:h-12 lg:w-12 ${selected ? "text-blue-600" : "text-gray-600"}`} />
-              <span className={`text-center text-sm font-semibold leading-tight lg:text-base ${selected ? "text-blue-700" : "text-gray-700"}`}>
+              <Icon className={`h-10 w-10 transition-colors lg:h-12 lg:w-12 ${selected ? "text-orange-500" : "text-gray-600"}`} />
+              <span className={`text-center text-sm font-semibold leading-tight lg:text-base ${selected ? "text-[#475AAB]" : "text-gray-700"}`}>
                 {label}
               </span>
-              <span className="text-center text-xs leading-tight text-gray-500 lg:text-sm">
+              <span className="text-center text-xs leading-tight text-[#546A8E] lg:text-sm">
                 {description}
               </span>
             </motion.button>

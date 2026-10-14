@@ -177,7 +177,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
       <h2 className="mb-2 text-center text-step-title font-display font-bold tracking-tight text-[#475AAB]">
         Datos del cliente
       </h2>
-      <p className="mb-6 flex items-center justify-center gap-2 text-center text-xs font-medium text-blue-700 sm:mb-8">
+      <p className="mb-6 flex items-center justify-center gap-2 text-center text-xs font-medium text-[#546A8E] sm:mb-8">
         <ShieldCheck className="h-4 w-4 shrink-0 text-emerald-600" />
         Guardamos estos datos en tu navegador para que tus próximas reservas tomen menos de un minuto.
       </p>
@@ -187,7 +187,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
           <label className="mb-1 block text-sm font-medium text-gray-700">
             Dirección de recojo <span className="text-red-500">*</span>
           </label>
-          <p className="mb-3 text-xs text-gray-500">
+          <p className="mb-3 text-xs text-[#546A8E]">
             Escribe tu dirección en Lima (máximo {MAX_PICKUP_DISTANCE_KM} km de la sede) para que podamos recoger a tu mascota.
           </p>
           {pickupMissing && (
@@ -249,8 +249,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
         )}
 
         {showBranchLocation && branchCoords && (
-          <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
-            <p className="flex items-center gap-2 text-sm font-medium text-blue-700">
+          <div className="rounded-xl border border-[#DCEBFF] bg-[#EFF6FF] p-4 shadow-sm">
+            <p className="flex items-center gap-2 text-sm font-medium text-[#475AAB]">
               <MapPin className="h-4 w-4 shrink-0" />
               Esta es la ubicación de nuestra sede
             </p>
@@ -313,8 +313,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
               onClick={() => handleHistorySelect(true)}
               className={`flex-1 rounded-xl border-2 py-3 text-lg font-semibold transition-all ${
                 formData.hasHistory === true
-                  ? "border-blue-500 bg-blue-50 text-blue-700"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-blue-300"
+                  ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
               }`}
             >
               Sí
@@ -323,8 +323,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
               onClick={() => handleHistorySelect(false)}
               className={`flex-1 rounded-xl border-2 py-3 text-lg font-semibold transition-all ${
                 formData.hasHistory === false
-                  ? "border-orange-500 bg-orange-50 text-orange-700"
-                  : "border-gray-200 bg-white text-gray-700 hover:border-orange-300"
+                  ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                  : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
               }`}
             >
               No
@@ -333,7 +333,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
         </div>
 
         {formData.hasHistory === true && (
-          <div className="space-y-4 rounded-2xl border border-gray-200 bg-gray-50 p-5">
+          <div className="space-y-4 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-5">
             <div>
               <label className="mb-1 block text-sm font-medium text-gray-700">
                 Nombre completo del titular <span className="text-red-500">*</span>
@@ -380,7 +380,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
         )}
 
         {formData.hasHistory === false && (
-          <div className="space-y-4 rounded-2xl border border-sky-200 bg-sky-50/70 p-5 shadow-sm">
+          <div className="space-y-4 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-5 shadow-sm">
             <p className="rounded-2xl border border-orange-200 bg-orange-50/70 p-3 text-sm text-orange-600 shadow-sm">
               Solo mayores de edad pueden registrar la historia
             </p>
@@ -395,7 +395,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                   value={formData.ownerDni}
                   onChange={(e) => update("ownerDni", maskDni(e.target.value))}
                   placeholder="Ej: 12345678"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
@@ -407,7 +407,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                   value={formData.ownerName}
                   onChange={(e) => update("ownerName", e.target.value)}
                   placeholder="Ej: Juan Pérez"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
             </div>
@@ -422,7 +422,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                   value={formData.ownerPhone}
                   onChange={(e) => update("ownerPhone", maskPhone(e.target.value))}
                   placeholder="Ej: 999-888-777"
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
@@ -434,7 +434,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                   value={formData.registeredPetName}
                   onChange={(e) => update("registeredPetName", e.target.value)}
                   placeholder={lastPetName || "Ej: Firulais"}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
             </div>
@@ -447,7 +447,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                   type="date"
                   value={formData.petBirthDate}
                   onChange={(e) => update("petBirthDate", e.target.value)}
-                  className="w-full rounded-xl border border-slate-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-sky-400 focus:ring-2 focus:ring-sky-200"
+                  className="w-full rounded-xl border border-gray-300 bg-white px-4 py-3 text-gray-800 outline-none transition-colors focus:border-blue-500 focus:ring-2 focus:ring-blue-200"
                 />
               </div>
               <div>
@@ -459,8 +459,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                     onClick={() => update("petSpecies", "dog")}
                     className={`flex-1 rounded-xl border-2 py-2 text-sm font-semibold transition-all ${
                       formData.petSpecies === "dog"
-                          ? "border-sky-500 bg-sky-100 text-sky-800 shadow-sm"
-                          : "border-sky-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50"
+                          ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
                     }`}
                   >
                     Perro
@@ -469,8 +469,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                     onClick={() => update("petSpecies", "cat")}
                     className={`flex-1 rounded-xl border-2 py-2 text-sm font-semibold transition-all ${
                       formData.petSpecies === "cat"
-                        ? "border-sky-500 bg-sky-100 text-sky-800 shadow-sm"
-                        : "border-sky-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50"
+                        ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                        : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
                     }`}
                   >
                     Gato
@@ -500,8 +500,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                     onClick={() => update("petCastrated", true)}
                     className={`flex-1 rounded-xl border-2 py-2 text-sm font-semibold transition-all ${
                       formData.petCastrated === true
-                          ? "border-sky-500 bg-sky-100 text-sky-800 shadow-sm"
-                          : "border-sky-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50"
+                          ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
                     }`}
                   >
                     Sí
@@ -510,8 +510,8 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
                     onClick={() => update("petCastrated", false)}
                     className={`flex-1 rounded-xl border-2 py-2 text-sm font-semibold transition-all ${
                       formData.petCastrated === false
-                          ? "border-sky-500 bg-sky-100 text-sky-800 shadow-sm"
-                          : "border-sky-200 bg-white text-gray-700 hover:border-sky-300 hover:bg-sky-50"
+                          ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                          : "border-gray-200 bg-white text-gray-700 hover:border-orange-300 hover:bg-orange-50"
                     }`}
                   >
                     No
@@ -520,7 +520,7 @@ export function ReviewStep({ formData, update, onNext, continueLabel }: ReviewSt
               </div>
             </div>
 
-            <label htmlFor="legalAgeConfirmed" className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg py-2 hover:bg-sky-100/50 sm:items-center">
+            <label htmlFor="legalAgeConfirmed" className="flex min-h-[44px] cursor-pointer items-start gap-3 rounded-lg py-2 hover:bg-blue-50/40 sm:items-center">
               <input
                 type="checkbox"
                 id="legalAgeConfirmed"

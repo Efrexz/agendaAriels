@@ -29,10 +29,10 @@ export function CorteSection({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   return (
-    <div className="rounded-2xl border border-blue-200 bg-blue-50/40 p-6 shadow-sm lg:p-8">
+    <div className="rounded-2xl border border-[#DCEBFF] bg-[#EFF6FF] p-6 shadow-sm lg:p-8">
       <h3 className="mb-6 text-center text-xl font-bold text-[#1A2238] lg:text-2xl">Detalles del Corte</h3>
       <div className="mb-6">
-        <p className="mb-3 text-sm font-semibold text-gray-700">Tipo de corte</p>
+        <p className="mb-3 text-sm font-semibold text-[#546A8E]">Tipo de corte</p>
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
           {CORTE_OPTIONS.map(({ value, label }) => {
             const selected = corteType === value;
@@ -43,12 +43,11 @@ export function CorteSection({
                 transition={{ duration: 0.4 }}
                 onClick={() => onSelectCorte(value)}
                 className={`cursor-pointer rounded-xl border-2 px-4 py-3 text-sm font-medium transition-all duration-200 lg:px-6 lg:py-4 lg:text-base ${
-                  selected ? "border-blue-500 bg-blue-100 text-blue-800 shadow-md"
+                  selected ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
                            : hasError
                              ? "border-red-500 bg-white text-red-700"
-                             : "border-blue-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
-                }`}
-              >{label}</motion.button>
+                             : "border-[#DCEBFF] bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
+                }`}>{label}</motion.button>
             );
           })}
         </div>

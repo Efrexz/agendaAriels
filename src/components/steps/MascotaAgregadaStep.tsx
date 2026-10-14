@@ -96,9 +96,9 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack
         )}
       </div>
 
-      <div className="mx-auto flex w-fit max-w-full items-center gap-6 rounded-xl bg-gray-50 px-6 py-3 shadow-sm">
+      <div className="mx-auto flex w-fit max-w-full items-center gap-6 rounded-xl bg-[#F7FBFF] px-6 py-3 shadow-sm">
         <span className="inline-flex items-center gap-2 text-gray-700">
-          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-blue-100">
+          <span className="flex h-7 w-7 items-center justify-center rounded-full bg-[#EFF6FF]">
             <PawPrint className="h-4 w-4 text-blue-600" />
           </span>
           <span className="text-base font-semibold sm:text-lg">
@@ -160,13 +160,13 @@ export function MascotaAgregadaStep({ formData, onAddAnother, onContinue, onBack
         </button>
       </div>
 
-      <div className="flex w-full items-start gap-4 rounded-2xl border border-blue-100 bg-blue-50 px-6 py-5">
+      <div className="flex w-full items-start gap-4 rounded-2xl border border-[#DCEBFF] bg-[#EFF6FF] px-6 py-5">
         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white shadow">
           <ShieldCheck className="h-6 w-6 text-blue-600" />
         </span>
         <div>
-          <p className="text-base font-semibold text-gray-800">Tu mascota está en buenas manos</p>
-          <p className="mt-0.5 text-sm leading-relaxed text-gray-500">
+          <p className="text-base font-semibold text-[#475AAB]">Tu mascota está en buenas manos</p>
+          <p className="mt-0.5 text-sm leading-relaxed text-[#546A8E]">
             Contamos con un equipo profesional comprometido con el bienestar y cuidado de tu mejor amigo.
           </p>
         </div>

@@ -60,15 +60,13 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
               type="button"
               onClick={() => handleSelect(value)}
               aria-pressed={selected}
-              className={`group relative flex flex-col overflow-hidden rounded-3xl bg-white text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col items-stretch overflow-hidden rounded-3xl bg-white text-left shadow-md transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 selected
-                  ? isDog
-                    ? "ring-2 ring-blue-500 ring-offset-2 shadow-lg"
-                    : "ring-2 ring-orange-500 ring-offset-2 shadow-lg"
+                  ? "ring-2 ring-orange-500 ring-offset-2 shadow-lg shadow-orange-100"
                   : isDog
                     ? "hover:shadow-blue-200/50"
                     : "hover:shadow-orange-200/50"
-              } ${isDog ? "focus-visible:ring-blue-500" : "focus-visible:ring-orange-500"}`}
+              }`}
             >
               <div className="relative aspect-[4/3] w-full overflow-hidden">
                 <LazyImage
@@ -79,9 +77,7 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
                 <div
                   className={`absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full shadow-lg transition-colors duration-300 ${
                     selected
-                      ? isDog
-                        ? "bg-blue-600"
-                        : "bg-orange-500"
+                      ? "bg-orange-500"
                       : "bg-white"
                   }`}
                 >
@@ -98,22 +94,20 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
               </div>
 
               <div
-                className={`flex items-center gap-3 p-5 ${
-                  isDog ? "bg-[#EAF2FB]" : "bg-[#FBF3E4]"
+                className={`flex items-center gap-3 p-5 transition-colors ${
+                  selected ? "bg-[#FFF7EE]" : isDog ? "bg-[#EAF2FB]" : "bg-[#FBF3E4]"
                 }`}
               >
                 <div className="flex flex-1 flex-col gap-0.5">
                   <span className="text-lg font-semibold tracking-tight text-[#1A2238]">
                     {label}
                   </span>
-                  <span className="text-xs leading-snug text-gray-500">{blurb}</span>
+                  <span className="text-xs leading-snug text-[#546A8E]">{blurb}</span>
                 </div>
                 <div
                   className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 ${
                     selected
-                      ? isDog
-                        ? "bg-blue-600 text-white"
-                        : "bg-orange-500 text-white"
+                      ? "bg-orange-500 text-white"
                       : `bg-white text-gray-400 ${isDog ? "group-hover:bg-blue-600 group-hover:text-white" : "group-hover:bg-orange-500 group-hover:text-white"}`
                   }`}
                 >

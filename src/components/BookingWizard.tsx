@@ -119,7 +119,7 @@ export function BookingWizard() {
               </div>
             </div>
             </div>
-            <div className="mt-3 sm:mt-4 h-px w-full bg-[#E7E2D8]" />
+            <div className="mt-3 sm:mt-4 h-px w-full bg-[#DCEBFF]" />
           </div>
 
           <div className="mb-6">
@@ -137,7 +137,7 @@ export function BookingWizard() {
             </div>
             <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-orange-400 transition-all duration-300 ease-out"
+                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-orange-400 transition-all duration-300 ease-out"
                 style={{ width: `${progress}%` }}
               />
             </div>

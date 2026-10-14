@@ -35,13 +35,13 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
 
   return (
     <div>
-      <h2 className="mb-2 text-center text-step-title font-display font-bold tracking-tight text-gray-800">
+      <h2 className="mb-2 text-center text-step-title font-display font-bold tracking-tight text-[#475AAB]">
         Selecciona tu sede{" "}
-        <span className="text-blue-600 underline decoration-orange-400 decoration-2 underline-offset-[3px]">
+        <span className="text-orange-500 underline decoration-orange-400 decoration-2 underline-offset-[3px]">
           más cercana
         </span>
       </h2>
-      <p className="mb-6 sm:mb-8 text-center text-sm text-gray-500">
+      <p className="mb-6 sm:mb-8 text-center text-sm text-[#546A8E]">
         Elige la veterinaria donde atenderemos a tu mascota
       </p>
 
@@ -57,10 +57,10 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
               type="button"
               onClick={() => update("branch", branch.value)}
               aria-pressed={isSelected}
-              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
                 isSelected
-                  ? "border-blue-500 shadow-lg shadow-blue-200/50"
-                  : "border-gray-200 shadow-sm hover:border-blue-300"
+                  ? "border-orange-400 shadow-lg shadow-orange-100"
+                  : "border-gray-200 shadow-sm hover:border-orange-300"
               }`}
             >
               <div className="relative aspect-[16/10] w-full overflow-hidden">
@@ -71,7 +71,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
                 />
                 <div
                   className={`absolute inset-0 transition-opacity duration-300 ${
-                    isSelected ? "bg-blue-900/10" : "bg-transparent"
+                    isSelected ? "bg-orange-400/10" : "bg-transparent"
                   }`}
                 />
                 <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm">
@@ -80,24 +80,26 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
                 </div>
                 <div
                   className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full shadow-md transition-colors ${
-                    isSelected ? "bg-blue-600 text-white" : "bg-white/80 backdrop-blur-sm text-gray-300"
+                    isSelected ? "bg-orange-500 text-white" : "bg-white/80 backdrop-blur-sm text-gray-300"
                   }`}
                 >
                   {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
                 </div>
               </div>
 
-              <div className="flex flex-col gap-2 px-4 py-3 sm:px-5 sm:py-4">
+              <div className={`flex flex-col gap-2 px-4 py-3 sm:px-5 sm:py-4 transition-colors ${
+                    isSelected ? "bg-[#FFF7EE]" : "bg-white"
+                  }`}>
                 <span
                   className={`text-lg font-bold leading-tight transition-colors ${
-                    isSelected ? "text-blue-700" : "text-gray-800"
+                    isSelected ? "text-[#475AAB]" : "text-gray-800"
                   }`}
                 >
                   {branch.label}
                 </span>
 
                 <div className="flex items-center justify-between gap-2">
-                  <div className="flex min-w-0 items-center gap-1.5 text-sm text-gray-500">
+                  <div className="flex min-w-0 items-center gap-1.5 text-sm text-[#546A8E]">
                     <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-500" />
                     <span className="truncate">{branch.address}</span>
                   </div>
@@ -111,12 +113,12 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                <div className="flex items-center gap-1.5 text-sm text-[#546A8E]">
                   <Clock className="h-3.5 w-3.5 shrink-0 text-blue-500" />
                   {branch.hours}
                 </div>
 
-                <div className="flex items-center gap-1.5 text-sm text-gray-500">
+                <div className="flex items-center gap-1.5 text-sm text-[#546A8E]">
                   <Phone className="h-3.5 w-3.5 shrink-0 text-blue-500" />
                   {branch.phone}
                 </div>
@@ -124,8 +126,8 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
                 <span
                   className={`mt-2 flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors ${
                     isSelected
-                      ? "border-blue-600 bg-blue-600 text-white"
-                      : "border-blue-200 text-blue-700 group-hover:border-blue-400 group-hover:bg-blue-50"
+                      ? "border-orange-500 bg-orange-500 text-white"
+                      : "border-blue-200 text-blue-700 group-hover:border-orange-300 group-hover:bg-orange-50"
                   }`}
                 >
                   {isSelected ? (
@@ -147,16 +149,16 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
       </div>
 
       <div className="relative mt-6">
-        <div className="rounded-2xl bg-[#E9EDF9] p-3 sm:p-5 sm:pr-36 md:pr-44">
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:divide-x sm:divide-[#CBD4E8]">
+        <div className="rounded-2xl bg-[#EFF6FF] p-3 sm:p-5 sm:pr-36 md:pr-44">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:divide-x sm:divide-[#DCEBFF]">
             {TRUST_BADGES.map(({ icon: Icon, title, description, color }) => (
               <div key={title} className="flex items-center gap-3 rounded-xl px-3 py-2">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
                   <Icon className={`h-5 w-5 ${color}`} />
                 </span>
                 <div className="min-w-0">
-                  <p className="text-sm font-semibold text-gray-800">{title}</p>
-                  <p className="text-xs text-gray-500">{description}</p>
+                  <p className="text-sm font-semibold text-[#475AAB]">{title}</p>
+                  <p className="text-xs text-[#546A8E]">{description}</p>
                 </div>
               </div>
             ))}
@@ -193,7 +195,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
           <CalendarDays className={`h-5 w-5 ${selected ? "text-white" : "text-gray-400"}`} />
         </span>
         <div className="flex-1 text-left">
-          <span className={`text-lg font-bold ${selected ? "text-white" : "text-gray-500"}`}>
+          <span className={`text-lg font-bold ${selected ? "text-white" : "text-[#546A8E]"}`}>
             Iniciar Reserva
           </span>
         </div>

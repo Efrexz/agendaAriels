@@ -13,8 +13,10 @@ import {
   Clock,
   LockKeyholeOpen,
   User,
+  UserRound,
   ShieldCheck,
   CircleCheck,
+  MessageCircle,
   Loader2,
   Scissors,
   Droplets,
@@ -86,11 +88,17 @@ const EXTRA_ICON: Record<string, LucideIcon> = {
   vaccine: Syringe,
 };
 
-function ServiceItem({ icon: Icon, children }: { icon: LucideIcon; children: React.ReactNode }) {
+function ServiceItem({ icon: Icon, children, accent = false }: { icon: LucideIcon; children: React.ReactNode; accent?: boolean }) {
   return (
-    <li className="flex items-center gap-3 text-sm text-gray-700">
-      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
-        <Icon className="h-4 w-4" />
+    <li className={`flex items-center gap-2.5 rounded-[12px] border px-3 py-2 text-sm ${
+      accent
+        ? "border-orange-100 bg-[#FFF7EE] text-[#1A2238]"
+        : "border-[#DCEBFF] bg-[#F7FBFF] text-[#546A8E]"
+    }`}>
+      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+        accent ? "bg-orange-500 text-white" : "bg-[#EFF6FF] text-[#2563EB]"
+      }`}>
+        <Icon className="h-3.5 w-3.5" />
       </span>
       <span className="leading-snug">{children}</span>
     </li>
@@ -147,12 +155,12 @@ function PetCard({ pet, index, onRemove, onEdit }: { pet: PetData; index: number
         </div>
         <div className="min-w-0">
           <p className="truncate text-xl font-bold tracking-tight text-gray-900">{name}</p>
-          {subtitle && <p className="mt-1 text-sm text-gray-500">{subtitle}</p>}
+          {subtitle && <p className="mt-1 text-sm text-[#546A8E]">{subtitle}</p>}
         </div>
       </div>
 
-      <ul className="space-y-3">
-        <ServiceItem icon={Sparkles}>{SERVICE_LABELS[pet.service]}</ServiceItem>
+      <ul className="space-y-2.5">
+        <ServiceItem icon={Sparkles} accent>{SERVICE_LABELS[pet.service]}</ServiceItem>
         {pet.bathType && BATH_LABELS[pet.bathType] && (
           <ServiceItem icon={Droplets}>{BATH_LABELS[pet.bathType]}</ServiceItem>
         )}
@@ -197,19 +205,28 @@ function PetCard({ pet, index, onRemove, onEdit }: { pet: PetData; index: number
 function SectionCard({
   title,
   icon: Icon,
+  count,
   children,
 }: {
   title: string;
   icon: LucideIcon;
+  count?: number;
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-[18px] border border-[#E8EEF7] bg-white p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.06)] sm:p-7">
+    <section className="rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] p-6 shadow-[0_1px_3px_rgba(16,24,40,0.04),0_8px_24px_-12px_rgba(16,24,40,0.06)] sm:p-7">
       <div className="mb-5 flex items-center gap-2.5">
         <span className="flex h-10 w-10 items-center justify-center rounded-full bg-brand-blue text-white">
           <Icon className="h-5 w-5" />
         </span>
-        <h3 className="text-base font-semibold text-gray-900">{title}</h3>
+        <h3 className="text-base font-semibold text-gray-900">
+          {title}
+          {count !== undefined && (
+            <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-xs font-bold text-orange-600">
+              {count}
+            </span>
+          )}
+        </h3>
       </div>
       {children}
     </section>
@@ -297,7 +314,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
           </div>
         )}
 
-        <p className="text-center text-gray-500">
+        <p className="text-center text-[#546A8E]">
           Su mascotita ya fue agendada. Estaremos en contacto con usted cuando pasen por su domicilio. Recordarle que la movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada 🐾🐶🐱
         </p>
 
@@ -322,7 +339,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         <h2 className="text-2xl font-bold tracking-tight text-red-600">
           No se pudo enviar la solicitud
         </h2>
-        <p className="text-center text-sm text-gray-500">
+        <p className="text-center text-sm text-[#546A8E]">
           {submitError}
         </p>
         <div className="flex flex-col gap-3 sm:flex-row">
@@ -347,7 +364,11 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   }
 
   return (
-    <div className="space-y-5">
+    <div className="relative isolate space-y-5">
+      <div aria-hidden className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 overflow-hidden">
+        <span className="absolute -top-28 right-[-5rem] h-64 w-64 rounded-full bg-orange-300/30 blur-3xl" />
+        <span className="absolute left-[-6rem] top-6 h-72 w-72 rounded-full bg-blue-300/25 blur-3xl" />
+      </div>
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
@@ -357,7 +378,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         <h2 className="mb-2 text-step-title font-display font-bold tracking-tight text-[#475AAB]">
           Revisa y confirma tu reserva
         </h2>
-        <p className="mx-auto max-w-md text-sm text-gray-500">
+        <p className="mx-auto max-w-md text-sm text-[#546A8E]">
           Verifica que toda la información sea correcta antes de confirmar la reserva.
         </p>
       </motion.div>
@@ -409,7 +430,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         </motion.section>
       )}
 
-      <SectionCard title="Mascotas Agendadas" icon={PawPrint}>
+      <SectionCard title="Mascotas Agendadas" icon={PawPrint} count={formData.pets.length}>
         <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {formData.pets.map((pet, i) => (
             <PetCard key={i} pet={pet} index={i} onRemove={onRemovePet ? handleRemoveRequest : undefined} onEdit={onEditPet} />
@@ -445,12 +466,17 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
               </p>
             </div>
           </div>
-          <div className="flex items-start gap-4 rounded-[14px] border border-[#DCEBFF] bg-[#F7FBFF] p-3">
-            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
+          <div className="flex items-start gap-4 rounded-[14px] border border-orange-100 bg-[#FFF7EE] p-3">
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-orange-100 text-orange-500">
               <Clock className="h-5 w-5" />
             </span>
-            <div className="min-w-0">
-              <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Horario</p>
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Horario</p>
+                <span className="w-fit shrink-0 rounded-full bg-orange-500 px-2.5 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-white">
+                  {formData.timeRange === "11-14" ? "Turno mediodía" : "Turno mañana"}
+                </span>
+              </div>
               <p className="mt-1 text-base font-semibold text-[#0F172A]">
                 {TIME_LABELS[formData.timeRange ?? ""] ?? "-"}
               </p>
@@ -461,12 +487,14 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
 
       <SectionCard title="Datos del cliente" icon={User}>
         <div className="flex items-start gap-5">
-          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-brand-blue text-lg font-semibold text-white shadow-md shadow-blue-200/50">
+          <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-blue-600 to-orange-400 text-lg font-semibold text-white shadow-md shadow-orange-200/50">
             {getInitials(formData.ownerName, "--")}
           </div>
           <div className="grid flex-1 grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
             <div className="flex items-start gap-3">
-              <span className="h-8 w-8 shrink-0" aria-hidden />
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-[#FFF7EE] text-orange-500">
+                <UserRound className="h-4 w-4" />
+              </span>
               <div className="min-w-0">
                 <p className="text-xs font-medium uppercase tracking-wide text-[#6B7280]">Nombre</p>
                 <p className="mt-1 truncate text-sm font-semibold text-[#0F172A]">{formData.ownerName || "-"}</p>
@@ -522,7 +550,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.3 }}
-        className="relative mb-4 flex items-center gap-3 overflow-visible rounded-[18px] border border-[#CFE2FF] bg-[#F3F8FF] p-4"
+        className="relative mb-4 flex items-center gap-3 overflow-visible rounded-[18px] border border-[#DCEBFF] bg-gradient-to-r from-[#EFF6FF] via-[#F7FBFF] to-[#FFF7EE] p-4"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand-blue text-white">
           <ShieldCheck className="h-5 w-5" />
@@ -531,8 +559,12 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
           <p className="text-sm font-medium text-[#0F172A]">
             Tu reserva quedará confirmada al presionar el botón.
           </p>
-          <p className="mt-0.5 text-sm text-gray-500">
-            Te enviaremos una confirmación por WhatsApp con todos los detalles.
+          <p className="mt-1.5 flex flex-wrap items-center gap-1.5 text-sm text-[#546A8E]">
+            Te enviaremos una confirmación
+            <span className="inline-flex items-center gap-1 rounded-full bg-orange-500 px-2 py-0.5 text-[11px] font-semibold text-white">
+              <MessageCircle className="h-3 w-3" />
+              por WhatsApp
+            </span>
           </p>
         </div>
         <div className="absolute right-0 top-1/2 z-10 -translate-y-[70%] translate-x-[10%]">
@@ -619,11 +651,11 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
         )}
       </button>
       {hasNoPets ? (
-        <p className="text-center text-xs text-gray-500">
+        <p className="text-center text-xs text-[#546A8E]">
           Agrega al menos una mascota para continuar.
         </p>
       ) : (
-        <p className="flex justify-center items-center gap-1.5 text-center text-xs text-gray-500">
+        <p className="flex justify-center items-center gap-1.5 text-center text-xs text-[#546A8E]">
           <LockKeyholeOpen className="h-4 w-4" />
           No se realizará ningún cobro en este momento.
         </p>
@@ -652,7 +684,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
                   <Trash2 className="h-6 w-6" />
                 </span>
                 <h3 className="text-lg font-semibold text-gray-900">¿Eliminar mascota?</h3>
-                <p className="mt-1.5 text-sm text-gray-500">
+                <p className="mt-1.5 text-sm text-[#546A8E]">
                   ¿Seguro que quieres eliminar a <span className="font-semibold text-gray-700">{petToRemove.name}</span> de tu reserva?
                 </p>
                 <div className="mt-6 flex w-full gap-3">

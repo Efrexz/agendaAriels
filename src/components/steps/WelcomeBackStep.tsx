@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   X,
   TriangleAlert,
+  Info,
   type LucideIcon,
 } from "lucide-react";
 import type { FormData, PetData } from "../BookingWizard";
@@ -118,10 +119,16 @@ function BranchPicker({
 
 /** Ilustración completa de la familia (perrito + gatito + mancha + rayitas
  *  + letrita integrados en la imagen vetMascot/DogAndCat.webp). */
-function MascotIllustration({ className = "" }: { className?: string }) {
+function MascotIllustration({
+  className = "",
+  src = "/images/vetMascot/DogAndCat.webp",
+}: {
+  className?: string;
+  src?: string;
+}) {
   return (
     <img
-      src="/images/vetMascot/DogAndCat.webp"
+      src={src}
       alt="Perrito y gatito: ellos también son familia"
       className={`h-44 rounded-[28px] object-contain sm:h-48 lg:h-52 ${className}`}
     />
@@ -172,10 +179,10 @@ function PetCard({
             onToggle();
           }
         }}
-        className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl border-2 bg-white py-4 pl-4 pr-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
+        className={`flex w-full cursor-pointer items-center gap-4 rounded-2xl border-2 py-4 pl-4 pr-5 text-left transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg ${
           selected
-            ? "border-orange-400 shadow-md shadow-orange-100"
-            : "border-gray-200 hover:border-orange-200"
+            ? "border-orange-400 bg-[#FFF7EE] shadow-md shadow-orange-100"
+            : "border-gray-200 bg-white hover:border-orange-200"
         }`}
       >
         <div className="relative shrink-0">
@@ -194,7 +201,7 @@ function PetCard({
           <p className="truncate text-base font-bold tracking-tight text-[#475AAB] sm:text-lg">
             {pet.petName || `Mascota ${index + 1}`}
           </p>
-          {subtitle && <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>}
+          {subtitle && <p className="mt-0.5 text-xs text-[#546A8E]">{subtitle}</p>}
           <ServiceItem icon={Scissors}>{SERVICE_LABELS[pet.service]}</ServiceItem>
         </div>
         <span
@@ -214,7 +221,7 @@ function PetCard({
           onRemove();
         }}
         aria-label={`Eliminar a ${pet.petName || `mascota ${index + 1}`} de tus mascotas guardadas`}
-        className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-white text-gray-500 shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-red-50 hover:text-red-500"
+        className="absolute -right-1 -top-1 flex h-8 w-8 items-center justify-center rounded-full bg-white text-[#546A8E] shadow-sm ring-1 ring-gray-200 transition-colors hover:bg-red-50 hover:text-red-500"
       >
         <Trash2 className="h-4 w-4" />
       </button>
@@ -308,12 +315,19 @@ export function WelcomeBackStep({
 
   return (
     <div>
-      {/* Saludo + ilustración con decoración estilo mockup (blob, rayitas, corazón).
-          En pantallas medianas se apila: solo en escritorio va el texto a la izquierda. */}
-      <div className="mb-6 flex flex-col sm:mb-8 lg:flex-row lg:items-center lg:gap-8">
-        <div className="min-w-0 flex-1">
+      {/* Saludo + ilustración dentro de un banner azul claro (estilo referencia),
+          con blob naranja decorativo detrás de la mascota. En mobile se apila
+          dentro del mismo banner; en escritorio va el texto a la izquierda. */}
+      <div className="relative mb-6 flex flex-col overflow-hidden rounded-[28px] border border-[#DCEBFF] bg-[#EFF6FF] px-5 py-6 sm:mb-8 sm:px-7 lg:flex-row lg:items-center lg:gap-8">
+        <div aria-hidden className="pointer-events-none absolute inset-0">
+          <span className="absolute left-[-3rem] top-[-3rem] h-32 w-32 rounded-[45%_55%_60%_40%/55%_45%_60%_40%] bg-[#475AAB]/10" />
+          <span className="absolute bottom-[-3rem] left-[28%] h-36 w-44 rotate-12 rounded-[55%_45%_40%_60%/45%_55%_45%_55%] bg-blue-300/35 sm:left-[34%]" />
+          <span className="absolute bottom-[-2.5rem] left-[22%] h-24 w-24 -rotate-6 rounded-[50%_50%_45%_55%/55%_45%_50%_50%] bg-[#475AAB]/10 md:hidden" />
+          <span className="absolute right-[-2rem] top-1/2 h-56 w-56 -translate-y-1/2 rounded-full bg-gradient-to-br from-orange-300/70 via-orange-300/50 to-orange-200/25 sm:right-4 sm:h-64 sm:w-64 lg:right-10 lg:h-72 lg:w-72" />
+        </div>
+        <div className="relative min-w-0 flex-1">
           <div className="flex items-start gap-3">
-            <span className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-orange-100 shadow-sm sm:h-12 sm:w-12">
+            <span className="mt-1 flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-orange-100 sm:h-12 sm:w-12">
               <PawPrint className="h-5 w-5 text-orange-500 sm:h-6 sm:w-6" />
             </span>
             <div className="min-w-0">
@@ -329,7 +343,10 @@ export function WelcomeBackStep({
             </div>
           </div>
         </div>
-        <MascotIllustration className="mx-auto mt-4 w-fit max-w-full self-center lg:mx-0 lg:mt-0 lg:shrink-0" />
+        <MascotIllustration
+          src="/images/vetMascot/DogAndCatFamilia.webp"
+          className="relative mx-auto -mb-6 mt-4 w-fit max-w-full self-center lg:mx-0 lg:mt-0 lg:shrink-0"
+        />
       </div>
 
       <div className="mb-5 space-y-3">
@@ -349,21 +366,21 @@ export function WelcomeBackStep({
         <button
           type="button"
           onClick={onAddPet}
-          className="flex w-full cursor-pointer items-center gap-4 rounded-2xl border-2 border-dashed border-gray-300 bg-white/70 px-4 py-4 text-left transition-all duration-200 hover:border-blue-400 hover:bg-[#F7FBFF]"
+          className="flex w-full cursor-pointer items-center gap-4 rounded-2xl border border-[#DCEBFF] bg-[#EFF6FF] px-4 py-4 text-left transition-all duration-200 hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md sm:hover:-translate-y-0"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white text-[#2563EB] shadow-sm">
             <Plus className="h-5 w-5" />
           </span>
           <span className="min-w-0">
             <span className="block text-sm font-semibold text-[#475AAB]">Registrar nueva mascota</span>
-            <span className="block text-xs text-gray-500">
+            <span className="block text-xs text-[#546A8E]">
               Si esta vez reservas para una mascota que aún no conocemos
             </span>
           </span>
         </button>
       </div>
 
-      <div className="mb-5 rounded-2xl border border-gray-200 bg-white p-4">
+      <div className="mb-5 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-4">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between sm:gap-3">
           <div className="flex min-w-0 items-start gap-3">
             <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] text-[#2563EB]">
@@ -374,7 +391,7 @@ export function WelcomeBackStep({
                 {formData.ownerName}
                 <span className="font-normal text-gray-400"> · {formData.registeredPhone || formData.ownerPhone}</span>
               </p>
-              <p className="mt-1 flex items-start gap-1.5 text-xs text-gray-500">
+              <p className="mt-1 flex items-start gap-1.5 text-xs text-[#546A8E]">
                 <MapPin className="mt-0.5 h-3.5 w-3.5 shrink-0 text-[#2563EB]" />
                 <span className="leading-snug">{formData.ownerAddress}</span>
               </p>
@@ -420,6 +437,13 @@ export function WelcomeBackStep({
           />
         )}
       </div>
+
+      {selectedCount > 0 && (
+        <p className="mb-2 flex items-center justify-center gap-1.5 text-center text-xs text-[#546A8E]">
+          <Info className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+          Van con el mismo servicio que su última visita · puedes cambiarlo en el resumen
+        </p>
+      )}
 
       <button
         onClick={() => onUseProfile(selectedPets)}
@@ -475,7 +499,7 @@ export function WelcomeBackStep({
                 <h3 className="text-lg font-semibold text-gray-900">
                   ¿Eliminar a {petToRemove.name} de tus mascotas guardadas?
                 </h3>
-                <p className="mt-1.5 text-sm leading-relaxed text-gray-500">
+                <p className="mt-1.5 text-sm leading-relaxed text-[#546A8E]">
                   Ya no aparecerá en este listado para tus próximas reservas. Si solo no va hoy,
                   simplemente desmárcala. Tus reservas ya agendadas no se ven afectadas.
                 </p>

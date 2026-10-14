@@ -112,11 +112,11 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
           return (
             <button key={value} type="button" onClick={() => handleToggle(value)}
               className={`flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 px-4 py-4 text-sm font-medium transition-all duration-200 lg:gap-3 lg:px-6 lg:py-5 lg:text-base ${
-                checked ? "border-blue-500 bg-blue-50 text-blue-800 shadow-md"
-                        : "border-slate-200 bg-white text-gray-600 hover:border-blue-300 hover:bg-blue-50"
+                checked ? "border-orange-500 bg-[#FFF7EE] text-orange-700 shadow-md shadow-orange-100"
+                        : "border-gray-200 bg-white text-gray-600 hover:border-orange-300 hover:bg-orange-50"
               }`}
             >
-              <Icon className={`h-5 w-5 lg:h-6 lg:w-6 ${checked ? "text-blue-600" : "text-gray-400"}`} />
+              <Icon className={`h-5 w-5 lg:h-6 lg:w-6 ${checked ? "text-orange-500" : "text-gray-400"}`} />
               {label}
             </button>
           );
@@ -134,15 +134,15 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
             className="mt-6 overflow-hidden p-1"
           >
             {hasAntifleaProduct ? (
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+              <div className="rounded-2xl border border-[#DCEBFF] bg-[#EFF6FF] p-4 shadow-sm">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <ShieldCheck className="h-5 w-5 text-blue-600" />
                     <div>
-                      <p className="text-sm font-semibold text-blue-800">
+                      <p className="text-sm font-semibold text-[#475AAB]">
                         {EXTRA_VARIANT_LABELS[antifleaVariant] || antifleaVariant}
                       </p>
-                      <p className="text-xs text-blue-500">Antipulgas seleccionado</p>
+                      <p className="text-xs text-[#546A8E]">Antipulgas seleccionado</p>
                     </div>
                   </div>
                   {!isCat && (
@@ -160,12 +160,12 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
                 </div>
               </div>
             ) : isCat ? (
-              <div className="rounded-2xl border border-blue-200 bg-blue-50 p-4 shadow-sm">
+              <div className="rounded-2xl border border-[#DCEBFF] bg-[#EFF6FF] p-4 shadow-sm">
                 <div className="flex items-center gap-3">
                   <ShieldCheck className="h-5 w-5 text-blue-600" />
                   <div>
-                    <p className="text-sm font-semibold text-blue-800">Pipeta Xelamec — 1 mes</p>
-                    <p className="text-xs text-blue-500">Única opción disponible para gatos</p>
+                    <p className="text-sm font-semibold text-[#475AAB]">Pipeta Xelamec — 1 mes</p>
+                    <p className="text-xs text-[#546A8E]">Única opción disponible para gatos</p>
                   </div>
                 </div>
               </div>
@@ -184,13 +184,13 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
                     onClick={() => setAntifleaDuration("1m")}
                     className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-4 transition-all hover:scale-[1.02] active:scale-[0.97] ${
                       antifleaDuration === "1m"
-                        ? "border-blue-500 bg-blue-50 shadow-md"
-                        : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md"
+                        ? "border-orange-500 bg-[#FFF7EE] shadow-md"
+                        : "border-gray-200 bg-white shadow-sm hover:border-orange-300 hover:shadow-md"
                     }`}
                   >
-                    <ShieldCheck className={`h-7 w-7 ${antifleaDuration === "1m" ? "text-blue-600" : "text-gray-400"}`} />
+                    <ShieldCheck className={`h-7 w-7 ${antifleaDuration === "1m" ? "text-orange-500" : "text-gray-400"}`} />
                     <span className="text-center text-sm font-semibold text-gray-700">1 mes</span>
-                    <span className="text-center text-xs text-gray-500">Pipeta o pastilla mensual</span>
+                    <span className="text-center text-xs text-[#546A8E]">Pipeta o pastilla mensual</span>
                   </button>
 
                   <button
@@ -204,15 +204,15 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
                       !isSanMiguel
                         ? "cursor-not-allowed border-gray-100 bg-gray-50 opacity-50"
                         : antifleaDuration === "3m"
-                          ? "border-blue-500 bg-blue-50 shadow-md"
-                          : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md"
+                          ? "border-orange-500 bg-[#FFF7EE] shadow-md"
+                          : "border-gray-200 bg-white shadow-sm hover:border-orange-300 hover:shadow-md"
                     }`}
                   >
-                    <ShieldCheck className={`h-7 w-7 ${antifleaDuration === "3m" && isSanMiguel ? "text-blue-600" : "text-gray-400"}`} />
+                    <ShieldCheck className={`h-7 w-7 ${antifleaDuration === "3m" && isSanMiguel ? "text-orange-500" : "text-gray-400"}`} />
                     <span className="text-center text-sm font-semibold text-gray-700">3 meses</span>
-                    <span className="text-center text-xs text-gray-500">Bravecto trimestral</span>
+                    <span className="text-center text-xs text-[#546A8E]">Bravecto trimestral</span>
                     {!isSanMiguel && (
-                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-gray-500">
+                      <span className="rounded-full bg-gray-200 px-2 py-0.5 text-[10px] font-medium text-[#546A8E]">
                         Solo San Miguel
                       </span>
                     )}
@@ -252,11 +252,11 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
                             key={product.value}
                             type="button"
                             onClick={() => handleVariant("antiflea", product.value, true)}
-                            className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-gray-200 bg-white p-3 shadow-sm transition-all hover:scale-[1.02] hover:border-blue-300 hover:shadow-md active:scale-[0.97] sm:p-4"
+                            className="flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 border-gray-200 bg-white p-3 shadow-sm transition-all hover:scale-[1.02] hover:border-orange-400 hover:bg-orange-50/50 hover:shadow-md active:scale-[0.97] sm:p-4"
                           >
                             <ShieldCheck className="h-7 w-7 text-gray-400" />
                             <span className="text-center text-sm font-semibold text-gray-700">{product.label}</span>
-                            <span className="text-center text-xs leading-tight text-gray-500">{product.description}</span>
+                            <span className="text-center text-xs leading-tight text-[#546A8E]">{product.description}</span>
                           </button>
                         ))}
                       </div>
@@ -287,15 +287,15 @@ export function ExtraServicesPicker({ extraServices, petType, branch, onToggle, 
                 onClick={() => handleVariant("vaccine", value, false)}
                 className={`flex cursor-pointer flex-col items-center gap-2 rounded-xl border-2 p-3 transition-all duration-200 hover:scale-[1.02] active:scale-[0.97] sm:p-4 ${
                   selected
-                    ? "border-blue-500 bg-blue-50 shadow-md shadow-blue-100"
-                    : "border-gray-200 bg-white shadow-sm hover:border-blue-300 hover:shadow-md hover:shadow-gray-200"
+                    ? "border-orange-500 bg-[#FFF7EE] shadow-md shadow-orange-100"
+                    : "border-gray-200 bg-white shadow-sm hover:border-orange-300 hover:shadow-md hover:shadow-gray-200"
                 }`}
               >
-                <Syringe className={`h-7 w-7 ${selected ? "text-blue-600" : "text-gray-400"}`} />
-                <span className={`text-center text-sm font-semibold leading-tight ${selected ? "text-blue-700" : "text-gray-700"}`}>
+                <Syringe className={`h-7 w-7 ${selected ? "text-orange-500" : "text-gray-400"}`} />
+                <span className={`text-center text-sm font-semibold leading-tight ${selected ? "text-[#475AAB]" : "text-gray-700"}`}>
                   {label}
                 </span>
-                <span className="text-center text-xs leading-tight text-gray-500">
+                <span className="text-center text-xs leading-tight text-[#546A8E]">
                   {description}
                 </span>
               </button>
