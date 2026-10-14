@@ -12,7 +12,6 @@ import {
   ArrowRight,
   UserPlus,
   Pencil,
-  LogIn,
   ShieldCheck,
   X,
   TriangleAlert,
@@ -117,8 +116,8 @@ function BranchPicker({
   );
 }
 
-/** Ilustración completa de la familia (perrito + gatito + mancha + rayitas
- *  + letrita integrados en la imagen vetMascot/DogAndCat.webp). */
+/** Ilustración de la familia (bandanas, blobs y letrita integrados en la imagen).
+ *  El tamaño/posicionamiento se define en cada uso vía className. */
 function MascotIllustration({
   className = "",
   src = "/images/vetMascot/DogAndCat.webp",
@@ -130,7 +129,7 @@ function MascotIllustration({
     <img
       src={src}
       alt="Perrito y gatito: ellos también son familia"
-      className={`h-44 rounded-[28px] object-contain sm:h-48 lg:h-52 ${className}`}
+      className={`select-none object-contain ${className}`}
     />
   );
 }
@@ -262,50 +261,56 @@ export function WelcomeBackStep({
   if (!hasPets) {
     return (
       <div>
-        <div className="mb-6 text-center sm:mb-8">
-          <span className="mb-3 inline-flex h-12 w-12 items-center justify-center rounded-full bg-orange-100 shadow-sm">
-            <PawPrint className="h-6 w-6 text-orange-500" />
-          </span>
-          <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">
-            ¿Es tu primera vez agendando{" "}
-            <span className="text-orange-500">grooming</span> aquí?
-          </h2>
-          <p className="mt-3 max-w-lg text-sm text-[#546A8E] sm:text-base lg:max-w-xl">
-            Solo la primera vez te pediremos tus datos. Quedarán guardados en tu navegador para
-            que tus próximas reservas tarden menos de un minuto.
-          </p>
-        </div>
+        <div className="grid grid-cols-1 gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:gap-10 lg:gap-x-12">
+          <div className="lg:self-center">
+            <div className="mb-5 flex justify-center">
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-orange-100 shadow-sm ring-[6px] ring-orange-100/50">
+                <PawPrint className="h-7 w-7 text-orange-500" />
+              </span>
+            </div>
+            <h2 className="text-center text-step-title font-display font-bold leading-[1.15] tracking-tight text-[#3B63D6] sm:text-3xl lg:text-[2.5rem] lg:leading-[1.12]">
+              ¿Es tu primera vez<br className="hidden sm:block" /> agendando{" "}
+              <span className="text-orange-500">grooming</span> aquí?
+            </h2>
+            <p className="mx-auto mt-4 max-w-lg text-center text-sm text-[#546A8E] sm:text-base lg:mt-5 lg:text-lg">
+              Solo la primera vez te pediremos tus datos. Quedarán guardados en tu navegador para
+              que tus próximas reservas tarden menos de un minuto.
+            </p>
+          </div>
 
-        <MascotIllustration className="mx-auto mb-6 block w-fit sm:mb-8" />
+          <div className="relative mx-auto w-full max-w-[380px] self-center sm:max-w-sm lg:mx-0 lg:h-full lg:max-w-none lg:self-stretch lg:row-span-2">
+            <MascotIllustration className="block h-auto w-full lg:h-full lg:object-bottom" />
+            <div aria-hidden className="pointer-events-none absolute inset-x-0 bottom-0 h-14 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-20" />
+          </div>
 
-        <div className="mb-6 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-4 sm:p-5">
-          <ul className="space-y-2.5 text-sm text-gray-600">
-            <li className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} />
-              </span>
-              Tu primera reserva toma el flujo completo: sede → mascota → fecha → tus datos.
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} />
-              </span>
-              La próxima vez verás aquí tus mascotas y solo eliges fecha y horario.
-            </li>
-            <li className="flex items-center gap-2.5">
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100">
-                <Check className="h-3 w-3 text-emerald-600" strokeWidth={3} />
-              </span>
-              Tus datos no salen de tu navegador.
-            </li>
-          </ul>
+          <div className="rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-4 lg:self-center sm:p-5">
+            <ul className="space-y-3 text-sm font-medium text-[#475AAB] sm:text-[15px]">
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500 shadow-sm shadow-orange-200">
+                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                </span>
+                Tu primera reserva toma el flujo completo: sede → mascota → fecha → tus datos.
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500 shadow-sm shadow-orange-200">
+                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                </span>
+                La próxima vez verás aquí tus mascotas y solo eliges fecha y horario.
+              </li>
+              <li className="flex items-start gap-3">
+                <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-orange-500 shadow-sm shadow-orange-200">
+                  <Check className="h-3.5 w-3.5 text-white" strokeWidth={3} />
+                </span>
+                Tus datos no salen de tu navegador.
+              </li>
+            </ul>
+          </div>
         </div>
 
         <button
           onClick={onStartBooking}
-          className="flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-orange-400 px-6 py-4 text-lg font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
+          className="mt-8 flex w-full cursor-pointer items-center justify-center gap-2.5 rounded-2xl bg-gradient-to-r from-blue-600 to-orange-400 px-6 py-4 text-lg font-bold text-white shadow-md transition-all hover:shadow-lg active:scale-[0.98]"
         >
-          <LogIn className="h-5 w-5" />
           Comenzar mi reserva
           <ArrowRight className="h-5 w-5" />
         </button>
@@ -345,7 +350,7 @@ export function WelcomeBackStep({
         </div>
         <MascotIllustration
           src="/images/vetMascot/DogAndCatFamilia.webp"
-          className="relative mx-auto -mb-6 mt-4 w-fit max-w-full self-center lg:mx-0 lg:mt-0 lg:shrink-0"
+          className="relative mx-auto -mb-6 mt-4 h-44 max-w-full self-center sm:h-48 lg:h-52 lg:mx-0 lg:mt-0 lg:shrink-0"
         />
       </div>
 
