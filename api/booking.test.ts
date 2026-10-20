@@ -3,6 +3,7 @@ import {
   bookingPayloadSchema,
   buildBookingMessages,
   buildClientReceiptMessage,
+  buildShortVetMessage,
   handleBooking,
   normalizePhoneDest,
   resetBookingDedupe,
@@ -11,6 +12,7 @@ import {
   type BookingEnv,
   type BookingPayload,
 } from "./booking";
+import type { BookingDb, BookingRecord } from "./db";
 
 const NOW = new Date("2026-10-05T15:00:00Z");
 
@@ -455,5 +457,195 @@ describe("buildClientReceiptMessage", () => {
     const msg = buildClientReceiptMessage(dos);
     const petLines = msg.split("\n").filter((l) => l.startsWith("🐾 ") && l.includes("–"));
     expect(petLines).toHaveLength(2);
+  });
+  it("con trackingUrl agrega el link de seguimiento", () => {
+    const msg = buildClientReceiptMessage(payload(), "https://app.example/estado");
+    expect(msg).toContain("en tiempo real");
+    expect(msg).toContain("https://app.example/estado");
+  });
+  it("sin trackingUrl no menciona seguimiento", () => {
+    expect(buildClientReceiptMessage(payload())).not.toContain("en tiempo real");
+  });
+});
+
+describe("buildShortVetMessage", () => {
+  it("mensaje corto con código, sede, fecha y mascotas", () => {
+    const msg = buildShortVetMessage(payload());
+    expect(msg).toContain("NUEVA RESERVA");
+    expect(msg).toContain("VA-TEST1");
+    expect(msg).toContain("Sede San Martín de Porres");
+    expect(msg).toContain("sábado 10 de octubre de 2026");
+    expect(msg).toContain("1 mascota: Rex");
+    expect(msg).not.toContain("DNI");
+    expect(msg).not.toContain("Av. Proceres 500");
+  });
+  it("incluye el link del panel cuando se pasa la URL", () => {
+    const msg = buildShortVetMessage(payload(), "https://app.example/internal");
+    expect(msg).toContain("panel interno");
+    expect(msg).toContain("https://app.example/internal");
+  });
+});
+
+// ── Fake de BookingDb para los tests de persistencia ─────────
+
+function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string[] } {
+  const calls: string[] = [];
+  const record: BookingRecord = {
+    id: "test-id",
+    bookingCode: "VA-TEST1",
+    branch: "san_martin",
+    branchLabel: "Sede San Martín de Porres",
+    serviceDate: "2026-10-10",
+    timeSlot: "9-11",
+    ownerName: "Juan Pérez",
+    ownerDni: "12345678",
+    ownerPhone: "999-123-456",
+    ownerEmail: "-",
+    ownerAddress: "Av. Proceres 500",
+    ownerLat: -12.0206,
+    ownerLng: -77.0865,
+    mapsUrl: null,
+    hasHistory: null,
+    registeredPetName: "-",
+    registeredPhone: "-",
+    petBirthDate: "-",
+    petSpecies: "-",
+    petBreed: "-",
+    petCastrated: false,
+    mobilityPhoneDifferent: false,
+    mobilityPhone: "-",
+    pets: [],
+    status: "pendiente",
+    createdAt: NOW.toISOString(),
+  };
+  return {
+    calls,
+    insertBooking: vi.fn(async () => {
+      calls.push("insert");
+      return { code: null };
+    }),
+    findByCode: vi.fn(async () => {
+      calls.push("findByCode");
+      return record;
+    }),
+    listClosures: vi.fn(async () => []),
+    isClosed: vi.fn(async () => {
+      calls.push("isClosed");
+      return false;
+    }),
+    recordStatus: vi.fn(async () => {}),
+    setWhatsappDelivered: vi.fn(async () => {
+      calls.push("delivered");
+    }),
+    listStatusUpdates: vi.fn(async () => []),
+    ...overrides,
+  };
+}
+
+describe("handleBooking con BD", () => {
+  const base = { date: "2026-10-10", timeRange: "9-11" as const };
+  const coords = { ownerLat: -12.0206, ownerLng: -77.0865 };
+
+  beforeEach(() => {
+    resetBookingDedupe();
+  });
+
+  it("guarda la reserva ANTES de enviar el WhatsApp", async () => {
+    const { fn } = fetchOk();
+    const db = fakeDb();
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    expect(result.status).toBe(200);
+    expect(db.calls).toEqual(["isClosed", "insert", "findByCode", "delivered"]);
+  });
+
+  it("rechaza con 400 si el día/franja está cerrado", async () => {
+    const db = fakeDb();
+    db.isClosed = vi.fn(async () => {
+      db.calls.push("isClosed");
+      return true;
+    });
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fetchOk().fn,
+      db,
+    });
+    expect(result.status).toBe(400);
+    expect(result.body.error).toMatch(/disponibilidad/);
+    expect(db.calls).toEqual(["isClosed"]);
+  });
+
+  it("código duplicado en BD: 200 sin reenviar a la veterinaria", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({
+      insertBooking: vi.fn(async () => ({ code: "23505" as const })),
+    });
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    expect(result.status).toBe(200);
+    expect(result.body.bookingCode).toBe("VA-TEST1");
+    expect(calls).toHaveLength(0); // nada enviado
+  });
+
+  it("BD caída: la reserva sigue por WhatsApp (comportamiento anterior)", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({
+      insertBooking: vi.fn(async () => {
+        throw new Error("supabase down");
+      }),
+    });
+    const warn = vi.spyOn(console, "error").mockImplementation(() => {});
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    warn.mockRestore();
+    expect(result.status).toBe(200);
+    expect(calls).toHaveLength(3); // flujo completo por WhatsApp
+  });
+
+  it("VET_MESSAGE_MODE=short envía un solo mensaje corto a la veterinaria", async () => {
+    const { fn, calls } = fetchOk();
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: { ...ENV_FULL, VET_MESSAGE_MODE: "short", INTERNAL_PANEL_URL: "https://app.example/internal" },
+      now: NOW,
+      fetcher: fn,
+      db: fakeDb(),
+    });
+    expect(result.status).toBe(200);
+    expect(calls).toHaveLength(2); // corto + comprobante del cliente
+    expect(calls[0].text).toContain("panel interno");
+    expect(calls[0].text).not.toContain("DNI");
+  });
+
+  it("TRACKING_ENABLED=true agrega el link de seguimiento al comprobante", async () => {
+    const { fn, calls } = fetchOk();
+    await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: { ...ENV_FULL, TRACKING_ENABLED: "true" },
+      now: NOW,
+      fetcher: fn,
+      origin: "https://app.example",
+      db: fakeDb(),
+    });
+    const receipt = calls[calls.length - 1];
+    expect(receipt.number).toBe("51999123456");
+    expect(receipt.text).toContain("https://app.example/estado");
   });
 });

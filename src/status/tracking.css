@@ -1,0 +1,15 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: 'Inter', ui-sans-serif, system-ui, sans-serif;
+  --font-display: 'Fredoka', 'Inter', sans-serif;
+  --color-brand-blue: #1d4ed8;
+  --color-brand-orange: #f97316;
+}
+
+body {
+  margin: 0;
+  background-color: #F3F6FB;
+  min-height: 100vh;
+  font-family: var(--font-sans);
+}

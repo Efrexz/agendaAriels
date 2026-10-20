@@ -1,5 +1,6 @@
 import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
+import { SupabaseBookingDb, type BookingDb, type BookingRowInput } from "./db";
 
 // ─────────────────────────────────────────────────────────────
 // Módulo compartido interno de la función api/booking.ts.
@@ -35,6 +36,15 @@ export interface BookingEnv {
   EVOLUTION_DRY_RUN?: string;
   /** "false": desactiva el comprobante al cliente (default activado). */
   CLIENT_COPY_ENABLED?: string;
+  /** Base de datos (Supabase): si faltan, la reserva solo va por WhatsApp. */
+  SUPABASE_URL?: string;
+  SUPABASE_SERVICE_ROLE_KEY?: string;
+  /** "short": mensaje corto a la veterinaria (panel interno desplegado). Default "full". */
+  VET_MESSAGE_MODE?: string;
+  /** "true": agrega el link de seguimiento en el comprobante del cliente. */
+  TRACKING_ENABLED?: string;
+  /** URL del panel interno; por defecto se deduce del origen de la petición. */
+  INTERNAL_PANEL_URL?: string;
 }
 
 export interface BookingResult {
@@ -191,7 +201,10 @@ export function normalizePhoneDest(phone: string): string | null {
 }
 
 /** Comprobante que recibe el cliente en su WhatsApp tras confirmar. */
-export function buildClientReceiptMessage(data: BookingPayload): string {
+export function buildClientReceiptMessage(
+  data: BookingPayload,
+  trackingUrl?: string,
+): string {
   const petsLines = data.pets.map((pet) => `🐾 ${pet.name} – ${pet.service}`);
   const lines = [
     `🐾 *¡Reserva registrada, ${firstOwnerName(data.ownerName)}!*`,
@@ -204,10 +217,19 @@ export function buildClientReceiptMessage(data: BookingPayload): string {
     `📍 Domicilio: ${data.ownerAddress}`,
     `🔖 Código de reserva: *${data.bookingCode}*`,
     "",
+  ];
+  if (trackingUrl) {
+    lines.push(
+      `🔎 Sigue a tu mascota en tiempo real con tu código:`,
+      trackingUrl,
+      "",
+    );
+  }
+  lines.push(
     `☎ Consultas: ${data.branchPhone}`,
     "",
     "Confirmaremos tu horario exacto por este medio. ¡Gracias por agendar con nosotros! 🐶✨",
-  ];
+  );
   return lines.join("\n");
 }
 
@@ -221,6 +243,7 @@ export async function sendClientReceipt(
   data: BookingPayload,
   env: BookingEnv,
   fetcher: FetchLike = fetch,
+  trackingUrl?: string,
 ): Promise<{ outcome: ReceiptOutcome; reason?: string }> {
   if (env.CLIENT_COPY_ENABLED === "false") {
     return { outcome: "skipped", reason: "CLIENT_COPY_ENABLED=false" };
@@ -244,7 +267,12 @@ export async function sendClientReceipt(
   if (!evolutionReady && !isDryRun(env)) {
     return { outcome: "skipped", reason: "Evolution no configurada" };
   }
-  const sent = await sendViaEvolution([buildClientReceiptMessage(data)], env, fetcher, dest);
+  const sent = await sendViaEvolution(
+    [buildClientReceiptMessage(data, trackingUrl)],
+    env,
+    fetcher,
+    dest,
+  );
   if (!sent.ok) {
     console.warn(`[booking] comprobante al cliente falló: ${sent.error}`);
     return { outcome: "failed", reason: sent.error };
@@ -285,6 +313,59 @@ function rememberBooking(payload: BookingPayload, now: number): void {
     if (oldest) recentBookings.delete(oldest);
   }
   recentBookings.set(bookingDedupeKey(payload), { code: payload.bookingCode, at: now });
+}
+
+// ── Mensaje corto a la veterinaria (con panel interno activo) ─
+
+export function buildShortVetMessage(data: BookingPayload, panelUrl?: string): string {
+  const petNames = data.pets.map((pet) => pet.name).join(", ");
+  const petCount = data.pets.length;
+  const lines = [
+    `🔔 *NUEVA RESERVA*`,
+    `🔖 Código: *${data.bookingCode}*`,
+    `🏥 ${data.branchLabel}`,
+    `🗓 ${data.dateLabel}`,
+    `⏰ ${data.timeRangeLabel}`,
+    `🐾 ${petCount} ${petCount === 1 ? "mascota" : "mascotas"}: ${petNames}`,
+  ];
+  if (panelUrl) {
+    lines.push(
+      "━━━━━━━━━━━━━━━━━━",
+      `📋 Ver detalles completos en el panel interno:`,
+      panelUrl,
+    );
+  }
+  return lines.join("\n");
+}
+
+// ── Persistencia en Supabase ─────────────────────────────────
+
+function payloadToRow(payload: BookingPayload, mapsUrl: string | null): BookingRowInput {
+  return {
+    bookingCode: payload.bookingCode,
+    branch: payload.branch,
+    branchLabel: payload.branchLabel,
+    serviceDate: payload.date,
+    timeSlot: payload.timeRange,
+    ownerName: payload.ownerName,
+    ownerDni: payload.ownerDni,
+    ownerPhone: payload.ownerPhone,
+    ownerEmail: payload.ownerEmail,
+    ownerAddress: payload.ownerAddress,
+    ownerLat: payload.ownerLat,
+    ownerLng: payload.ownerLng,
+    mapsUrl,
+    hasHistory: payload.hasHistory,
+    registeredPetName: payload.registeredPetName,
+    registeredPhone: payload.registeredPhone,
+    petBirthDate: payload.petBirthDate,
+    petSpecies: payload.petSpecies,
+    petBreed: payload.petBreed,
+    petCastrated: payload.petCastrated,
+    mobilityPhoneDifferent: payload.mobilityPhoneDifferent,
+    mobilityPhone: payload.mobilityPhone,
+    pets: payload.pets,
+  };
 }
 
 // ── Plantilla del mensaje WhatsApp (réplica del flujo n8n) ───
@@ -465,9 +546,14 @@ export async function handleBooking(options: {
   env: BookingEnv;
   now?: Date;
   fetcher?: FetchLike;
+  /** Capa de datos; si falta, se continúa sin BD (comportamiento anterior). */
+  db?: BookingDb | null;
+  /** Origen de la petición (https://dominio) para armar links del panel/seguimiento. */
+  origin?: string;
 }): Promise<BookingResult> {
   const { body, env, now = new Date() } = options;
   const fetcher = options.fetcher ?? fetch;
+  const db = options.db ?? null;
 
   const parsed = bookingPayloadSchema.safeParse(body);
   if (!parsed.success) {
@@ -513,7 +599,37 @@ export async function handleBooking(options: {
     ...payload,
     mapsUrl: buildMapsUrl(payload.ownerLat, payload.ownerLng),
   };
-  const messages = buildBookingMessages(normalized);
+
+  // ── Persistencia: la reserva queda registrada aunque falle el envío ──
+  if (db) {
+    try {
+      const closed = await db.isClosed(payload.branch, payload.date, payload.timeRange);
+      if (closed) {
+        return {
+          status: 400,
+          body: {
+            ok: false,
+            error: "Lo sentimos, ese día ya no tiene disponibilidad. Elige otra fecha.",
+          },
+        };
+      }
+      const inserted = await db.insertBooking(payloadToRow(payload, normalized.mapsUrl ?? null));
+      if (inserted.code === "23505") {
+        // El código ya estaba registrado (reenvío tras un deploy, etc.).
+        console.warn(`[booking] código ${payload.bookingCode} ya existía, se devuelve sin reenviar`);
+        return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
+      }
+    } catch (dbError) {
+      // La BD no responde: no bloqueamos al cliente, sigue el flujo por WhatsApp.
+      console.error(`[booking] BD no disponible: ${dbError instanceof Error ? dbError.message : dbError}`);
+    }
+  }
+
+  const panelUrl = env.INTERNAL_PANEL_URL || (options.origin ? `${options.origin}/internal` : undefined);
+  const shortMode = env.VET_MESSAGE_MODE === "short";
+  const messages = shortMode
+    ? [buildShortVetMessage(normalized, panelUrl)]
+    : buildBookingMessages(normalized);
 
   const evolutionReady = !!(
     env.EVOLUTION_API_URL &&
@@ -550,6 +666,15 @@ export async function handleBooking(options: {
     };
   }
 
+  if (db) {
+    try {
+      const record = await db.findByCode(payload.bookingCode);
+      if (record) await db.setWhatsappDelivered(record.id, delivered);
+    } catch {
+      /* best effort: la entrega ya ocurrió, solo quedará sin marcar */
+    }
+  }
+
   await sendToBackupWebhook(normalized, delivered, env, fetcher);
 
   if (!delivered) {
@@ -562,7 +687,11 @@ export async function handleBooking(options: {
   rememberBooking(payload, nowMs);
 
   // Comprobante al cliente: best effort, nunca rompe la reserva.
-  const receipt = await sendClientReceipt(normalized, env, fetcher);
+  const trackingUrl =
+    env.TRACKING_ENABLED === "true" && options.origin
+      ? `${options.origin}/estado`
+      : undefined;
+  const receipt = await sendClientReceipt(normalized, env, fetcher, trackingUrl);
   if (receipt.outcome === "failed") {
     console.warn(`[booking] ${receipt.reason}`);
   }
@@ -623,6 +752,24 @@ function clientIp(req: Req): string {
   return "direct";
 }
 
+function requestOrigin(req: Req): string | undefined {
+  const proto = req.headers["x-forwarded-proto"];
+  const host = req.headers["x-forwarded-host"] ?? req.headers["host"];
+  if (typeof host !== "string" || host.length === 0) return undefined;
+  const p = typeof proto === "string" && proto.length > 0 ? proto.split(",")[0].trim() : "https";
+  return `${p}://${host}`;
+}
+
+let cachedDb: BookingDb | null | undefined;
+
+function getDb(env: BookingEnv): BookingDb | null {
+  if (cachedDb === undefined) {
+    cachedDb = SupabaseBookingDb.fromEnv(env);
+    if (!cachedDb) console.warn("[booking] Supabase no configurado: las reservas no se guardarán en BD");
+  }
+  return cachedDb;
+}
+
 export default async function handler(req: Req, res: Res) {
   if (req.method !== "POST") {
     res.status(405).json({ ok: false, error: "Método no permitido." });
@@ -635,9 +782,12 @@ export default async function handler(req: Req, res: Res) {
   }
 
   try {
+    const env = process.env as BookingEnv;
     const result = await handleBooking({
       body: req.body,
-      env: process.env as BookingEnv,
+      env,
+      db: getDb(env),
+      origin: requestOrigin(req),
     });
     res.status(result.status).json(result.body);
   } catch {

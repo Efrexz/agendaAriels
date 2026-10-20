@@ -311,6 +311,12 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
             <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
             <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{bookingCode}</p>
             <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+            <a
+              href={`/estado?code=${bookingCode}`}
+              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-green-700"
+            >
+              🔎 Seguir a tu mascota en tiempo real
+            </a>
           </div>
         )}
 

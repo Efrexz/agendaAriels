@@ -1,16 +1,17 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isBefore, addMonths, subMonths,
   getDay, parseISO, addDays, isAfter
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, PawPrint, CheckCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, PawPrint, CheckCircle, XCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import type { FormData } from "../BookingWizard";
 import { LazyImage } from "../LazyImage";
 import { MAX_ADVANCE_DAYS } from "../../data/branches";
 import { getLimaDayKey, getLimaHour, limaToday } from "../../utils/limaTime";
+import { closureFor, fetchClosuresPublic, type ClosureEntry } from "../../services/availability";
 
 interface ScheduleStepProps {
   formData: FormData;
@@ -48,6 +49,34 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
   const nowHour = getLimaHour();
   const maxDay = addDays(today, MAX_ADVANCE_DAYS);
   const [currentMonth, setCurrentMonth] = useState(today);
+  const [closures, setClosures] = useState<ClosureEntry[]>([]);
+
+  // Días cerrados por el personal: calendario los pinta en rojo "Ocupado".
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const data = await fetchClosuresPublic();
+        if (active) setClosures(data);
+      } catch {
+        /* sin disponibilidad igual se muestra el calendario normal */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
+
+  // Si la fecha elegida quedó cerrada (ej. se llenó estando en otro paso),
+  // se deselecciona para forzar la elección correcta.
+  useEffect(() => {
+    if (!formData.date || !formData.branch) return;
+    const c = closureFor(closures, formData.branch, formData.date);
+    if (c.all || (formData.timeRange && c.slots.has(formData.timeRange))) {
+      update("date", null);
+      update("timeRange", null);
+    }
+  }, [closures, formData.date, formData.branch, formData.timeRange, update]);
 
   const { days, blanks } = useMemo(() => {
     const start = startOfMonth(currentMonth);
@@ -141,22 +170,29 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                 const isBeyondMax = isAfter(day, maxDay);
                 const dayStr = format(day, "yyyy-MM-dd");
                 const selected = formData.date === dayStr;
-                const disabled = isPast || isBeyondMax;
+                const closed = closureFor(closures, formData.branch, dayStr);
+                const disabled = isPast || isBeyondMax || closed.all;
 
                 return (
                   <button
                     key={day.toISOString()}
                     disabled={disabled}
                     onClick={() => handleSelectDate(day)}
+                    title={disabled && closed.all ? "Ocupado: sin disponibilidad para esta sede" : undefined}
                     className={`group relative flex flex-col items-center justify-center rounded-xl py-2 text-sm font-medium transition-all ${
                       disabled
-                        ? "cursor-not-allowed text-gray-300"
+                        ? closed.all
+                          ? "cursor-not-allowed bg-red-50 font-semibold text-red-300 line-through"
+                          : "cursor-not-allowed text-gray-300"
                         : selected
                           ? "bg-orange-500 text-white shadow-md shadow-orange-200"
                           : "text-gray-800 hover:-translate-y-0.5 hover:bg-[#EFF6FF]"
                     }`}
                   >
                     <span>{format(day, "d")}</span>
+                    {disabled && closed.all && (
+                      <XCircle className="mt-0.5 h-2.5 w-2.5 text-red-400" aria-hidden="true" />
+                    )}
                     {!disabled && (
                       <PawPrint
                         className={`mt-0.5 h-2.5 w-2.5 transition-opacity duration-200 ${
@@ -196,17 +232,25 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
               {TIME_SLOTS.map(({ value, label, sub, timeKey, alt, startHour }) => {
                 const selected = formData.timeRange === value;
+                const slotClosed = closureFor(closures, formData.branch, formData.date ?? "").slots.has(value);
                 const blocked = formData.date === todayKey && nowHour >= startHour;
+                const unavailable = blocked || slotClosed;
+                const unavailableLabel = slotClosed ? "Ocupado" : "Ya no disponible";
+                const title = slotClosed
+                  ? "El personal ya llenó esta franja"
+                  : blocked
+                    ? "Esta franja ya inició el día de hoy"
+                    : undefined;
                 const image = `/images/pickUpTime/${petType}/${timeKey}.webp`;
                 return (
                   <button
                     key={value}
                     onClick={() => handleSelectTime(value)}
-                    disabled={blocked}
-                    title={blocked ? "Esta franja ya inició el día de hoy" : undefined}
+                    disabled={unavailable}
+                    title={title}
                     className={`group relative flex cursor-pointer flex-row items-stretch overflow-hidden rounded-2xl text-left transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 ${
-                      blocked
-                        ? "cursor-not-allowed border-2 border-gray-200 bg-gray-50 opacity-60"
+                      unavailable
+                        ? "cursor-not-allowed border-2 border-red-200 bg-red-50 opacity-70"
                         : selected
                           ? "border-2 border-orange-400 bg-[#FFF7EE] shadow-lg shadow-orange-100 -translate-y-1"
                           : "border-2 border-gray-200 bg-white shadow-sm hover:-translate-y-1 hover:border-orange-300 hover:shadow-xl"
@@ -222,19 +266,23 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                           }
                         }}
                         className={`h-full w-full object-cover transition-transform duration-500 ease-out ${
-                          blocked ? "" : "group-hover:scale-105"
+                          unavailable ? "" : "group-hover:scale-105"
                         }`}
                       />
                     </div>
                     <div className={`flex flex-1 flex-col justify-center gap-1 px-3 py-2 sm:px-4 ${
-                      blocked ? "hidden sm:flex" : ""
+                      unavailable ? "hidden sm:flex" : ""
                     }`}>
                       <span
                         className={`text-xs font-semibold uppercase tracking-wide ${
-                          selected ? "text-orange-600" : "text-[#546A8E]"
+                          selected
+                            ? "text-orange-600"
+                            : unavailable
+                              ? "text-red-500"
+                              : "text-[#546A8E]"
                         }`}
                       >
-                        {blocked ? "Ya no disponible" : sub}
+                        {unavailable ? unavailableLabel : sub}
                       </span>
                       <span
                         className={`text-base font-semibold sm:text-lg ${
@@ -244,7 +292,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
                         {label}
                       </span>
                     </div>
-                    {selected && !blocked && (
+                    {selected && !unavailable && (
                       <span className="absolute right-2 top-2 flex h-6 w-6 items-center justify-center rounded-full bg-orange-500 text-white shadow-md">
                         <CheckCircle className="h-4 w-4 fill-white text-orange-500" />
                       </span>
