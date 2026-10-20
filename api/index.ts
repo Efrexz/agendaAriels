@@ -41,6 +41,7 @@ import mAssignHandler from "./medical/_assign.js";
 import mSchedulesHandler from "./medical/_schedules.js";
 import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
+import mRemindersHandler from "./medical/_reminders.js";
 
 export const maxDuration = 60;
 
@@ -77,6 +78,7 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /medical/catalog": { handler: mCatalogHandler as Handler },
   "POST /medical/catalog": { handler: mCatalogHandler as Handler },
   "PATCH /medical/catalog": { handler: mCatalogHandler as Handler },
+  "GET /medical/reminders": { handler: mRemindersHandler as Handler },
 };
 
 export default async function handler(req: Req, res: Res) {

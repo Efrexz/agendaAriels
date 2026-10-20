@@ -33,6 +33,8 @@ function makeRes() {
 
 const authHeaders = { authorization: "" };
 
+let cronBody: { ok: boolean; sent: number; failed: number; date: string } | null = null;
+
 async function main() {
   // login staff temporal (como la integración de grooming)
   const EMAIL = `staff-med-${Date.now()}@example.com`;
@@ -161,7 +163,18 @@ async function main() {
     await schedMod.default({ method: "DELETE", url: `/api/medical/schedules?id=${added.id}`, headers: authHeaders }, r10.res);
     console.log("14. quitar bloque:", r10.last().status);
 
-    console.log("MÓDULO MÉDICO INTEGRACIÓN OK");
+    // ── M5: cron de recordatorios (cita de mañana confirmada ya existe) ──
+    const remMod = await import("../api/medical/_reminders.js");
+    const r12 = makeRes();
+    const result12 = await (remMod.default as unknown as (rq: unknown, rs: unknown) => Promise<void>)(
+      { method: "GET", headers: {} },
+      { status: (c: number) => r12.res, json: (x: unknown) => r12.res, setHeader: () => r12.res },
+    );
+    void result12;
+    cronBody = r12.last().body as { ok: boolean; sent: number; failed: number; date: string };
+
+    console.log("15. cron recordatorios:", r12.last().status, JSON.stringify(cronBody ?? {}));
+    if (Number(cronBody?.sent ?? 0) < 1) throw new Error("cron no envió recordatorios");
   } finally {
     // limpieza completa de citas de prueba (cascade borra timelines)
     await fetch(`https://api.supabase.com/v1/projects/${PROJECT}/database/query`, {
