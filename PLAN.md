@@ -360,4 +360,18 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Plantilla de envío copiable de api/medical/_create.ts. Tras M5: guía de
   pruebas del wizard médico en la PC del trabajo + actualizar el botón de la
   landing ("Agenda tu cita médica" → http://agenda-ariels-nu.vercel.app/cita-medica).
+- 2026-10-20 — **M5 COMPLETADO Y DEPLOYADO — TODAS LAS FASES M1-M5 LISTAS**:
+  api/medical/_reminders.ts (GET /api/medical/reminders vía router; CRON_SECRET
+  opcional por header; mañana Lima = dayKey +1 UTC-safe; mensaje al cliente
+  hora12 am/pm + tolerancia + orden si rayos/eco; RESUMEN al counter listado
+  ordenado por hora) + vercel.json crons: 0 23 * * * (23:00 UTC = 18:00 Lima,
+  1 cron de los 2 gratis de Hobby; el 2º queda para grooming si se activa).
+  Verificado en integración real con dry-run: sent=1, resumen counter impreso.
+  200 tests. Cron usa el router (rewrite apiPath) ✓.
+  **PRÓXIMOS PASOS FINALES (pendientes del usuario/pruebas FÍSICAS):**
+  1. CRON_SECRET: generar valor y registrar en Vercel (Production) para blindar el cron — PENDIENTE usuario o siguiente sesión (sin él el cron corre abierto; baja riesgo porque solo envía recordatorios, pero meterlo).
+  2. Pruebas físicas en la PC del trabajo (wizard médico + pestañas + QZ/TM-T20II).
+  3. Botón de la landing "Agenda tu cita médica" → https://agenda-ariels-nu.vercel.app/cita-medica
+  4. Cambiar clave vet_ariel@hotmail.com en Supabase → Authentication.
+  5. VET_MESSAGE_MODE=short en Production (WhatsApp corto a la veterinaria) cuando staff conozca el panel.
   Usuarios de prueba: staff médico creado/eliminado por scripts.
