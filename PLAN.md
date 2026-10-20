@@ -324,5 +324,25 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Lógica pura de slots en api/medical/slots.ts con 13 tests.
   **SIGUIENTE (chat nuevo o este): M3 wizard /cita-medica (medical.html) →
   M4 panel pestañas (Consultas/Horarios/Config) → M5 cron recordatorios.**
-  Nota: cron reminders irán por /api/medical/reminders en vercel.json (1 cron
-  gratis), NO n8n (user ya no lo necesita).
+- 2026-10-20 — **M3 WIZARD MÉDICO EN PRODUCCIÓN** (agenda-ariels-nu.vercel.app/cita-medica):
+  entry point medical.html + src/medical/ (App.tsx full-wizard: sede → servicio →
+  orden médica (rayos/eco; sin orden → 2 puertas: agendar general / WhatsApp sede) →
+  especialidad con costo → doctor (kind general) → fecha+slots de /api/medical/availability
+  → datos → código CM-XXXXX; especializada muestra nota de pago anticipado). Sin
+  page del cliente para consultas (se descartó; acordado).
+- 2026-10-20 — **ROUTING ÚNICO DE API (aprendizaje clave para chat nuevo)**: el plan
+  Hobby de Vercel limita a 12 serverless functions — teníamos 18. Consolidado en UNA
+  función `api/index.ts` (router despachando por `${method} ${path}`) +
+  vercel.json `{"source":"/api/(.*)","destination":"/api/index?apiPath=$1"}`.
+ .Crítico: el catch-all estándar api/[...path].ts SÓLO matchea 1 segmento (bug del
+  runtime) — rutas profundas (medical/create) daban 404 de Vercel; con el rewrite +
+  query apiPath funciona TODO (verificado local + prod). Handler files: renombrados
+  a `_*` (no exponen rutas): api/_booking, _status, _availability + api/internal/_*
+  + api/medical/_*. Los renames exigieron arreglar imports (.js) en tests/scripts.
+- 2026-10-20 — **PENDIENTE CONSTRUIR (chat nuevo): M4 panel pestañas** (Consultas:
+  Hoy default + franja Mañana + Semana + Buscar + ＋ Cita manual; Horarios editor
+  visual semanal 7 días × bloques con clicks + copiar semana; Config: duración +
+  payment_info; badges recordatorio) → **M5 cron** recordatorio día antes
+  (/api/medical/reminders + vercel.json crons + PATCH confirmado→recordado).
+  APIs ya listas para M4: /api/medical/{day,busqueda,schedules,config,catalog,assign}.
+  Usuarios de prueba: staff médico creado/eliminado por scripts.
