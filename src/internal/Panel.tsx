@@ -17,7 +17,7 @@ function limaToday(): string {
 
 const BRANCH_OPTIONS = Object.entries(BRANCH_LABELS);
 
-export function Panel({ email, onSignOut }: { email: string; onSignOut: () => void }) {
+export function Panel({ onSignOut, embedded = false }: { email?: string; onSignOut: () => void; embedded?: boolean }) {
   const [date, setDate] = useState(limaToday);
   const [branch, setBranch] = useState<string>("all");
   const [bookings, setBookings] = useState<PanelBooking[]>([]);
@@ -114,14 +114,14 @@ export function Panel({ email, onSignOut }: { email: string; onSignOut: () => vo
   return (
     <div className="mx-auto min-h-screen max-w-6xl p-4 pb-24 lg:p-8">
       {/* Encabezado */}
-      <header className="mb-6 flex items-center justify-between gap-4">
+      <header className={`mb-6 flex items-center justify-between gap-4 ${embedded ? "hidden" : ""}`}>
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-blue text-white">
             <PawPrint className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-lg font-bold leading-tight text-slate-900">Panel Interno · Grooming</h1>
-            <p className="text-xs text-slate-500">{email}</p>
+            <p className="text-xs text-slate-500">Reservas por franja · búsqueda · días ocupados</p>
           </div>
         </div>
         <button
