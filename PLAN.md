@@ -300,3 +300,29 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Development del proyecto; ④ los exit codes tras pipes (`| head`) ocultan fallos —
   verificar con redirection a archivo. Producción: agenda-ariels-nu.vercel.app
   (web+panel+estado OK, APIs vivas). Plan médico listo para construir (sección 7).
+- 2026-10-20 — **M1 BD MÉDICA aplicada y verificada** (3 migraciones + seed
+  ficticio corregido idempotente por doctor): medical_specialties (5 con precios:
+  cardiología 350 SM, odontología 250, nutrición 140, traumatología 180,
+  neurología 150 SM), medical_doctors (3 generales + 5 especialistas ficticios),
+  medical_schedules (generales Lun-Sáb 9-13 y 15-19; especialistas Lun-Vie 9-13),
+  medical_time_off, medical_appointments (código CM-XXXXX + constraint de fechas
+  corregido: statuses solicitud/pagado pueden NO tener fecha),
+  medical_status_updates, app_config (appt_duration_minutes=60 + payment_info
+  de ejemplo). RLS deny-all. Seed POR DOCTOR (lección: guards "not exists por
+  tabla" en seeds multi-row solo insertaron la primera fila → arreglado en
+  migración 3).
+- 2026-10-20 — **M2 APIs MÉDICAS completadas** (20+195 tests, lint, tsc doble,
+  build — todo verde; integración real 14/14 en scripts/integration-medical.ts):
+  públicas: /api/medical/{doctors, specialties, availability, create} (create:
+  valida-slot server-side con computeFreeSlots, rechazos 409 solapamiento
+  verificado, 400 rayos sin orden, JSON schema zod, código server-side,
+  dedupe 60s, rate limit 4/min, alerta counter + msg cliente via Evolution);
+  staff: /api/medical/{day (día + "por asignar"), search, status (PATCH:
+  'confirmada' notifica al cliente con buildConfirmationMessage), assign
+  (exige pagado, valida solapamiento), schedules (GET/POST/DELETE),
+  config (GET/PUT whitelist), catalog (GET/POST/PATCH doctores+especialidades)}.
+  Lógica pura de slots en api/medical/slots.ts con 13 tests.
+  **SIGUIENTE (chat nuevo o este): M3 wizard /cita-medica (medical.html) →
+  M4 panel pestañas (Consultas/Horarios/Config) → M5 cron recordatorios.**
+  Nota: cron reminders irán por /api/medical/reminders en vercel.json (1 cron
+  gratis), NO n8n (user ya no lo necesita).
