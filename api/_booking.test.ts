@@ -11,7 +11,7 @@ import {
   validateScheduleWindow,
   type BookingEnv,
   type BookingPayload,
-} from "./booking";
+} from "./_booking";
 import type { BookingDb, BookingRecord } from "./db";
 
 const NOW = new Date("2026-10-05T15:00:00Z");

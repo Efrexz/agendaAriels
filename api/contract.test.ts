@@ -1,6 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { buildBookingPayload } from "../src/services/submitBooking";
-import { bookingPayloadSchema } from "./booking";
+import { bookingPayloadSchema } from "./_booking";
 import type { FormData } from "../src/state/wizardReducer";
 import { INITIAL_FORM_DATA, buildPet } from "../src/state/wizardReducer";
 

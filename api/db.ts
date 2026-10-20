@@ -1,5 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
-import type { BookingPayload } from "./booking.js";
+import type { BookingPayload } from "./_booking.js";
 
 // ─────────────────────────────────────────────────────────────
 // Capa de datos server-side (service_role). Solo funciones de

@@ -42,6 +42,7 @@ export default async function handler(req: Req, res: Res) {
       specialties: list.map((s) => ({
         id: s.id,
         name: s.name,
+        cost: s.cost,
         branches: s.branches,
       })),
     });

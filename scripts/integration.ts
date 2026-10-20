@@ -69,7 +69,7 @@ async function main() {
     const authHeaders = { authorization: `Bearer ${token}` };
 
     // 3. /api/internal/day → luego con una reserva insertada
-    const day = await import("../api/internal/day");
+    const day = await import("../api/internal/_day");
     const { res, last } = makeRes();
     await day.default(
       { method: "GET", url: "/api/internal/day?date=2026-10-25", headers: authHeaders },
@@ -81,7 +81,7 @@ async function main() {
     if (last().status !== 200) return;
 
     // Sin token → 401
-    const day2 = await import("../api/internal/day");
+    const day2 = await import("../api/internal/_day");
     const r2 = makeRes();
     await day2.default({ method: "GET", url: "/api/internal/day?date=2026-10-25", headers: {} }, r2.res);
     console.log("3. day sin token (esperado 401):", r2.last().status);
@@ -142,7 +142,7 @@ async function main() {
     const bookingId = dayBody3.bookings[0].id;
 
     // 5. Cambiar estado → en_bano (no notificable) y listo (notificable con dry-run)
-    const statusMod = await import("../api/internal/status");
+    const statusMod = await import("../api/internal/_status");
     const r4 = makeRes();
     await statusMod.default(
       { method: "POST", headers: authHeaders, body: { bookingId, status: "en_bano" } },
@@ -158,7 +158,7 @@ async function main() {
     console.log("6. status listo (notifica en dry-run):", r5.last().status, JSON.stringify(r5.last().body));
 
     // 6. /api/status público con el código → status 'listo'
-    const statusApi = await import("../api/status");
+    const statusApi = await import("../api/_status");
     const r6 = makeRes();
     await statusApi.default(
       { method: "GET", url: "/api/status?code=VA-IT123", headers: {} },
@@ -169,8 +169,8 @@ async function main() {
     if (r6.last().status !== 200 || pub.booking?.status !== "listo") return;
 
     // 7. Cierres: cerrar día → listar → /api/availability → reabrir
-    const closuresMod = await import("../api/internal/closures");
-    const availMod = await import("../api/availability");
+    const closuresMod = await import("../api/internal/_closures");
+    const availMod = await import("../api/_availability");
 
     const r7 = makeRes();
     await closuresMod.default(
@@ -198,7 +198,7 @@ async function main() {
     console.log("10. reabrir:", r10.last().status);
 
     // 8. Búsqueda
-    const searchMod = await import("../api/internal/search");
+    const searchMod = await import("../api/internal/_search");
     const r11 = makeRes();
     await searchMod.default({ method: "GET", url: "/api/internal/search?q=999888777", headers: authHeaders }, r11.res);
     const found = r11.last().body as { results: Array<{ bookingCode: string }> };

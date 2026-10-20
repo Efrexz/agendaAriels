@@ -27,6 +27,7 @@ export default defineConfig({
         index: resolve(__dirname, "index.html"),
         internal: resolve(__dirname, "internal.html"),
         status: resolve(__dirname, "status.html"),
+        medical: resolve(__dirname, "medical.html"),
       },
     },
   },

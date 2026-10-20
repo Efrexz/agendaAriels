@@ -2,7 +2,7 @@ import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
 import { getLimaDayKey } from "../lib-lima.js";
 import { computeFreeSlots, currentMinuteLima, weekdayOf } from "./slots.js";
-import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../booking.js";
+import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booking.js";
 import { BRANCH_LABELS, BRANCH_PHONES, getMedicalDb } from "./_shared.js";
 
 // POST /api/medical/create — PÚBLICO (wizard /cita-medica).

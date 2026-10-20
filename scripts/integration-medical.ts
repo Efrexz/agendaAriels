@@ -64,7 +64,7 @@ async function main() {
 
     const TOMORROW = "2026-10-21"; // miércoles
     // ── CREACIÓN general ──
-    const createMod = await import("../api/medical/create.js");
+    const createMod = await import("../api/medical/_create.js");
     const r1 = makeRes();
     await createMod.default(
       { method: "POST", headers: {}, body: {
@@ -117,12 +117,12 @@ async function main() {
     if (r2.last().status !== 200) throw new Error("solicitud especializada falló");
 
     const appt2 = await db.findApptByCode(code2)!;
-    const patchMod = await import("../api/medical/status.js");
+    const patchMod = await import("../api/medical/_status.js");
     const r3 = makeRes();
     await patchMod.default({ method: "PATCH", headers: authHeaders, body: { id: appt2.id, status: "pagado" } }, r3.res);
     console.log("7. marca pagado:", r3.last().status);
 
-    const assignMod = await import("../api/medical/assign.js");
+    const assignMod = await import("../api/medical/_assign.js");
     const r4 = makeRes();
     await assignMod.default(
       { method: "POST", headers: authHeaders, body: { id: appt2.id, doctorId: doctor.id, apptDate: "2026-10-22", startMinute: 600 } },
@@ -135,13 +135,13 @@ async function main() {
     console.log("9. confirmar (notifica dry-run):", r5.last().status, JSON.stringify(r5.last().body));
 
     // ── staff: día y búsqueda ──
-    const dayMod = await import("../api/medical/day.js");
+    const dayMod = await import("../api/medical/_day.js");
     const r6 = makeRes();
     await dayMod.default({ method: "GET", url: "/api/medical/day?date=2026-10-21", headers: authHeaders }, r6.res);
     const dayBody = r6.last().body as { appointments: Array<{ appointmentCode: string; status: string }> };
     console.log("10. vista del día:", r6.last().status, dayBody.appointments.map((a) => `${a.appointmentCode}=${a.status}`));
 
-    const searchMod = await import("../api/medical/search.js");
+    const searchMod = await import("../api/medical/_search.js");
     const r7 = makeRes();
     await searchMod.default({ method: "GET", url: "/api/medical/search?q=999777666", headers: authHeaders }, r7.res);
     console.log("11. búsqueda por teléfono:", r7.last().status, ((r7.last().body as { results: Array<{ appointmentCode: string }> }).results).map((r) => r.appointmentCode));
@@ -151,7 +151,7 @@ async function main() {
     console.log("12. por asignar (solicitud):", r8.last().status, ((r8.last().body as { appointments: Array<{ appointmentCode: string }> }).appointments).filter((a) => a.appointmentCode === code2).length >= 0);
 
     // horarios: crear/quitar bloque
-    const schedMod = await import("../api/medical/schedules.js");
+    const schedMod = await import("../api/medical/_schedules.js");
     const r9 = makeRes();
     await schedMod.default({ method: "POST", headers: authHeaders, body: { doctorId: doctor.id, weekday: 6, startMinute: 600, endMinute: 660 } }, r9.res);
     console.log("13. nuevo bloque horario:", r9.last().status);

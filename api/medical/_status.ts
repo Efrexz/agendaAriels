@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { isValidMedicalStatus } from "./db.js";
-import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../booking.js";
+import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booking.js";
 import { minuteToTime } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard, BRANCH_LABELS, BRANCH_PHONES } from "./_shared.js";
 
