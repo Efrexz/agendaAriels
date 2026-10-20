@@ -42,13 +42,13 @@ interface Res {
   json(payload: unknown): Res;
 }
 
-const NOTIFIABLE: Record<string, (pets: string[], branchLabel: string) => string> = {
-  en_camino_recojo: (pets) =>
-    `🚐 *¡En camino!*\n\nLa movilidad de Veterinaria Ariel va hacia tu domicilio para recoger a *${pets}*.\n\n¡Nos vemos en un momento! 🐶`,
-  listo: (pets, branchLabel) =>
-    `✅ *¡${pets} está${pets.includes(", ") ? "n" : ""} listo${pets.includes(", ") ? "s" : ""}!*\n\nYa puedes pasar por *${branchLabel}* o esperar la movilidad de entrega. 🐾`,
-  en_camino_entrega: (pets) =>
-    `🚐 *¡De regreso a casa!*\n\nLa movilidad va camino a llevarte a *${pets}*. ¡Gracias por tu confianza! 🐶✨`,
+const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) => string> = {
+  en_camino_recojo: (nombre) =>
+    `🚐 *¡En camino!*\n\nLa movilidad de Veterinaria Ariel va hacia tu domicilio para recoger a *${nombre}*.\n\n¡Nos vemos en un momento! 🐶`,
+  listo: (nombre, branchLabel) =>
+    `✅ *¡${nombre} está${nombre.includes(", ") ? "n" : ""} listo${nombre.includes(", ") ? "s" : ""}!*\n\nYa puedes pasar por *${branchLabel}* o esperar la movilidad de entrega. 🐾`,
+  en_camino_entrega: (nombre) =>
+    `🚐 *¡De regreso a casa!*\n\nLa movilidad va camino a llevarte a *${nombre}*. ¡Gracias por tu confianza! 🐶✨`,
 };
 
 function petNames(pets: Array<{ name: string }>): string {

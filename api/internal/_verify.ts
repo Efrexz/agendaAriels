@@ -6,13 +6,15 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 // (Los archivos con prefijo _ no se exponen como rutas en Vercel.)
 // ─────────────────────────────────────────────────────────────
 
-let adminClient: SupabaseClient | undefined;
+let adminClient: SupabaseClient | null = null;
 
 function getAdminClient(): SupabaseClient | null {
-  if (adminClient === undefined) {
+  if (!adminClient) {
     const url = process.env.SUPABASE_URL;
     const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-    adminClient = url && key ? createClient(url, key, { auth: { persistSession: false } }) : null;
+    if (url && key) {
+      adminClient = createClient(url, key, { auth: { persistSession: false } });
+    }
   }
   return adminClient;
 }

@@ -27,6 +27,7 @@ interface Req {
 interface Res {
   status(code: number): Res;
   json(payload: unknown): Res;
+  setHeader(name: string, value: string): Res;
 }
 
 export default async function handler(req: Req, res: Res) {

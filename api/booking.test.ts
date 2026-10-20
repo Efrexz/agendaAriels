@@ -538,8 +538,14 @@ function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string
       calls.push("delivered");
     }),
     listStatusUpdates: vi.fn(async () => []),
+    listUpdatesForBookings: vi.fn(async () => []),
+    findById: vi.fn(async () => record),
+    searchBookings: vi.fn(async () => []),
+    createClosure: vi.fn(async () => ({ code: null })),
+    deleteClosure: vi.fn(async () => {}),
+    listClosuresBetween: vi.fn(async () => []),
     ...overrides,
-  };
+  } as BookingDb & { calls: string[] };
 }
 
 describe("handleBooking con BD", () => {
