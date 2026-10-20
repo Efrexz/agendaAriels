@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
-import { SupabaseBookingDb } from "../db";
-import { normalizePhoneDest, sendViaEvolution, type BookingEnv } from "../booking";
-import { bearerFrom, unauthorized, verifyStaff } from "./_verify";
+import { SupabaseBookingDb } from "../db.js";
+import { normalizePhoneDest, sendViaEvolution, type BookingEnv } from "../booking.js";
+import { bearerFrom, unauthorized, verifyStaff } from "./_verify.js";
 
 // ─────────────────────────────────────────────────────────────
 // POST /api/internal/status  { bookingId, status }

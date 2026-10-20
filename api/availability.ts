@@ -1,4 +1,4 @@
-import { SupabaseBookingDb } from "./db";
+import { SupabaseBookingDb } from "./db.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/availability

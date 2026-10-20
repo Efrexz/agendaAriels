@@ -128,9 +128,16 @@ Endpoints NUEVOS (Vercel Functions):
 - [ ] Instalar/pruebas físicas con la impresora real (requiere PCs del mostrador)
 
 ### Fase 5 — Cierre
-- [ ] Tests: unit (vitest) + e2e (Playwright) actualizados
-- [ ] `npm run lint` y `npm run build` sin errores
-- [ ] Deploy a Vercel + variables nuevas en Vercel
+- [x] Tests: unit (vitest) + e2e (Playwright) actualizados
+- [x] `npm run lint` y `npm run build` sin errores (+ script nuevo `npm run typecheck` que revisa también `api/`)
+- [x] Deploy a Vercel + variables nuevas — **EN PRODUCCIÓN**: https://agenda-ariels-nu.vercel.app
+      (wizard `/`, panel `/internal`, seguimiento `/estado`; verificado en vivo 2026-10-20:
+      /api/status y /api/availability respondiendo datos reales)
+- [x] Variables en Vercel: SUPABASE_* (prod+preview+dev), TRACKING_ENABLED=true (prod+dev),
+      EVOLUTION_* demo + VET_MESSAGE_MODE=short (SOLO Development), WHATSAPP/EVOLUTION reales intactos en Production
+- [ ] **PENDIENTE post-demo** (cuando el staff ya conozca el panel): registrar `VET_MESSAGE_MODE=short` en Production + Preview + redeploy → activa el WhatsApp corto a la veterinaria
+- [ ] Instalación QZ Tray en la PC del trabajo + prueba física TM-T20II
+- [ ] Cambiar contraseña de vet_ariel@hotmail.com (quedó por chat)
 - [ ] Guía de uso para el staff (cómo entrar, estados, imprimir, cerrar día)
 
 ## 5. Pendientes del usuario
@@ -283,3 +290,13 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   panel con pestañas, horarios editable por counter (domingos), especializada con
   pago anticipado, recordatorios día antes, datos ficticios. Ejecución grooming:
   commit + deploy prod + verificación — en curso en esta misma sesión.
+- 2026-10-20 — **DEPLOY A PRODUCCIÓN COMPLETADO.** Aprendizajes técnicos que un
+  chat nuevo DEBE saber: ① Vercel (nodejs24) NO bundlea api/: transpila archivo por
+  archivo → imports relativos internos de api/ EXIGEN extensión ".js"
+  (hay vite-plugin `js-to-ts-resolver` para que Vitest los resuelva a .ts — no
+  quitarlo); ② Vercel compila api/ con SU tsconfig: se creó api/tsconfig.json
+  (moduleResolution bundler, types node, excluye *.test.ts) y script npm "typecheck";
+  ③ `vercel dev` (CLI 64) carga NUESTRO .env.local ni para funciones: usa el entorno
+  Development del proyecto; ④ los exit codes tras pipes (`| head`) ocultan fallos —
+  verificar con redirection a archivo. Producción: agenda-ariels-nu.vercel.app
+  (web+panel+estado OK, APIs vivas). Plan médico listo para construir (sección 7).

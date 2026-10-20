@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
-import { SupabaseBookingDb } from "../db";
-import { bearerFrom, unauthorized, verifyStaff } from "./_verify";
+import { SupabaseBookingDb } from "../db.js";
+import { bearerFrom, unauthorized, verifyStaff } from "./_verify.js";
 
 // ─────────────────────────────────────────────────────────────
 // POST   /api/internal/closures  { branch, date, timeSlot|null, reason }

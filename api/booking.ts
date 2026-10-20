@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
-import { SupabaseBookingDb, type BookingDb, type BookingRowInput } from "./db";
+import { SupabaseBookingDb, type BookingDb, type BookingRowInput } from "./db.js";
 
 // ─────────────────────────────────────────────────────────────
 // Módulo compartido interno de la función api/booking.ts.

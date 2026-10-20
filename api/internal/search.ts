@@ -1,5 +1,5 @@
-import { SupabaseBookingDb } from "../db";
-import { bearerFrom, unauthorized, verifyStaff } from "./_verify";
+import { SupabaseBookingDb } from "../db.js";
+import { bearerFrom, unauthorized, verifyStaff } from "./_verify.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/internal/search?q=<código|teléfono|nombre>

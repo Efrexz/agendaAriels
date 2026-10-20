@@ -1,5 +1,5 @@
 import { z } from "zod/v4";
-import { SupabaseBookingDb, type BookingDb } from "./db";
+import { SupabaseBookingDb, type BookingDb } from "./db.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/status?code=VA-XXXXX
