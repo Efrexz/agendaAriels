@@ -339,10 +339,25 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   query apiPath funciona TODO (verificado local + prod). Handler files: renombrados
   a `_*` (no exponen rutas): api/_booking, _status, _availability + api/internal/_*
   + api/medical/_*. Los renames exigieron arreglar imports (.js) en tests/scripts.
-- 2026-10-20 — **PENDIENTE CONSTRUIR (chat nuevo): M4 panel pestañas** (Consultas:
-  Hoy default + franja Mañana + Semana + Buscar + ＋ Cita manual; Horarios editor
-  visual semanal 7 días × bloques con clicks + copiar semana; Config: duración +
-  payment_info; badges recordatorio) → **M5 cron** recordatorio día antes
-  (/api/medical/reminders + vercel.json crons + PATCH confirmado→recordado).
-  APIs ya listas para M4: /api/medical/{day,busqueda,schedules,config,catalog,assign}.
+- 2026-10-20 — **M4 PANEL PESTAÑAS COMPLETADO Y DEPLOYADO** (Producción):
+  /internal ahora tiene 4 pestañas — 🐕 Grooming (el existente), 🩺 Consultas
+  (vistas Hoy/Mañana/Esta semana/Buscar + sección "Pendientes de asignar" para
+  especializadas: Verifiqué el pago → Asignar doctor/fecha/hora → Confirmar al
+  cliente; cards por doctor con estados: Entró/No llegó/Atendida/Cancelar +
+  historial; ＋ Cita manual para telefónicos: crea vía /api/medical/create público),
+  🗓 Horarios (editor visual semanal: 7 días × media hora de 8:00 a 21:30; clic
+  marca/desmarca bloques por doctor; ⧉ Duplicar horario desde otro doctor),
+  ⚙ Config (duración de cita 15-120 min editable + payment_info editable +
+  doctores: añadir/desactivar toggle + especialidades: costo inline y
+  sedes toggle + añadir). APIs: /api/medical/{day, catalog, schedules, config,
+  status, assign} con JWT del staff.
+  Lección de lint: en src/internal (mismo archivo), NO llamar desde effects a
+  funciones locales que hagan setState síncrono: el plugin rastrea dentro del
+  mismo archivo. Usar patrón IIFE dentro del effect (setState tras await).
+- 2026-10-20 — **PENDIENTE: M5 recordatorios** → cron diario /api/medical/
+  reminders en vercel.json (1 cron gratis en Hobby): consulta citas de mañana
+  confirmada → WhatsApp por Evolution al cliente + aviso corto al counter.
+  Plantilla de envío copiable de api/medical/_create.ts. Tras M5: guía de
+  pruebas del wizard médico en la PC del trabajo + actualizar el botón de la
+  landing ("Agenda tu cita médica" → http://agenda-ariels-nu.vercel.app/cita-medica).
   Usuarios de prueba: staff médico creado/eliminado por scripts.
