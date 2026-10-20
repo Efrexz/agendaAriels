@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/index?apiPath=$1" },
     { "source": "/internal", "destination": "/internal.html" },
     { "source": "/estado", "destination": "/status.html" },
     { "source": "/cita-medica", "destination": "/medical.html" }

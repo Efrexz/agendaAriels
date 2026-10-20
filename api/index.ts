@@ -80,9 +80,9 @@ const ROUTES: Record<string, RouteDef> = {
 };
 
 export default async function handler(req: Req, res: Res) {
-  const raw: string | string[] | undefined = req.query?.path;
-  const segments = Array.isArray(raw) ? raw : raw ? [raw] : [];
-  const path = "/" + segments.join("/");
+  // Ruta REAL: vercel.json reescribe /api/* aquí con ?apiPath=<ruta>
+  const raw = req.query?.apiPath;
+  const path = "/" + (Array.isArray(raw) ? raw.join("/") : (raw ?? ""));
   
   const route = ROUTES[`${req.method ?? "GET"} ${path}`];
   if (!route) {
