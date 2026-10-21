@@ -402,3 +402,72 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   (EVOLUTION_API_URL, KEY=agenda-demo-key, INSTANCE=ariels-agenda) + redeploy
   → reserva de prueba real → 2 WhatsApps reales. DEMO día D: laptop con Docker
   abierto + PC del trabajo con navegador; QZ Tray en la PC de la impresora.
+- 2026-10-21 — **HITO: SERVIDOR DEMO OPERATIVO + QZ TRAY VERIFICADO FÍSICO.**
+  Circuito real completo probado: web producción (Vercel) → túnel Tailscale →
+  Evolution en laptop (Docker) → WhatsApp REAL entregado (VA-DEMO1 a 917104426,
+  whatsapp_delivered=true en BD). QZ Tray instalado en la PC del trabajo y la
+  boleta se imprimió FÍSICAMENTE en la TM-T20II ✓ (el usuario lo confirmó).
+  ANTES de esto se arregló: (a) stack down/up en laptop por connection-reset
+  tras el reinicio de WSL; (b) funnel --bg (el funnel normal NO persiste:
+  "No serve config" al cerrarlo — con --bg queda en la config del servicio);
+  (c) los 4 EVOLUTION/*/WHATSAPP_DESTINO de producción RE-REGISTRADOS (el CLI
+  exige rm --yes antes de add si la variable ya existe: error
+  "already exists... on branch undefined"; usar --type secret). Valores
+  producción actuales: EVOLUTION_API_URL=https://laptop-e41ahls0.taila22326.ts.net,
+  EVOLUTION_API_KEY=agenda-demo-key, EVOLUTION_INSTANCE=ariels-agenda-2,
+  WHATSAPP_DESTINO=51917104426 (número PERSONAL del usuario para demo; cuando
+  funcione todo → cambiar al número real de la veterinaria). Development sigue
+  en DRY_RUN (demo local con valores dummy). Receipt al cliente se OMITIÓ en
+  la prueba porque teléfono cliente = WHATSAPP_DESTINO: el sistema evita doble
+  envío al mismo número (diseño correcto; en demo con clientes reales poner
+  número real distinto).
+
+  ### ⚡ RUTINA AL ENCEDER LA LAPTOP (solo Docker Desktop; ~2 min)
+  1. Abrir Docker Desktop (Windows). Esperar "running".
+  2. Los contenedores se levantan SOLOS (unless-stopped) — verificar:
+     cd ~/veterinaria/agendaAriels/deploy/evolution-server && docker compose ps
+     (3 contenedores "Up" — si no: docker compose up -d)
+  3. Verificar WhatsApp desde fuera:
+     curl -s -H "apikey: agenda-demo-key" https://laptop-e41ahls0.taila22326.ts.net/instance/connectionState/ariels-agenda-2
+     → "state":"open" = LISTO. (si dice disconnected: re-escanear QR en manager)
+  4. (Tailscale+funnel: --bg persiste con systemd — si el curl falla:
+     sudo tailscale funnel --bg 8081)
+  ⚠️ La demo requiere laptop ENCENDIDA y Docker abierto (Solo WhatsApp);
+  web/panel/BD/recordatorios corren 24/7 en la nube aunque la laptop esté apagada.
+
+  ### 🖥️ PRUEBAS EN LA PC DEL TRABAJO (checklist sugerido, ~20 min)
+  URLs (todas en https://agenda-ariels-nu.vercel.app):
+  a) / → reserva grooming completa como cliente (teléfono=SU número;
+     luego otra con número de un familiar como "cliente" para ver ambos
+     mensajes) → WhatsApp real a la "clínica" + comprobante al cliente con
+     link de seguimiento + código VA-XXXXX.
+  b) /estado?code=<código> → seguimiento visible.
+  c) /internal (login vet_ariel@hotmail.com; CAMBIAR clave pendiente) →
+     pestaña 🐕 Grooming: reserva visible → estados clickeables (🛁→💨→✅)
+     → "Imprimir boleta" → sale en la TM-T20II (QZ función.Verificado ✓) →
+     página del cliente refleja el estado en ~30s.
+  d) Búsqueda por teléfono/código en el panel; cerrar un día → calendario rojo.
+  e) /cita-medica → wizard médico: sede → servicio (rayos/eco pregunta de
+     orden; especializada con costo) → doctor ficticio → fecha/hora →
+     código CM-XXXXX + WhatsApps de cita.
+  f) Panel pestaña 🩺 Consultas: cita listada; ＋ Cita manual; flujo
+     especializada: 💰 Verifiqué el pago → 🩺 Asignar → 📨 Confirmar.
+  g) Pestaña 🗓 Horarios: editor semanal (clic marca/desmarca; ⧉ duplicar).
+  h) Pestaña ⚙ Config: duración + payment_info + doctores/especialidades.
+  i) Cron: 6pm Lima manda recordatorios de citas de MAÑANA (verificar que
+     llegó el resumen a 917104426 si hay citas confirmadas de mañana).
+
+  ### 🧹 PENDIENDENTES POST-DEMO (siguiente sesión)
+  1. Limpieza de reservas de prueba (VA-DEMO1, CM-* de prueba) — SQL/API.
+  2. Cambiar CLAVE de vet_ariel@hotmail.com (queda por chat) + borrar
+     todos los datos ficticios → pasar DOCTORES/horarios/precios reales
+     desde el panel ⚙ (o script).
+  3. WHATSAPP_DESTINO → número REAL de la veterinaria (ahora: personal demo).
+  4. VET_MESSAGE_MODE=short en producción cuando el staff conozca el panel.
+  5. Botón de la landing "Agenda tu cita médica" → /cita-medica (+ dominio
+     propio si quieren: Vercel→Settings→Domains, gratis).
+  6. Fase 2 del módulo médico (si jefe pide más): cupos por franja
+     automáticos, reportes básicos (post-adoptación), recordatorios de
+     grooming (2º cron libre).
+  7. A LARGO PLAZO: VPS (~$5/mes) reemplaza la laptop — misma carpeta
+     deploy/evolution-server + dominio real + firewall. IDEAS #2.

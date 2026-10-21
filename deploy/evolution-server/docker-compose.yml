@@ -41,8 +41,9 @@ services:
     container_name: agenda_server_evolution
     restart: unless-stopped
     ports:
-      # Localhost → Tailscale Funnel crea el túnel HTTPS hacia este puerto.
-      - "8080:8080"
+      # Puerto HOST 8081 (8080 ya lo usa el stack viejo n8n/evolution de esta laptop).
+      # Tailscale Funnel apuntará al 8081.
+      - "8081:8080"
     environment:
       SERVER_NAME: agenda_server
       SERVER_TYPE: http
