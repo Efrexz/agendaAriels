@@ -603,3 +603,18 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   CLIENTE sin cambios (grilla de la duración config, correcto).
   Gates: 225 tests, lint, typecheck doble, build, integraciones 12/12 y 15/15
   (asignar+confirmar por el path nuevo OK). Deploy verificado /cita-medica 200.
+- 2026-10-21 — **LIMPIEZA POST-DEMO EJECUTADA + DOCTORES REALES**: borradas las
+  8 reservas VA-* de prueba (cascada borra sus timelines), las 7 citas CM-*
+  (cascade medical_status_updates ✓) y los 8 doctores FICTICIOS (Ejemplo-*) con
+  sus horarios/ausencias. BD queda: bookings 0, medical_appointments 0,
+  medical_schedules 72, time_off 0, timelines 0. Insertados los 6 doctores
+  REALES como kind general (activos) con horario de EJEMPLO Lun-Sáb 9-13 y
+  15-19 (72 bloques): Los Olivos → Dr. Andres, Dra. Karla; San Martín de
+  Porres → Dra. Valeria, Dr. Luis; San Miguel → Dra. Katherin, Dr. Rafael.
+  Verificado /api/medical/doctors en prod con los reales. Auth: solo queda
+  vet_ariel@hotmail.com (los staff-test los limpió el script de integración).
+  Las 5 especialidades ficticias se MANTIENEN como catálogo editable (costo y
+  seses editables desde ⚙). Pendiente que el usuario pase: apellidos completos,
+  que médico es especialista, horarios reales por sede, #3 WHATSAPP_DESTINO
+  real, #4 VET_MESSAGE_MODE activar, #5 landing + dominio, y cambiar clave
+  vet_ariel (todo el lo hace desde el panel/Supabase o conmigo).
