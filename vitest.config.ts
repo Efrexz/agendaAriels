@@ -7,6 +7,7 @@ import react from "@vitejs/plugin-react";
 export default defineConfig({
   plugins: [tailwindcss(), react()],
   test: {
-    exclude: ["node_modules/**", "e2e/**"],
+    // .vercel/**: cache del CLI (contiene specs ajenos que rompen el run)
+    exclude: ["node_modules/**", "e2e/**", ".vercel/**"],
   },
 });

@@ -64,7 +64,18 @@ async function main() {
     const doctor = doctors.find((d) => d.active)!;
     console.log("2. doctor ficticio:", doctor.fullName);
 
-    const TOMORROW = "2026-10-21"; // miércoles
+    // Próximo día hábil (lun-sáb) según Lima: la fecha hardcodeada rompía
+    // al pasar el día (creaba una cita en el pasado → 409).
+    const TOMORROW = ((): string => {
+      for (let i = 1; i <= 7; i++) {
+        const iso = new Intl.DateTimeFormat("en-CA", {
+          timeZone: "America/Lima", year: "numeric", month: "2-digit", day: "2-digit",
+        }).format(new Date(Date.now() + i * 86_400_000));
+        const weekday = new Date(`${iso}T12:00:00Z`).getUTCDay();
+        if (weekday >= 1 && weekday <= 6) return iso;
+      }
+      throw new Error("sin día hábil en 7 días");
+    })();
     // ── CREACIÓN general ──
     const createMod = await import("../api/medical/_create.js");
     const r1 = makeRes();
@@ -167,8 +178,11 @@ async function main() {
     const remMod = await import("../api/medical/_reminders.js");
     const r12 = makeRes();
     const result12 = await (remMod.default as unknown as (rq: unknown, rs: unknown) => Promise<void>)(
-      { method: "GET", headers: {} },
-      { status: (c: number) => r12.res, json: (x: unknown) => r12.res, setHeader: () => r12.res },
+      {
+        method: "GET",
+        headers: process.env.CRON_SECRET ? { authorization: `Bearer ${process.env.CRON_SECRET}` } : {},
+      },
+      { status: () => r12.res, json: () => r12.res, setHeader: () => r12.res },
     );
     void result12;
     cronBody = r12.last().body as { ok: boolean; sent: number; failed: number; date: string };

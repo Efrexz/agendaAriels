@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, PlusCircle } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
@@ -44,6 +44,7 @@ export function ConsultasTab() {
   const [searchResults, setSearchResults] = useState<MedAppt[] | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
   const [tick, setTick] = useState(0);
+  const searchSeqRef = useRef(0);
 
   // datos de la vista (setState siempre tras await)
   useEffect(() => {
@@ -128,8 +129,13 @@ export function ConsultasTab() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onBlur={async () => {
+            searchSeqRef.current += 1;
+            const mySeq = searchSeqRef.current;
             if (query.trim().length >= 3) {
-              try { setSearchResults((await searchMedAppts(query.trim())).results); setBusy(false); } catch { /* nada */ }
+              try {
+                const { results } = await searchMedAppts(query.trim());
+                if (searchSeqRef.current === mySeq) setSearchResults(results);
+              } catch { /* nada */ }
             } else setSearchResults(null);
           }}
           placeholder="Buscar código/teléfono/nombre…"

@@ -28,6 +28,9 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
   const [searchResults, setQueryResults] = useState<PanelBooking[] | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  const searchSeqRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastSearchedRef = useRef("");
 
   // Auto-impresión: cuando el panel está abierto, cada reserva nueva que
   // llega se imprime sola en la térmica (vía QZ Tray), sin anotar nada a mano.
@@ -87,17 +90,52 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
     return () => clearInterval(id);
   }, [query]);
 
+  useEffect(
+    () => () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    },
+    [],
+  );
+
   async function handleSearch(q: string) {
     setQuery(q);
     if (q.trim().length < 3) {
+      searchSeqRef.current += 1;
       setQueryResults(null);
       return;
     }
+    // Debounce + guard: la respuesta de una tanda vieja se descarta si el
+    // usuario ya escribió algo distinto (evita "Sin resultados" atascado).
+    searchSeqRef.current += 1;
+    const mySeq = searchSeqRef.current;
+    const term = q.trim();
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      void (async () => {
+        lastSearchedRef.current = term;
+        try {
+          const { results } = await searchBookings(term);
+          if (searchSeqRef.current === mySeq) setQueryResults(results);
+        } catch (err) {
+          if (searchSeqRef.current === mySeq) {
+            setError(err instanceof Error ? err.message : "Error al buscar");
+          }
+        }
+      })();
+    }, 300);
+  }
+
+  // Re-ejecuta la última búsqueda (tras cambiar un estado desde un resultado).
+  async function refreshSearchResults() {
+    const term = lastSearchedRef.current;
+    if (!term) return;
+    searchSeqRef.current += 1;
+    const mySeq = searchSeqRef.current;
     try {
-      const { results } = await searchBookings(q.trim());
-      setQueryResults(results);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Error al buscar");
+      const { results } = await searchBookings(term);
+      if (searchSeqRef.current === mySeq) setQueryResults(results);
+    } catch {
+      /* conserva los resultados actuales */
     }
   }
 
@@ -108,8 +146,6 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
       "11-14": list.filter((b) => b.timeSlot === "11-14"),
     };
   }, [bookings, searchResults]);
-
-  const shownDate = searchResults ? null : date;
 
   return (
     <div className="mx-auto min-h-screen max-w-6xl p-4 pb-24 lg:p-8">
@@ -204,15 +240,34 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
       )}
 
       {searchResults !== null && (
-        <p className="no-print mb-3 text-sm text-slate-500">
-          {searchResults.length === 0
-            ? `Sin resultados para "${query}".`
-            : `${searchResults.length} resultado(s) para "${query}":`}
-        </p>
+        <>
+          <p className="no-print mb-3 text-sm text-slate-500">
+            {searchResults.length === 0
+              ? `Sin resultados para "${query}".`
+              : `${searchResults.length} resultado(s) para "${query}":`}
+          </p>
+          <div className="flex flex-col gap-3">
+            {searchResults.map((booking) => (
+              <BookingCard
+                key={booking.id}
+                booking={booking}
+                showDate
+                onChanged={() => {
+                  setLoading(true);
+                  setTick((t) => t + 1);
+                  void refreshSearchResults();
+                }}
+                printing={printingId === booking.id}
+                onPrint={(id) => setPrintingId(id)}
+                onPrinted={() => setPrintingId(null)}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Lista del día por franja */}
-      {shownDate && (
+      {searchResults === null && (
         <div className="grid gap-6 lg:grid-cols-2">
           {(["9-11", "11-14"] as const).map((slot) => (
             <section key={slot}>

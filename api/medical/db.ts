@@ -1,4 +1,5 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
+import { phoneMatchesDigits } from "../db.js";
 
 // ─────────────────────────────────────────────────────────────
 // Repositorio médico server-side (service_role). Igual estándar
@@ -468,14 +469,19 @@ export class MedicalDb {
   }
 
   async listApptsPatient(phoneDigits: string): Promise<MedicalAppointmentRecord[]> {
+    // Teléfonos guardados formateados ("917-104-426"): LIKE con dígitos
+    // contiguos no matchea → se comparan solo dígitos en JS sobre lo reciente.
     const { data, error } = await this.client
       .from("medical_appointments")
       .select(APPT_COLUMNS)
-      .like("owner_phone", `%${phoneDigits}%`)
       .order("created_at", { ascending: false })
-      .limit(20);
+      .limit(500);
     if (error) throw new Error(`listApptsPatient: ${error.message}`);
-    return (data ?? []).map((r) => apptRowToRecord(r as unknown as ApptDbRow));
+    return (data ?? [])
+      .map((r) => apptRowToRecord(r as unknown as ApptDbRow))
+      .filter((a) => phoneMatchesDigits(a.ownerPhone, phoneDigits))
+      .sort((a, b) => (b.apptDate ?? "").localeCompare(a.apptDate ?? ""))
+      .slice(0, 20);
   }
 
   /** Citas activas que se cruzan con [start, end) de un doctor en una fecha. */

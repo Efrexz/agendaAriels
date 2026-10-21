@@ -423,13 +423,19 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   número real distinto).
 
   ### ⚡ RUTINA AL ENCEDER LA LAPTOP (solo Docker Desktop; ~2 min)
+  0. Manager local: http://localhost:8081/manager (puerto HOST 8081 — el 8080
+     lo ocupa el stack viejo del difusor; localhost:3000 NO existe).
   1. Abrir Docker Desktop (Windows). Esperar "running".
   2. Los contenedores se levantan SOLOS (unless-stopped) — verificar:
      cd ~/veterinaria/agendaAriels/deploy/evolution-server && docker compose ps
-     (3 contenedores "Up" — si no: docker compose up -d)
+     (3 contenedores "Up" — si salen "Exited": docker compose up -d)
+     ⚠️ Si Docker Desktop se actualiza o reinicia, los contenedores pueden
+     quedar Exited sin levantarse solos → up -d y listo (volúmenes intactos,
+     la sesión de WhatsApp se restaura sola, sin re-escanear QR).
   3. Verificar WhatsApp desde fuera:
      curl -s -H "apikey: agenda-demo-key" https://laptop-e41ahls0.taila22326.ts.net/instance/connectionState/ariels-agenda-2
-     → "state":"open" = LISTO. (si dice disconnected: re-escanear QR en manager)
+     → "state":"open" = LISTO. (si dice disconnected: re-escanear QR en manager
+     http://localhost:8081/manager)
   4. (Tailscale+funnel: --bg persiste con systemd — si el curl falla:
      sudo tailscale funnel --bg 8081)
   ⚠️ La demo requiere laptop ENCENDIDA y Docker abierto (Solo WhatsApp);
@@ -471,3 +477,45 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
      grooming (2º cron libre).
   7. A LARGO PLAZO: VPS (~$5/mes) reemplaza la laptop — misma carpeta
      deploy/evolution-server + dominio real + firewall. IDEAS #2.
+- 2026-10-21 — **DIAGNÓSTICO 502 + LIMPIEZA DOCKER (post-demo)**: el usuario
+  obtuvo 502 al reservar ("No se pudo entregar la reserva al WhatsApp") y el
+  manager no abría en localhost:3000. Causa real: los 3 contenedores de
+  deploy/evolution-server quedaron Exited (~1h) tras un reinicio/actualización
+  de Docker Desktop (pg cerró limpio, evolution SIGTERM) — restart unless-stopped
+  NO los levantó de vuelta. El funnel Tailscale seguía activo apuntando a
+  127.0.0.1:8081 sin nadie escuchando → Vercel → 502. Segundo error del usuario:
+  el manager NUNCA estuvo en :3000 ni :8080 — es :8081 (el 8080 lo ocupa el stack
+  viejo del difusor); rutina corregida en este archivo. LA RESERVA NO SE PIERDE:
+  api/booking inserta en Supabase ANTES de WhatsApp (quedó whatsapp_delivered=false,
+  atendible desde el panel). Fix: docker compose up -d → sesión de WhatsApp se
+  restauró SOLA (state open vía funnel en <30s, sin re-escanear QR). Limpieza:
+  borrada imagen n8nio/n8n (2.27 GB) — sin contenedor/volumen/compose que la use
+  aquí (el n8n del difusor vive en la PC vieja; BACKUP_WEBHOOK_URL es URL remota
+  en Vercel). Docker: 4.54 GB → 2.27 GB, 0 B recuperables. NO borrar los
+  volúmenes (agenda_pg_data = sesión/QR). PENDIENTE: tras terminar la
+  actualización 4.96.1 de Docker Desktop puede reiniciar el engine de nuevo →
+  repetir docker compose ps / up -d si hace falta.
+- 2026-10-21 — **Pruebas del usuario del panel: TODO OK** (reserva real
+  VA-C5E3Y whatsapp_delivered=true; WhatsApp real a "clínica" (su número) Y al
+  "cliente" con código + link /estado). Botón booking→Evolution→QR→entrega OK.
+- 2026-10-21 — **3 FIXES DE BÚSQUEDA DEL PANEL** (usuariio encontró los bugs
+  filtrando "isabel"/teléfonos): ① resultados de búsqueda del grooming NO se
+  pintaban (grid render solo cuando NO había búsqueda; `shownDate=null` la
+  desmontaba) → ahora lista plana de BookingCards con fecha visible;
+  ② búsqueda por teléfono nunca matcheaba: los teléfonos van guardados
+  FORMATEADOS con guiones ("917-104-426", llega así del wizard) y la API
+  buscaba .like("%dig contiguos%") → ahora `phoneMatchesDigits()` (helper
+  exportado de api/db.ts) compara solo dígitos sobre las 500 reservas
+  recientes + también matchea mobilityPhone; el search MÉDICO tenía el MISMO
+  bug (listApptsPatient) y quedó corregido igual; ③ respuesta vieja atascaba
+  "Sin resultados para ''" al borrar el texto rápido → debounce 300ms + guard
+  por secuencia en Panel y ConsultasTab (onBlur médico, que tampoco tenía).
+  Bonus arreglos de infra de testing: vitest arrastraba specs de
+  .vercel/builders (cache del CLI) → excluido .vercel/** en vitest.config +
+  rm del cache; scripts/integration-medical tenía fecha hardcodeada
+  ("2026-10-21" → creaba cita en el PASADO → 409) → día hábil dinámico Lima
+  y el paso cron ahora envía Authorization Bearer CRON_SECRET (roto desde
+  Fase A). Gates: 205 tests, lint, typecheck doble, build, integraciones
+  grooming 11/11 + médica 15/15 (exit 0). Deploy prod verificado
+  (panel 200, /api/internal/search 401 sin token). Pendiente: retest del
+  usuario (isabel→cards, 917104426/986985047→encuentra, borrar→vista día).

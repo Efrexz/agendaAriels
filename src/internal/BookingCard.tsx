@@ -18,12 +18,14 @@ export function BookingCard({
   printing,
   onPrint,
   onPrinted,
+  showDate = false,
 }: {
   booking: PanelBooking;
   onChanged: () => void;
   printing: boolean;
   onPrint: (id: string) => void;
   onPrinted: () => void;
+  showDate?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -90,6 +92,7 @@ export function BookingCard({
           </p>
         </div>
         <div className="flex shrink-0 items-center gap-1 text-slate-400">
+          {showDate && <span className="text-xs">📅 {booking.serviceDate}</span>}
           <span className="text-xs">{SLOT_LABELS[booking.timeSlot]?.split(" – ")[0]}</span>
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
         </div>

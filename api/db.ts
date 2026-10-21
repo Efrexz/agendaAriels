@@ -48,6 +48,15 @@ export interface DayClosureRecord {
 
 export type UniqueViolationCode = "23505";
 
+/**
+ * true si los dígitos de `phone` contienen `digits`. Los teléfonos se guardan
+ * formateados (ej. "917-104-426" o "+51 917 104 426"), así que comparar por
+ * dígitos evita fallar cuando el staff busca sin guiones/espacios/prefijo.
+ */
+export function phoneMatchesDigits(phone: string, digits: string): boolean {
+  return phone.replace(/\D/g, "").includes(digits);
+}
+
 export interface StatusUpdateRecord {
   status: string;
   createdBy: string;
@@ -286,14 +295,25 @@ export class SupabaseBookingDb implements BookingDb {
     }
     const digits = q.replace(/\D/g, "");
     if (digits.length >= 6) {
+      // LIKE con dígitos contiguos no matchea teléfonos formateados
+      // ("917-104-426"): se normalizan a dígitos en JS sobre las reservas
+      // recientes (volumen pequeño; columna de dígitos si esto crece).
       const { data, error } = await this.client
         .from("bookings")
         .select("*")
-        .like("owner_phone", `%${digits}%`)
-        .order("service_date", { ascending: false })
-        .limit(20);
+        .order("created_at", { ascending: false })
+        .limit(500);
       if (error) throw new Error(`searchBookings falló: ${error.message}`);
-      if ((data ?? []).length > 0) return data.map(rowToRecord);
+      const hits = (data ?? [])
+        .map(rowToRecord)
+        .filter(
+          (b) =>
+            phoneMatchesDigits(b.ownerPhone, digits) ||
+            (b.mobilityPhone !== "-" && phoneMatchesDigits(b.mobilityPhone, digits)),
+        )
+        .sort((a, b) => b.serviceDate.localeCompare(a.serviceDate))
+        .slice(0, 20);
+      if (hits.length > 0) return hits;
     }
     const { data, error } = await this.client
       .from("bookings")
