@@ -581,3 +581,25 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   cron sin marca de enviado (riesgo bajo: 1 cron/día), señal de email en UI
   cliente médica. PENDIENTE usuario: guía de pruebas médicas (checklist
   abajo en §8 registro).
+- 2026-10-21 — **PRUEBAS MÉDICAS DEL USUARIO OK + 3 FIXES MÁS** (checklist A-D
+  completo: wizard, orden sellada 2 puertas, especializada con pago pendiente,
+  panel/horarios/config y whatsapps reales al cliente Y counter). Reportadas:
+  ① B-9: la confirmación de especializada "parece que no llegó" — no verificable
+  retroactivo (no había marca en BD); el PATCH de confirmación es el mismo que
+  sí funcionó en generales → probable que sí saliera; en el retest se confirma
+  físico (y el falloFuture queda visible en la UI como notified:false);
+  (queda mejora futura: marca de notificado por transición médica).
+- 2026-10-21 — continuación del mismo día (fixes pedidos en el reporte):
+  A) BUSCADOR DE CONSULTAS EN VIVO (B-11): estaba en onBlur (requería clic
+  fuera para buscar → "parece que no funciona pero sí filtra") → onChange con
+  debounce 300ms + guard anti-carrera (igual al grooming) + server: nombre
+  busca directo ilike límite 20 (searchApptsByName nueva en medical/db.ts;
+  se elimina el full-scan 2000-2999); B) ASIGNACIÓN CON HORA MANUAL (elección
+  del usuario: chips + manual): el counter puede dar 9:15/9:20 a una
+  especializada — server _assign ya NO exige grilla: valida ventana del
+  horario semanal (inicio≥bloque, inicio+duración≤fin), sin solapamiento
+  (duración efectiva)/ausencias, hoy solo ≥ ahora+10min; panel agrega campo
+  "Hora manual" (HH:MM step 60) + chips quedan como atajos. Wizard del
+  CLIENTE sin cambios (grilla de la duración config, correcto).
+  Gates: 225 tests, lint, typecheck doble, build, integraciones 12/12 y 15/15
+  (asignar+confirmar por el path nuevo OK). Deploy verificado /cita-medica 200.

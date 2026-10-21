@@ -73,6 +73,20 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     expect(patch.durationMinutes).toBe(60);
   });
 
+  it("permite hora MANUAL fuera de grilla (9:15 = 555) dentro del bloque", async () => {
+    const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
+    const { res, entries } = makeRes();
+    await handler(
+      { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 555 } },
+      res,
+    );
+    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "asignada" } });
+    const patch = dbMock.assignAppt.mock.calls[0][1] as { durationMinutes?: number };
+    expect(patch.durationMinutes).toBe(60);
+  });
+
   it("bloquea slot ocupado aunque la cita existente tenga duración 0 (bug original)", async () => {
     const date = limaPlus(1);
     dbMock.listApptsForDoctor.mockResolvedValue([{ startMinute: 540, durationMinutes: 0 }]);
@@ -87,6 +101,8 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
 
   it("rechaza hora fuera del horario semanal del doctor", async () => {
     const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
     const { res, entries } = makeRes();
     await handler(
       { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 1340 } },

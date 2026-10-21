@@ -49,11 +49,8 @@ export default async function handler(req: Req, res: Res) {
           return;
         }
       }
-      // por nombre del dueño: usamos el mismo mecanismo con rango amplio
-      results = await db.listApptsRange(null, "2000-01-01", "2999-12-31");
-      results = results.filter(
-        (a) => a.ownerName.toLowerCase().includes(q.toLowerCase()),
-      ).slice(0, 20);
+      // por nombre del dueño: server-side ilike con límite (no full-scan)
+      results = await db.searchApptsByName(q);
     }
 
     res.status(200).json({ ok: true, results });

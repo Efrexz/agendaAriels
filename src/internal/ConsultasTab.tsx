@@ -45,6 +45,7 @@ export function ConsultasTab() {
   const [manualOpen, setManualOpen] = useState(false);
   const [tick, setTick] = useState(0);
   const searchSeqRef = useRef(0);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // datos de la vista (setState siempre tras await)
   useEffect(() => {
@@ -77,6 +78,13 @@ export function ConsultasTab() {
       active = false;
     };
   }, [vista, branch, tick]);
+
+  useEffect(
+    () => () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    },
+    [],
+  );
 
   async function setApptStatus(a: MedAppt, status: string) {
     if (status === "cancelado" && !window.confirm(`¿Cancelar la cita ${a.appointmentCode} de ${a.petName}?`)) return;
@@ -127,16 +135,27 @@ export function ConsultasTab() {
         </select>
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          onBlur={async () => {
+          onChange={(e) => {
+            // Igual que el grooming: búsqueda en vivo con debounce (no onBlur)
+            const raw = e.target.value;
+            setQuery(raw);
             searchSeqRef.current += 1;
             const mySeq = searchSeqRef.current;
-            if (query.trim().length >= 3) {
-              try {
-                const { results } = await searchMedAppts(query.trim());
-                if (searchSeqRef.current === mySeq) setSearchResults(results);
-              } catch { /* nada */ }
-            } else setSearchResults(null);
+            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+            if (raw.trim().length < 3) {
+              setSearchResults(null);
+              return;
+            }
+            searchTimerRef.current = setTimeout(() => {
+              void (async () => {
+                try {
+                  const { results } = await searchMedAppts(raw.trim());
+                  if (searchSeqRef.current === mySeq) setSearchResults(results);
+                } catch {
+                  /* conserva lo anterior */
+                }
+              })();
+            }, 300);
           }}
           placeholder="Buscar código/teléfono/nombre…"
           className="w-52 rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
@@ -242,6 +261,14 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
     finally { setPending(false); }
   }
 
+  // Hora manual (HH:MM) → minutos: para horas fuera de grilla (9:15, 9:20…)
+  const [manualTime, setManualTime] = useState("");
+  function setManualHour(value: string) {
+    setManualTime(value);
+    const [h, m] = value.split(":").map(Number);
+    if (!Number.isNaN(h) && !Number.isNaN(m)) setStart((h ?? 0) * 60 + (m ?? 0));
+  }
+
   async function cargarSlots(d: string) {
     setPicker(d); setStart(null); setSlotsList([]);
     if (!docId) return;
@@ -282,16 +309,33 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
             </select>
             <input type="date" value={date} onChange={(e) => void cargarSlots(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
           </div>
-          {date && slots.length === 0 && <p className="mt-2 text-xs text-slate-400">Sin horas libres para esa fecha (prueba otra).</p>}
+          {date && slots.length === 0 && (
+            <p className="mt-2 text-xs text-slate-400">Sin horas sugeridas: usa la hora manual abajo.</p>
+          )}
           {slots.length > 0 && (
             <div className="mt-2 flex flex-wrap gap-1.5">
               {slots.map((s) => (
-                <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${startMin === s.startMinute ? "bg-brand-orange text-white" : "bg-slate-100 text-slate-700"}`}>
+                <button
+                  key={s.startMinute}
+                  onClick={() => { setStart(s.startMinute); setManualTime(""); }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${startMin === s.startMinute && !manualTime ? "bg-brand-orange text-white" : "bg-slate-100 text-slate-700"}`}
+                >
                   {s.label}
                 </button>
               ))}
             </div>
           )}
+          <div className="mt-2 flex items-center gap-2">
+            <span className="text-xs font-medium text-slate-600">Hora manual:</span>
+            <input
+              type="time"
+              step={60}
+              value={manualTime}
+              onChange={(e) => setManualHour(e.target.value)}
+              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+            />
+            <span className="text-xs text-slate-400">(ej. 9:15, respetando el horario del doctor)</span>
+          </div>
           {startMin !== null && (
             <button onClick={() => void asignar()} disabled={busy} className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-semibold text-white disabled:opacity-50">
               Asignar y pasar a 'asignada'

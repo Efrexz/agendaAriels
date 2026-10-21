@@ -485,6 +485,20 @@ export class MedicalDb {
   }
 
   /** Citas activas que se cruzan con [start, end) de un doctor en una fecha. */
+  /** Búsqueda por nombre del dueño: ilike server-side + límite (sin full-scan). */
+  async searchApptsByName(name: string, limit = 20): Promise<MedicalAppointmentRecord[]> {
+    const { data, error } = await this.client
+      .from("medical_appointments")
+      .select(APPT_COLUMNS)
+      .ilike("owner_name", `%${name}%`)
+      .neq("status", "cancelado")
+      .order("appt_date", { ascending: true })
+      .order("start_minute")
+      .limit(limit);
+    if (error) throw new Error(`searchApptsByName: ${error.message}`);
+    return (data ?? []).map((r) => apptRowToRecord(r as unknown as ApptDbRow));
+  }
+
   async findOverlap(doctorId: string, date: string, startMinute: number, endMinute: number): Promise<boolean> {
     // solapamiento clásico: existing.start < end AND existing.start + dur > start
     const from = date;

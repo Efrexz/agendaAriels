@@ -1,7 +1,7 @@
 import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
 import { getLimaDayKey } from "../lib-lima.js";
-import { computeFreeSlots, currentMinuteLima, weekdayOf } from "./slots.js";
+import { currentMinuteLima, weekdayOf } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard } from "./_shared.js";
 
 // POST /api/medical/assign  { id, doctorId?, apptDate?, startMinute?, paymentNotes? }
@@ -89,26 +89,37 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    // Slot válido con la MISMA lógica de disponibilidad: horario semanal,
-    // grid por duración, ocupadas (con su duración real/ efectiva), ausencias
-    // y hora pasada (hoy solo con 10 min para conexión inmediata del counter).
+    // Slot válido sin exigir grilla (el counter puede dar 9:15/9:20):
+    // ① dentro del horario semanal del doctor cubriendo la duración completa,
+    // ② sin solapamiento con citas (duración efectiva) ni ausencias,
+    // ③ hoy solo desde hora actual + 10 min.
     const busy = await db.listApptsForDoctor(doctorId, apptDate);
     const timeOff = (await db.listTimeOff(null, apptDate, apptDate)).filter(
       (t) => t.doctorId === doctorId,
     );
-    const slots = computeFreeSlots({
-      durationMinutes: duration,
-      weekday: weekdayOf(apptDate),
-      schedules: await db.listDoctorSchedules(doctorId),
-      busy: busy.map((b) => ({
-        startMinute: b.startMinute ?? 0,
-        durationMinutes: durOf(b.durationMinutes),
-      })),
-      timeOffBlocks: timeOff,
-      minStartMinute: apptDate === today ? currentMinuteLima() + 10 : 0,
-    });
-    if (!slots.some((s) => s.startMinute === startMinute)) {
-      res.status(409).json({ ok: false, error: "Ese horario no está disponible para ese doctor. Elige otro." });
+    const end = startMinute + duration;
+    if (apptDate === today && startMinute < currentMinuteLima() + 10) {
+      res.status(409).json({ ok: false, error: "Esa hora ya pasó (hoy se asigna con 10 min de margen)." });
+      return;
+    }
+    const weekday = weekdayOf(apptDate);
+    const schedules = await db.listDoctorSchedules(doctorId);
+    const inWindow = schedules.some(
+      (s) => s.weekday === weekday && startMinute >= s.startMinute && end <= s.endMinute,
+    );
+    if (!inWindow) {
+      res.status(409).json({ ok: false, error: "Esa hora no está dentro del horario del doctor." });
+      return;
+    }
+    const overlaps =
+      busy.some(
+        (b) => (b.startMinute ?? 0) < end && (b.startMinute ?? 0) + durOf(b.durationMinutes) > startMinute,
+      ) ||
+      timeOff.some(
+        (t) => t.startMinute === null || t.endMinute === null || (t.startMinute < end && t.endMinute > startMinute),
+      );
+    if (overlaps) {
+      res.status(409).json({ ok: false, error: "El doctor ya tiene una cita (o ausencia) en ese horario." });
       return;
     }
 
