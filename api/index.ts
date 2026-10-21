@@ -30,6 +30,7 @@ import gDayHandler from "./internal/_day.js";
 import gSearchHandler from "./internal/_search.js";
 import gStatusHandler from "./internal/_status.js";
 import gClosuresHandler from "./internal/_closures.js";
+import gResendHandler from "./internal/_resend.js";
 import mDoctorsHandler from "./medical/_doctors.js";
 import mSpecialtiesHandler from "./medical/_specialties.js";
 import mAvailabilityHandler from "./medical/_availability.js";
@@ -61,6 +62,7 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /internal/closures": { handler: gClosuresHandler as Handler },
   "POST /internal/closures": { handler: gClosuresHandler as Handler },
   "DELETE /internal/closures": { handler: gClosuresHandler as Handler },
+  "POST /internal/resend": { handler: gResendHandler as Handler },
 
   "GET /medical/doctors": { handler: mDoctorsHandler as Handler },
   "GET /medical/specialties": { handler: mSpecialtiesHandler as Handler },

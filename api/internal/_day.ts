@@ -71,7 +71,7 @@ export default async function handler(req: Req, res: Res) {
         ownerAddress: b.ownerAddress,
         mapsUrl: b.mapsUrl,
         status: b.status,
-        whatsappDelivered: false,
+        whatsappDelivered: b.whatsappDelivered,
         pets: b.pets,
         createdAt: b.createdAt,
         timeline: timelines[b.id] ?? [],

@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { ChevronDown, ExternalLink, Printer } from "lucide-react";
-import { updateStatus, type PanelBooking } from "./api";
+import { updateStatus, resendWhatsapp, type PanelBooking } from "./api";
 import { printViaQz } from "./qz";
 import { NOTIFIABLE_STATUSES, SLOT_LABELS, STATUS_ORDER, statusMeta } from "../statuses";
 
@@ -30,6 +30,8 @@ export function BookingCard({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
   const meta = statusMeta(booking.status);
 
   /** Siguientes estados razonables: los que siguen en el flujo (+ cancelar). */
@@ -44,13 +46,31 @@ export function BookingCard({
     setBusy(true);
     setError(null);
     try {
-      await updateStatus(booking.id, status);
-      setOpen(false);
+      const result = await updateStatus(booking.id, status);
+      if (NOTIFIABLE_STATUSES.has(status) && !result.notified && !result.stale) {
+        setError("⚠️ Reserva actualizada, pero el aviso por WhatsApp no se pudo enviar.");
+      } else {
+        setOpen(false);
+      }
       onChanged();
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al actualizar");
     } finally {
       setBusy(false);
+    }
+  }
+
+  async function handleResend() {
+    setResendBusy(true);
+    setResendMsg(null);
+    try {
+      const r = await resendWhatsapp(booking.id);
+      setResendMsg(r.resent ? "Aviso reenviado ✓" : (r.reason ?? "No se reenvió"));
+      if (r.resent) onChanged();
+    } catch (err) {
+      setResendMsg(err instanceof Error ? err.message : "No se pudo reenviar");
+    } finally {
+      setResendBusy(false);
     }
   }
 
@@ -86,6 +106,11 @@ export function BookingCard({
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>
               {meta.emoji} {meta.short}
             </span>
+            {booking.whatsappDelivered === false && (
+              <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
+                ⚠️ WhatsApp
+              </span>
+            )}
           </div>
           <p className="mt-1 truncate text-sm text-slate-600">
             {booking.ownerName} · {booking.pets.map((p) => p.name).join(", ")}
@@ -100,6 +125,20 @@ export function BookingCard({
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
+          {booking.whatsappDelivered === false && (
+            <div className="no-print mb-3 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
+              <p>⚠️ El WhatsApp inicial de esta reserva no llegó a la veterinaria ni al cliente.</p>
+              {resendMsg && <p className="mt-1 text-xs">{resendMsg}</p>}
+              <button
+                onClick={handleResend}
+                disabled={resendBusy}
+                className="mt-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
+              >
+                {resendBusy ? "Reenviando…" : "Reenviar avisos"}
+              </button>
+            </div>
+          )}
+
           {/* Cliente */}
           <div className="mb-3 grid gap-1 text-sm text-slate-600">
             <p>

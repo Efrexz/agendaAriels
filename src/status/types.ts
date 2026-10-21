@@ -6,5 +6,5 @@ export interface TrackingBooking {
   branchLabel: string;
   createdAt: string;
   pets: Array<{ name: string; type: string; service: string }>;
-  timeline: Array<{ status: string; createdBy: string; createdAt: string }>;
+  timeline: Array<{ status: string; createdAt: string }>;
 }

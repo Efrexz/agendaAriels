@@ -17,6 +17,7 @@ export function ClosuresPanel({
   const [open, setOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warn, setWarn] = useState<string | null>(null);
   const [form, setForm] = useState({
     branch: "san_martin",
     date: "",
@@ -30,13 +31,19 @@ export function ClosuresPanel({
     if (!form.date) return;
     setBusy(true);
     setError(null);
+    setWarn(null);
     try {
-      await createClosure({
+      const result = await createClosure({
         branch: form.branch,
         date: form.date,
         timeSlot: form.timeSlot === "all" ? null : form.timeSlot,
         reason: form.reason.trim(),
       });
+      if (result.affected && result.affected > 0) {
+        setWarn(
+          `⚠️ El cierre afecta ${result.affected} reserva(s) ya hechas: NO se cancelan, siguen visibles en el panel.`,
+        );
+      }
       setForm((f) => ({ ...f, date: "", reason: "" }));
       onChanged();
     } catch (err) {
@@ -132,6 +139,7 @@ export function ClosuresPanel({
           </div>
 
           {error && <p className="mb-2 text-xs text-red-600">{error}</p>}
+          {warn && <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-700">{warn}</p>}
 
           {closures.length === 0 ? (
             <p className="text-sm text-slate-400">No hay días cerrados próximos.</p>

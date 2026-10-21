@@ -519,3 +519,38 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   grooming 11/11 + médica 15/15 (exit 0). Deploy prod verificado
   (panel 200, /api/internal/search 401 sin token). Pendiente: retest del
   usuario (isabel→cards, 917104426/986985047→encuentra, borrar→vista día).
+- 2026-10-21 — **AUDITORÍA PROFUNDA GROOMING + 5 FIXES de robustez a producción**.
+  Retest del usuario OK (búsqueda funcionando). Opinión acordada: los 3 WhatsApp
+  por reserva (camino recojo/listo/camino entrega) NO son spam — 1:1
+  transaccionales esperados por el cliente, mantener. El riesgo real eran los
+  DUPLICADOS por carrera entre PCs del counter. Fixes:
+  ① cambio de estado ATÓMICO — nuevo transitionStatus en api/db.ts (update
+  condicional `.eq("status", anterior).select("id")`; el perdedor de la carrera
+  NO notifica y NO duplica timeline; endpoint responde stale:true) con tests
+  api/internal/_status.test.ts (mocks de db/_verify/_booking);
+  ② AUTO-IMPRESIÓN APAGADA POR DEFECTO (decisión del usuario: el counter imprime
+  MANUAL con el botón de la card; el toggle queda como opción futura) + corte
+  por createdAt posterior a la apertura del panel (sin cascada al cambiar
+  fecha/sede; Date.now() desde el effect por la regla purity de react-hooks);
+  NO se hizo la migración printed_at (no necesaria con auto apagado);
+  ③ whatsapp_delivered REAL llega a _day.ts/_search.ts (antes hardcodeado
+  false) → badge "⚠️ WhatsApp" en la card + bloque rojo con botón "Reenviar
+  avisos" vía NUEVO endpoint POST /api/internal/resend (reenvía aviso a la
+  veterinaria short/full + comprobante al cliente, reconstruyendo
+  dateLabel/timeRangeLabel/branchPhone server-side; guarda ventana 60s anti
+  doble-click; SOLO reenvía si flag=false → imposible doble envío) + caso 23505
+  de /api/booking ahora reenvía si el aviso nunca llegó (antes se perdía
+  silencioso) + aviso inline si un cambio notificable responde notified:false
+  sin stale; ④ cierres responden `affected: N` (countBookingsFor con count
+  exact) y ClosuresPanel avisa "no se cancelan, siguen en el panel";
+  ⑤ /api/status público ya NO filtra createdBy (email del staff) — también
+  ajustado el type del timeline del cliente (src/status/types.ts).
+  Aprendizaje zod v4: z.string().uuid() EXIGE nibbles de versión (1-8) y
+  variante (89ab) — los ids reales de Supabase (gen_random_uuid v4) cumplen,
+  pero los literales de test tipo "aaaaaaaa-…" rechazan → usar uuid válidos
+  en tests. Gates: 215 tests, lint, typecheck doble, build, integración
+  grooming 12/12 (nuevo paso 12: resend sobre reserva no entregada) y médica
+  15/15. Deploy prod verificado: timeline público sin email del staff,
+  /api/internal/resend vivo y 401 sin sesión. MEJORA FUTURA anotada (no
+ elegida): el "Reintentar" del wizard genera código NUEVO → fila fantasma;
+  solvable reusando el código del localStorage en el retry.

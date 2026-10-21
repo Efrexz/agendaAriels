@@ -93,7 +93,13 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    await db.recordStatus(bookingId, status, staff.email);
+    // Solo el ganador del cambio atómico registra el timeline y notifica:
+    // dos PCs clickeando a la vez no generan doble WhatsApp.
+    const changed = await db.transitionStatus(bookingId, previous, status, staff.email);
+    if (!changed) {
+      res.status(200).json({ ok: true, status, notified: false, stale: true });
+      return;
+    }
 
     // WhatsApp al cliente: solo estados notificables y si hay teléfono válido.
     let notified = false;

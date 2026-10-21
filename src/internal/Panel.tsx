@@ -32,12 +32,13 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSearchedRef = useRef("");
 
-  // Auto-impresión: cuando el panel está abierto, cada reserva nueva que
-  // llega se imprime sola en la térmica (vía QZ Tray), sin anotar nada a mano.
-  const [autoPrint, setAutoPrint] = useState(true);
-  const autoPrintRef = useRef(true);
+  // Auto-impresión: APAGADA por defecto (el counter imprime manual con el botón
+  // de la card). Si alguien la activa, solo imprime reservas creadas DESPUÉS de
+  // abrir el panel: nunca históricas, sin cascada al cambiar de fecha/sede.
+  const [autoPrint, setAutoPrint] = useState(false);
+  const autoPrintRef = useRef(false);
+  const sessionStartRef = useRef<number | null>(null);
   const seenIdsRef = useRef<Set<string>>(new Set());
-  const firstLoadRef = useRef(true);
 
   const resetDayView = () => {
     setQueryResults(null);
@@ -49,6 +50,7 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
   // Carga del día: los setState ocurren tras await (regla de hooks).
   useEffect(() => {
     let active = true;
+    sessionStartRef.current ??= Date.now();
     (async () => {
       try {
         const [{ bookings: day }, { closures: closed }] = await Promise.all([
@@ -59,14 +61,15 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
         setBookings(day);
         setClosures(closed);
         setError(null);
-        // Nunca imprimir al abrir la página (evita lanzar boletas históricas);
-        // después, cada reserva pendiente nueva que aparezca → imprimir.
+        // Solo reservas nuevas (creadas tras abrir el panel) y aún no vistas:
+        // el corte por createdAt elimina la cascada al cambiar fecha/sede.
         const incoming = day.filter(
-          (b) => b.status === "pendiente" && !seenIdsRef.current.has(b.id),
+          (b) =>
+            b.status === "pendiente" &&
+            new Date(b.createdAt).getTime() > (sessionStartRef.current ?? Number.MAX_SAFE_INTEGER) &&
+            !seenIdsRef.current.has(b.id),
         );
-        if (firstLoadRef.current) {
-          firstLoadRef.current = false;
-        } else if (autoPrintRef.current && incoming.length > 0) {
+        if (autoPrintRef.current && incoming.length > 0) {
           for (const b of incoming) void printViaQz(b);
         }
         for (const b of day) seenIdsRef.current.add(b.id);

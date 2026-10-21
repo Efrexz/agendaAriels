@@ -615,9 +615,14 @@ export async function handleBooking(options: {
       }
       const inserted = await db.insertBooking(payloadToRow(payload, normalized.mapsUrl ?? null));
       if (inserted.code === "23505") {
-        // El código ya estaba registrado (reenvío tras un deploy, etc.).
-        console.warn(`[booking] código ${payload.bookingCode} ya existía, se devuelve sin reenviar`);
-        return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
+        // Código ya registrado (reintentos de la web). Si el aviso a la
+        // veterinaria nunca llegó, el flujo de abajo lo reenvía; si ya se
+        // entregó, se devuelve el código sin duplicar mensajes.
+        const existing = await db.findByCode(payload.bookingCode);
+        if (existing?.whatsappDelivered === true) {
+          console.warn(`[booking] ${payload.bookingCode} ya registrado y entregado; sin reenvío`);
+          return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
+        }
       }
     } catch (dbError) {
       // La BD no responde: no bloqueamos al cliente, sigue el flujo por WhatsApp.

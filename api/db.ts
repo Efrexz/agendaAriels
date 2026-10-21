@@ -38,6 +38,7 @@ export interface BookingRecord extends BookingRowInput {
   id: string;
   status: string;
   createdAt: string;
+  whatsappDelivered: boolean;
 }
 
 export interface DayClosureRecord {
@@ -73,6 +74,9 @@ export interface BookingDb {
     status: string,
     createdBy: string,
   ): Promise<void>;
+  /** Cambio de estado atómico: solo gana quien partió del estado anterior. */
+  transitionStatus(bookingId: string, from: string, to: string, createdBy: string): Promise<boolean>;
+  countBookingsFor(branch: string, date: string, timeSlot: string | null): Promise<number>;
   setWhatsappDelivered(bookingId: string, delivered: boolean): Promise<void>;
   listStatusUpdates(bookingId: string): Promise<StatusUpdateRecord[]>;
   listUpdatesForBookings(bookingIds: string[]): Promise<Record<string, StatusUpdateRecord[]>>;
@@ -117,6 +121,7 @@ function rowToRecord(row: Record<string, unknown>): BookingRecord {
     pets: (row.pets as BookingPayload["pets"]) ?? [],
     status: String(row.status),
     createdAt: String(row.created_at),
+    whatsappDelivered: Boolean(row.whatsapp_delivered),
   };
 }
 
@@ -215,6 +220,37 @@ export class SupabaseBookingDb implements BookingDb {
       .from("status_updates")
       .insert({ booking_id: bookingId, status, created_by: createdBy });
     if (error) throw new Error(`recordStatus falló: ${error.message}`);
+  }
+
+  /** Cambio de estado atómico: si nadie más cambió el estado (evita doble
+   * WhatsApp por carreras del panel), inserta el timeline y devuelve true. */
+  async transitionStatus(bookingId: string, from: string, to: string, createdBy: string): Promise<boolean> {
+    const { data, error: updErr } = await this.client
+      .from("bookings")
+      .update({ status: to })
+      .eq("id", bookingId)
+      .eq("status", from)
+      .select("id");
+    if (updErr) throw new Error(`transition status falló: ${updErr.message}`);
+    if ((data ?? []).length === 0) return false;
+    const { error } = await this.client
+      .from("status_updates")
+      .insert({ booking_id: bookingId, status: to, created_by: createdBy });
+    if (error) throw new Error(`recordStatus falló: ${error.message}`);
+    return true;
+  }
+
+  async countBookingsFor(branch: string, date: string, timeSlot: string | null): Promise<number> {
+    let q = this.client
+      .from("bookings")
+      .select("id", { count: "exact", head: true })
+      .eq("branch", branch)
+      .eq("service_date", date)
+      .neq("status", "cancelado");
+    if (timeSlot) q = q.eq("time_slot", timeSlot);
+    const { count, error } = await q;
+    if (error) throw new Error(`countBookingsFor falló: ${error.message}`);
+    return count ?? 0;
   }
 
   async setWhatsappDelivered(bookingId: string, delivered: boolean): Promise<void> {

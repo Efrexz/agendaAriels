@@ -204,6 +204,17 @@ async function main() {
     const found = r11.last().body as { results: Array<{ bookingCode: string }> };
     console.log("11. buscar por teléfono:", r11.last().status, found.results.map((b) => b.bookingCode));
 
+    // 9. Reenvío de avisos (reserva con entregado=true → no vuelve a enviar)
+    const resendMod = await import("../api/internal/_resend");
+    const r12 = makeRes();
+    await resendMod.default(
+      { method: "POST", headers: authHeaders, body: { bookingId } },
+      r12.res,
+    );
+    const resend = r12.last().body as { ok: boolean; resent: boolean };
+    console.log("12. resend (flag no entregado → reenvía):", r12.last().status, JSON.stringify(r12.last().body));
+    if (r12.last().status !== 200 || resend.resent !== true) return;
+
     console.log("INTEGRACIÓN OK");
   } finally {
     // Limpiar: reserva de prueba

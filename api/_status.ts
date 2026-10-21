@@ -60,7 +60,8 @@ export async function buildStatusResponse(
         branchLabel: record.branchLabel,
         createdAt: record.createdAt,
         pets: record.pets.map((pet) => ({ name: pet.name, type: pet.type, service: pet.service })),
-        timeline,
+        // Sin createdBy: el email del staff no va al público (el panel interno sí lo ve).
+        timeline: timeline.map((t) => ({ status: t.status, createdAt: t.createdAt })),
       },
     },
   };

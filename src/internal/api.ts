@@ -28,6 +28,7 @@ export interface PanelBooking {
   ownerAddress: string;
   mapsUrl: string | null;
   status: string;
+  whatsappDelivered?: boolean;
   pets: PanelPet[];
   createdAt: string;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
@@ -75,10 +76,19 @@ export async function searchBookings(q: string): Promise<{ results: PanelBooking
 export async function updateStatus(
   bookingId: string,
   status: string,
-): Promise<{ status: string; notified: boolean }> {
+): Promise<{ status: string; notified: boolean; stale?: boolean }> {
   return authedFetch("/api/internal/status", {
     method: "POST",
     body: JSON.stringify({ bookingId, status }),
+  });
+}
+
+export async function resendWhatsapp(
+  bookingId: string,
+): Promise<{ ok: boolean; resent: boolean; reason?: string }> {
+  return authedFetch("/api/internal/resend", {
+    method: "POST",
+    body: JSON.stringify({ bookingId }),
   });
 }
 
@@ -91,7 +101,7 @@ export async function createClosure(input: {
   date: string;
   timeSlot: string | null;
   reason: string;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; affected?: number }> {
   return authedFetch("/api/internal/closures", {
     method: "POST",
     body: JSON.stringify({

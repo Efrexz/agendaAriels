@@ -88,7 +88,14 @@ export default async function handler(req: Req, res: Res) {
         res.status(409).json({ ok: false, error: "Ese día/franja ya está cerrado." });
         return;
       }
-      res.status(200).json({ ok: true });
+      // Advertencia útil: cuántas reservas activas caen en lo cerrado
+      // (no se cancelan, siguen visibles en el panel).
+      const affected = await db.countBookingsFor(
+        parsed.data.branch,
+        parsed.data.date,
+        parsed.data.timeSlot,
+      );
+      res.status(200).json({ ok: true, affected });
       return;
     }
 

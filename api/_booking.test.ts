@@ -517,6 +517,7 @@ function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string
     pets: [],
     status: "pendiente",
     createdAt: NOW.toISOString(),
+    whatsappDelivered: false,
   };
   return {
     calls,
@@ -534,6 +535,11 @@ function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string
       return false;
     }),
     recordStatus: vi.fn(async () => {}),
+    transitionStatus: vi.fn(async () => {
+      calls.push("transition");
+      return true;
+    }),
+    countBookingsFor: vi.fn(async () => 0),
     setWhatsappDelivered: vi.fn(async () => {
       calls.push("delivered");
     }),
@@ -588,7 +594,28 @@ describe("handleBooking con BD", () => {
     expect(db.calls).toEqual(["isClosed"]);
   });
 
-  it("código duplicado en BD: 200 sin reenviar a la veterinaria", async () => {
+  it("código duplicado con aviso YA entregado: 200 sin reenviar a la veterinaria", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({
+      insertBooking: vi.fn(async () => ({ code: "23505" as const })),
+      findByCode: vi.fn(async () => ({
+        id: "test-id",
+        whatsappDelivered: true,
+      } as unknown as BookingRecord)),
+    } as Partial<BookingDb>);
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    expect(result.status).toBe(200);
+    expect(result.body.bookingCode).toBe("VA-TEST1");
+    expect(calls).toHaveLength(0); // nada enviado
+  });
+
+  it("código duplicado con aviso NO entregado: reenvía a la veterinaria", async () => {
     const { fn, calls } = fetchOk();
     const db = fakeDb({
       insertBooking: vi.fn(async () => ({ code: "23505" as const })),
@@ -601,8 +628,8 @@ describe("handleBooking con BD", () => {
       db,
     });
     expect(result.status).toBe(200);
-    expect(result.body.bookingCode).toBe("VA-TEST1");
-    expect(calls).toHaveLength(0); // nada enviado
+    expect(calls.length).toBeGreaterThanOrEqual(1); // se reenviaron los mensajes
+    expect(db.calls).toContain("delivered"); // y quedó marcado como entregado
   });
 
   it("BD caída: la reserva sigue por WhatsApp (comportamiento anterior)", async () => {
