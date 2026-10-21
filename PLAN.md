@@ -375,3 +375,30 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   4. Cambiar clave vet_ariel@hotmail.com en Supabase → Authentication.
   5. VET_MESSAGE_MODE=short en Production (WhatsApp corto a la veterinaria) cuando staff conozca el panel.
   Usuarios de prueba: staff médico creado/eliminado por scripts.
+- 2026-10-20 — **FASE A (fixes producción) COMPLETADO**: registrado VITE_SUPABASE_URL
+  + VITE_SUPABASE_ANON_KEY (el CLI nuevo exige --type config/secret explícito para
+  nombres VITE_ con valor tipo JWT: "public_prefix_requires_type") + CRON_SECRET
+  generado (openssl rand hex 24; en 3 entornos de Vercel + copia en .env.local)
+  → REDEPLOY → VERIFICADO: el bundle del panel tiene la URL de Supabase horneada
+  (curl al asset). El panel en blanco que el usuario vio en la PC del trabajo era
+  ESTO (build sin las VITE_). Ya arreglado; el usuario lo confirma al probar.
+- 2026-10-20 — **DECISIÓN SERVIDOR DEMO: LAPTOP del usuario** (ni la PC del
+  difusor ni otra PC sin nada instalado): en Vercel/Supabase vive TODO
+  (web 24/7 gratis, la PC NO necesita estar prendida); SOLO el envío de WhatsApp
+  depende de la máquina corriendo Evolution (laptop para la demo, difusor
+  intocado en su PC vieja). QR con NÚMERO PERSONAL solo para demo; cuando den
+  el OK, VPS reemplaza la laptop con los MISMOS archivos. Creada
+  deploy/evolution-server/: docker-compose.yml (evolution+pg+redis, restart
+  unless-stopped, vol persistente de instancias, AUTHENTICATION_API_KEY=
+  agenda-demo-key, puerto 8080, nombres agenda_server_* — NO choca con la demo
+  del repo raíz) + README-DOCKER.md (guía checklist + troubleshooting).
+  **PENDIENTE USUARIO (FASE B, conmigo en vivo):** ① Docker Desktop → Settings
+  → Resources → WSL Integration → activar la distro → Apply & Restart;
+  ② docker compose up -d en deploy/evolution-server/; ③ manager
+  http://localhost:8080/manager (key agenda-demo-key) → crear instancia
+  `ariels-agenda` → QR con SU número; ④ instalar Tailscale (Linux distro:
+  curl install.sh | sh; sudo tailscale up) + `tailscale funnel 8080` y VERIFICAR
+  con curl; ⑤ pasarme la URL https://<laptop>.ts.net → YO registro en Vercel
+  (EVOLUTION_API_URL, KEY=agenda-demo-key, INSTANCE=ariels-agenda) + redeploy
+  → reserva de prueba real → 2 WhatsApps reales. DEMO día D: laptop con Docker
+  abierto + PC del trabajo con navegador; QZ Tray en la PC de la impresora.

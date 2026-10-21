@@ -1,0 +1,95 @@
+# ────────────────────────────────────────────────────────────────
+# SERVIDOR DEMO (laptop) — Evolution API del AGENDADOR, aislada.
+#
+# Diferencias clave vs el demo local (repo raíz):
+#   • API key propia:          agenda-demo-key
+#   • Conexión por Tailscale Funnel: la web de producción (Vercel)
+#     llega AQUÍ por HTTPS. El QR se escanea una sola vez.
+#   • Nada del DIFUSOR vive en esta máquina: otro proyecto, otra
+#     instancia, otro número. No se tocan entre sí.
+#
+#   docker compose up -d   → levanta (auto-trae las imágenes)
+#   docker compose logs -f → ver actividad
+#   docker compose down    → detener (conserva datos/QR)
+# ────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: agenda_server_pg
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: evolution
+      POSTGRES_DB: evolution_agenda
+    volumes:
+      - agenda_pg_data:/var/lib/postgresql/data
+    networks:
+      - agenda_net
+
+  redis:
+    image: redis:7-alpine
+    container_name: agenda_server_redis
+    restart: unless-stopped
+    volumes:
+      - agenda_redis_data:/data
+    networks:
+      - agenda_net
+
+  evolution:
+    image: evoapicloud/evolution-api:latest
+    container_name: agenda_server_evolution
+    restart: unless-stopped
+    ports:
+      # Localhost → Tailscale Funnel crea el túnel HTTPS hacia este puerto.
+      - "8080:8080"
+    environment:
+      SERVER_NAME: agenda_server
+      SERVER_TYPE: http
+      SERVER_PORT: 8080
+      SERVER_URL: http://localhost:8080
+      DOCKER_ENV: "true"
+
+      DATABASE_PROVIDER: postgresql
+      DATABASE_CONNECTION_URI: postgresql://evolution:evolution@postgres:5432/evolution_agenda?schema=evolution_api
+      DATABASE_CONNECTION_CLIENT_NAME: agenda_server
+      DATABASE_SAVE_DATA_INSTANCE: "true"
+      DATABASE_SAVE_DATA_NEW_MESSAGE: "true"
+
+      CACHE_REDIS_ENABLED: "true"
+      CACHE_REDIS_URI: redis://redis:6379/6
+      CACHE_REDIS_TTL: 604800
+      CACHE_REDIS_PREFIX_KEY: agenda_server
+      CACHE_REDIS_SAVE_INSTANCES: "false"
+
+      # Esta key DEBE coincidir con EVOLUTION_API_KEY en Vercel.
+      # (demo: valor simple; en el VPS final usar uno fuerte)
+      AUTHENTICATION_API_KEY: agenda-demo-key
+      AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
+
+      CORS_ORIGIN: "*"
+      CORS_METHODS: GET,POST,PUT,DELETE
+      CORS_CREDENTIALS: "true"
+
+      WEBHOOK_GLOBAL_ENABLED: "false"
+      RABBITMQ_ENABLED: "false"
+      SQS_ENABLED: "false"
+      S3_ENABLED: "false"
+    volumes:
+      # NO BORRAR este volumen: sin él hay que re-escanear el QR.
+      - agenda_evolution_instances:/evolution/instances
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - agenda_net
+
+volumes:
+  agenda_pg_data:
+  agenda_redis_data:
+  agenda_evolution_instances:
+
+networks:
+  agenda_net:
+    name: agenda_net
+    driver: bridge
