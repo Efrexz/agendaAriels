@@ -1,4 +1,7 @@
 import { z } from "zod/v4";
+import { addDays, format } from "date-fns";
+import { getLimaDayKey } from "../lib-lima.js";
+import { computeFreeSlots, currentMinuteLima, weekdayOf } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard } from "./_shared.js";
 
 // POST /api/medical/assign  { id, doctorId?, apptDate?, startMinute?, paymentNotes? }
@@ -73,24 +76,49 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ ok: false, error: "Doctor no disponible en esa sede." });
       return;
     }
-    // Valida solapamiento del horario del doctor
+    // Duración efectiva desde app_config; las citas por asignar guardan 0.
+    const config = await db.getConfig();
+    const duration = Math.max(Number(config.appt_duration_minutes) || 60, 15);
+    const durOf = (d: number | null) => (d && d > 0 ? d : duration);
+
+    // Fecha válida: hoy (Lima) → +30 días.
+    const today = getLimaDayKey();
+    const maxDay = format(addDays(new Date(`${today}T12:00:00Z`), 30), "yyyy-MM-dd");
+    if (apptDate < today || apptDate > maxDay) {
+      res.status(400).json({ ok: false, error: "Fecha fuera del rango permitido (máx. 30 días)." });
+      return;
+    }
+
+    // Slot válido con la MISMA lógica de disponibilidad: horario semanal,
+    // grid por duración, ocupadas (con su duración real/ efectiva), ausencias
+    // y hora pasada (hoy solo con 10 min para conexión inmediata del counter).
     const busy = await db.listApptsForDoctor(doctorId, apptDate);
-    const existing = busy.some(
-      (b) => b.startMinute < startMinute + appt.durationMinutes && b.startMinute + b.durationMinutes > startMinute,
+    const timeOff = (await db.listTimeOff(null, apptDate, apptDate)).filter(
+      (t) => t.doctorId === doctorId,
     );
-    if (existing) {
-      res.status(409).json({ ok: false, error: "El doctor ya tiene una cita en ese horario." });
+    const slots = computeFreeSlots({
+      durationMinutes: duration,
+      weekday: weekdayOf(apptDate),
+      schedules: await db.listDoctorSchedules(doctorId),
+      busy: busy.map((b) => ({
+        startMinute: b.startMinute ?? 0,
+        durationMinutes: durOf(b.durationMinutes),
+      })),
+      timeOffBlocks: timeOff,
+      minStartMinute: apptDate === today ? currentMinuteLima() + 10 : 0,
+    });
+    if (!slots.some((s) => s.startMinute === startMinute)) {
+      res.status(409).json({ ok: false, error: "Ese horario no está disponible para ese doctor. Elige otro." });
       return;
     }
 
     await db.assignAppt(
       id,
-      { doctorId, apptDate, startMinute, paymentNotes: paymentNotes ?? undefined },
+      { doctorId, apptDate, startMinute, paymentNotes: paymentNotes ?? undefined, durationMinutes: duration },
       staff.email,
       "asignada",
     );
-    res.status(200).json({ ok: true, status: "asignada" });
-  } catch {
+    res.status(200).json({ ok: true, status: "asignada" });  } catch {
     res.status(500).json({ ok: false, error: "Error inesperado del servidor." });
   }
 }

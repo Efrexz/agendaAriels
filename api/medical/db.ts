@@ -515,9 +515,27 @@ export class MedicalDb {
     if (error) throw new Error(`recordApptStatus insert: ${error.message}`);
   }
 
+  /** Cambio de estado ATÓMICO: solo gana quien partió del estado anterior
+   * (evita doble WhatsApp 'confirmada' por carreras entre PCs del counter). */
+  async transitionApptStatus(apptId: string, from: string, to: string, createdBy: string): Promise<boolean> {
+    const { data, error: updErr } = await this.client
+      .from("medical_appointments")
+      .update({ status: to })
+      .eq("id", apptId)
+      .eq("status", from)
+      .select("id");
+    if (updErr) throw new Error(`transitionApptStatus: ${updErr.message}`);
+    if ((data ?? []).length === 0) return false;
+    const { error } = await this.client
+      .from("medical_status_updates")
+      .insert({ appointment_id: apptId, status: to, created_by: createdBy });
+    if (error) throw new Error(`recordApptStatus insert: ${error.message}`);
+    return true;
+  }
+
   async assignAppt(
     apptId: string,
-    patch: { doctorId?: string; apptDate?: string; startMinute?: number; paymentNotes?: string },
+    patch: { doctorId?: string; apptDate?: string; startMinute?: number; paymentNotes?: string; durationMinutes?: number },
     createdBy: string,
     newStatus?: string,
   ): Promise<void> {
@@ -526,6 +544,7 @@ export class MedicalDb {
     if (patch.doctorId) row.doctor_id = patch.doctorId;
     if (patch.apptDate) row.appt_date = patch.apptDate;
     if (patch.startMinute !== undefined && patch.startMinute !== null) row.start_minute = patch.startMinute;
+    if (patch.durationMinutes && patch.durationMinutes > 0) row.duration_minutes = patch.durationMinutes;
     if (patch.paymentNotes !== undefined) row.payment_notes = patch.paymentNotes;
     const { error: updErr } = await this.client
       .from("medical_appointments")

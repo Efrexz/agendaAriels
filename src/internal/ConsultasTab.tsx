@@ -4,7 +4,7 @@ import {
   assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
   type MedAppt,
 } from "./apiMedical";
-import { createAppointment, fetchDoctors, fetchSlots, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot } from "../medical/api";
+import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
 
 // Pestaña Consultas: vista del counter para citas médicas.
@@ -222,10 +222,11 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
     if (!doctors) {
       setPending(true);
       try {
-        const docs = await fetchDoctors(a.branch as MedBranch);
+        // Asignar especializadas: SOLO doctores especialistas
+        const docs = (await fetchDoctors(a.branch as MedBranch)).filter((d) => d.kind !== "general");
         setDocList(docs);
         if (docs.length > 0) setDocId(docs[0].id);
-        else setError("No hay doctores disponibles en esta sede.");
+        else setError("No hay especialistas disponibles en esta sede.");
       } catch (err) { setError(err instanceof Error ? err.message : "Error"); }
       finally { setPending(false); }
     }
@@ -377,6 +378,8 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
   const [serviceType, setService] = useState<"general" | "rayos" | "eco" | "especializada">("general");
   const [doctors, setDocList] = useState<MedDoctor[] | null>(null);
   const [doctorId, setDoctor] = useState("");
+  const [specialties, setSpecList] = useState<MedSpecialty[] | null>(null);
+  const [specialtyId, setSpecialty] = useState("");
   const [date, setDate] = useState("");
   const [slots, setSlotsList] = useState<MedSlot[]>([]);
   const [startMinute, setStart] = useState<number | null>(null);
@@ -387,10 +390,16 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
     let active = true;
     (async () => {
       try {
-        const list = await fetchDoctors(branch);
+        const [list, specs] = await Promise.all([
+          fetchDoctors(branch),
+          fetchSpecialties(branch),
+        ]);
         if (active) {
-          setDocList(list);
+          // Igual que el wizard: generales atienden general/rayos/eco
+          setDocList(list.filter((d) => d.kind === "general"));
+          setSpecList(specs);
           if (list[0]) setDoctor(list[0].id);
+          if (specs[0]) setSpecialty(specs[0].id);
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar doctores");
@@ -402,7 +411,7 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
   async function loadSlots(d: string) {
     setDate(d); setStart(null); setSlotsList([]);
     if (!doctorId) return;
-    try { setSlotsList(await fetchSlots(doctorId, d)); } catch { /* nada */ }
+    try { setSlotsList(await fetchSlots(doctorId, d)); } catch { setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha."); }
   }
 
   async function guardar() {
@@ -410,6 +419,7 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
     try {
       await createAppointment({
         branch, serviceType,
+        specialtyId: serviceType === "especializada" ? specialtyId : null,
         doctorId: serviceType === "especializada" ? null : doctorId,
         date: serviceType === "especializada" ? null : date,
         startMinute: serviceType === "especializada" ? null : startMinute,
@@ -441,11 +451,17 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
               <option value="especializada">Especializada</option>
             </select>
           </Row>
-          {serviceType !== "especializada" && (
+          {serviceType === "especializada" ? (
+            <Row label="Especialidad">
+              <select value={specialtyId} onChange={(e) => setSpecialty(e.target.value)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                {(specialties ?? []).map((s) => <option key={s.id} value={s.id}>{s.name} — S/ {s.cost}</option>)}
+              </select>
+            </Row>
+          ) : (
             <>
               <Row label="Doctor">
                 <select value={doctorId} onChange={(e) => setDoctor(e.target.value)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-                  {(doctors ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  {(doctors ?? []).filter((d) => d.kind === "general").map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                 </select>
               </Row>
               <Row label="Fecha">
@@ -475,7 +491,10 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
           <textarea value={name.petNotes} onChange={(e) => setName((n) => ({ ...n, petNotes: e.target.value }))} rows={2} placeholder="Motivo / notas (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
           <button
             onClick={() => void guardar()}
-            disabled={serviceType !== "especializada" && (!date || startMinute === null)}
+            disabled={
+              (serviceType !== "especializada" && (!date || startMinute === null)) ||
+              (serviceType === "especializada" && !specialtyId)
+            }
             className="rounded-xl bg-brand-blue py-2.5 text-sm font-semibold text-white disabled:opacity-50"
           >
             Crear cita

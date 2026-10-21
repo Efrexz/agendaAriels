@@ -25,6 +25,15 @@ interface Res {
 const MAX_ADVANCE_DAYS = 30;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin I/1/O/0 confusos
 
+/** Formato de BD igual al grooming: "917-104-426" (los avisos usan dígitos
+ * porque normalizePhoneDest ya ignora guiones). */
+function formatPhoneForDb(phone: string): string {
+  const digits = phone.replace(/\D/g, "").replace(/^51/, "").slice(-9);
+  return digits.length === 9
+    ? `${digits.slice(0, 3)}-${digits.slice(3, 6)}-${digits.slice(6)}`
+    : phone;
+}
+
 const CREATE_SCHEMA = z.object({
   branch: z.enum(["san_martin", "los_olivos", "san_miguel"]),
   serviceType: z.enum(["general", "rayos", "eco", "especializada"]),
@@ -309,7 +318,7 @@ export async function handleMedicalCreate(opts: {
         petType: p.petType,
         petNotes: p.petNotes,
         ownerName: p.ownerName,
-        ownerPhone: p.ownerPhone,
+        ownerPhone: formatPhoneForDb(p.ownerPhone),
         ownerEmail: p.ownerEmail,
         paymentNotes: "-",
         createdByClient: true,

@@ -554,3 +554,30 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   /api/internal/resend vivo y 401 sin sesión. MEJORA FUTURA anotada (no
  elegida): el "Reintentar" del wizard genera código NUEVO → fila fantasma;
   solvable reusando el código del localStorage en el retry.
+- 2026-10-21 — **AUDITORÍA MÓDULO MÉDICO + 6 FIXES a producción** (grooming
+  cerrado y probado por el usuario). Bugs espejo de grooming corregidos y más:
+  ① PATCH /medical/status ATÓMICO: transitionApptStatus en medical/db.ts
+  (condicional .eq status anterior) → doble click en "📨 Confirmar al cliente"
+  ya NO envía doble WhatsApp; handler con guard previous===status + stale:true
+  (tests api/medical/_status.test.ts); ② ASIGNACIÓN: el overlap usaba
+  durationMinutes=0 (citas por asignar) → ventana de longitud cero: se
+  reemplazó el chequeo manual por computeFreeSlots (mismo cálculo de
+  disponibilidad: horario semanal + grid + ocupadas con duración efectiva
+  durOf + ausencias + hoy solo con minStart+10) y assignAppt ahora FIJA
+  duration_minutes=app_config en la cita asignada → imposible ya dejar citas
+  encimadas (tests api/medical/_assign.test.ts: happy/ocupada/con duración
+  0/fecha pasada/sin pago); ③ "＋ Cita manual" AHORA PERMITE especializadas:
+  fetch specialties por sede + selector "Especialidad — S/ costo" + envía
+  specialtyId (antes siempre 400 por falta del campo) + dropdown de doctores
+  FILTRADO kind general (como el wizard) y asignar pendientes filtra
+  especialistas solo; ④ CRON recordatorios incluye estado 'asignada' (si
+  counter no confirma, el cliente igual recibe recordatorio — verificado:
+  sent pasó de 2 a 3 en integración); ⑤ wizard: slots se re-consultan al
+  ENTRAR al paso de agenda (evita elegir hora desactualizada al volver desde
+  datos); ⑥ teléfono médico se FORMATEA "917-104-426" en BD (consistencia
+  grooming); HorariosTab crash-guard sin doctores activos; error del modal
+  manual al fallar carga de horas. NO corregido (anotado): TOCTOU fino en
+  create/assign (re-chequeo post-insert), dedupe/rate-limit per-lambda,
+  cron sin marca de enviado (riesgo bajo: 1 cron/día), señal de email en UI
+  cliente médica. PENDIENTE usuario: guía de pruebas médicas (checklist
+  abajo en §8 registro).

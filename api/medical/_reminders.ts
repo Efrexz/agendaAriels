@@ -115,7 +115,9 @@ export default async function handler(req: Req, res: Res) {
 
   const tomorrow = tomorrowKey();
   try {
-    const appts = (await db.listApptsByDate(null, tomorrow)).filter((a) => a.status === "confirmada");
+    const appts = (await db.listApptsByDate(null, tomorrow)).filter(
+      (a) => a.status === "confirmada" || a.status === "asignada",
+    );
 
     const env = process.env as BookingEnv;
     const evoReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE);

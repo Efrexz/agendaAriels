@@ -45,7 +45,7 @@ export function HorariosTab() {
         if (active) {
           setSchedules(s);
           setDoct(ds);
-          if (!selected && ds[0]) setSelected(ds.find((d) => d.active)!.id ?? "");
+          if (!selected && ds[0]) setSelected(ds.find((d) => d.active)?.id ?? "");
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");

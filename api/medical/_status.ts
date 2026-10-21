@@ -91,7 +91,19 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    await db.recordApptStatus(id, status, staff.email);
+    const previous = appt.status;
+    if (previous === status) {
+      res.status(200).json({ ok: true, status, notified: false });
+      return;
+    }
+
+    // Cambio atómico: solo el ganador registra timeline y notifica (2 PCs del
+    // counter clickeando a la vez no generan doble WhatsApp de confirmación).
+    const changed = await db.transitionApptStatus(id, previous, status, staff.email);
+    if (!changed) {
+      res.status(200).json({ ok: true, status, notified: false, stale: true });
+      return;
+    }
 
     // 'confirmada' → avisar al cliente (single corto, best-effort)
     let notified = false;

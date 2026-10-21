@@ -156,6 +156,27 @@ export default function App() {
     };
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Re-consultar slots al ENTRAR al paso de agenda (si ya había fecha elegida):
+  // evita guardar una hora desactualizada al volver desde "datos".
+  useEffect(() => {
+    if (step !== "agenda" || !form.date || !form.doctorId) return;
+    let active = true;
+    (async () => {
+      try {
+        const fresh = await fetchSlots(form.doctorId!, form.date!);
+        if (active) {
+          setSlots(fresh);
+          setError(null);
+        }
+      } catch {
+        /* conserva los slots ya cargados */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
+
   async function submit() {
     setSubmitting(true);
     setError(null);
