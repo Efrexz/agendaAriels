@@ -632,7 +632,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
    que médico es especialista, horarios reales por sede, #3 WHATSAPP_DESTINO
    real, #4 VET_MESSAGE_MODE activar, #5 landing + dominio, y cambiar clave
    vet_ariel (todo el lo hace desde el panel/Supabase o conmigo).
-- 2026-10-22 — **FASE UX-A IMPLEMENTADA SIN DEPLOY (sin commit aún)** según
+- 2026-10-22 — **FASE UX-A IMPLEMENTADA** según
   PLAN-UX.md: /cita-medica vistida con el cascarón del grooming — card grande
   blanca con logo.webp + barra gradiente + progreso "Paso X de 4" (App.tsx),
   biombo (medical.css ahora solo @import de src/index.css — tokens ÚNICOS),
@@ -658,7 +658,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
    animada (bulldog) no fotos reales — llega arte: servicios 4 conceptos
    (chequeo/placa-hueso/sonda-eco/collage-4-especialidades) + vetMascot
    {doctor,orden,pago,esperando}; el código ya apunta a los nombres finales.
-- 2026-10-22 — **MÓDULO ⚗ LABORATORIO COMPLETADO (sin deploy, sin commit)** con
+- 2026-10-22 — **MÓDULO ⚗ LABORATORIO COMPLETADO** con
   el usuario en vivo: reemplaza el cuaderno de exámenes externos.
   L0 migración 20261022000001_lab_init.sql aplicada por Management API
   (lab_orders: LAB-XXXXX, sede_ORIGEN auto + sede_RESPONSABLE editable
@@ -685,9 +685,13 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   typecheck doble, build, e2e 10/10 e INTEGRACIÓN REAL 12/12
   (scripts/integration-lab.ts: cross-sede ambas vistas, flujo completo con
   WA dry-run, endpoint público seguro, 401; limpieza BD OK = 0 lab_orders).
-  PENDIENTE: deploy + pruebas del usuario (resolver CUAL teléfono de
-  recepción si distinto al dueño), y UX-B/C (estilo Ariel en /estado y
-  /internal) pendientes con las imágenes webp del usuario.
+  PENDIENTE: UX-B/C (estilo Ariel en /estado y /internal) con las imágenes
+  webp del usuario + pruebas del usuario del lab en prod.
+- 2026-10-22 — **DEPLOY PRODUCCIÓN COMMIT d174102 VERIFICADO**: push main →
+  Vercel; en vivo: / 200, /cita-medica 200 con cascarón Ariel (Playwright prod,
+  sin errores de página), /api/availability 200, /api/lab-status RUTA VIVA
+  (respuestas correctas 404 código inexistente; humo /estado?code=LAB- 404
+  amigable en la página). Módulo lab listo para pruebas reales del usuario.
 
 ---
 
