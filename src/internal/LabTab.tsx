@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, PlusCircle } from "lucide-react";
 import {
-  createLabOrder, fetchLabList, patchLabStatus, type LabOrder, type LabView,
+  addLabCatalogItem, createLabOrder, fetchLabCatalog, fetchLabList, patchLabStatus,
+  type LabOrder, type LabView,
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
@@ -11,10 +12,99 @@ import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
 // lleva sede_origen (quién la registró) y sede_responsable (dónde se atiende),
 // así San Martín ve lo que originó hacia San Miguel y viceversa.
 
-const EXAM_PRESETS = [
-  "Perfil prequirúrgico", "Hematología", "Perfil hepático", "Perfil renal",
-  "Citología", "Urocultivo", "Heces", "Cortisol",
-];
+/** Combobox del catálogo persistente global: escribe → opciones filtradas en
+ *  vivo (máx 6); si no existe, el propio counter puede AGREGARLO al catálogo
+ *  (botón ➕) y queda disponible para todas las sedes desde el próximo uso. */
+function SuggestField({ kind, value, onSelect, placeholder }: {
+  kind: "exam" | "lab";
+  value: string;
+  onSelect: (v: string) => void;
+  placeholder: string;
+}) {
+  const [items, setItems] = useState<string[] | null>(null);
+  const [focused, setFocused] = useState(false);
+  const [adding, setAdding] = useState(false);
+  const [addedFlash, setAddedFlash] = useState("");
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const { exams, labs } = await fetchLabCatalog();
+        if (active) setItems(kind === "exam" ? exams : labs);
+      } catch {
+        if (active) setItems([]); // sin catálogo: sigue siendo input libre
+      }
+    })();
+    return () => { active = false; };
+  }, [kind]);
+
+  const query = value.trim().toLowerCase();
+  const matches = items
+    ? (query ? items.filter((n) => n.toLowerCase().includes(query)) : items).slice(0, 6)
+    : [];
+  const exactExists = (items ?? []).some((n) => n.toLowerCase() === query);
+  const showAdd = focused && query.length >= 2 && !exactExists && !adding;
+
+  async function agregar() {
+    const name = value.trim();
+    setAdding(true);
+    try {
+      const saved = await addLabCatalogItem(kind, name);
+      setItems((l) => (l ? (l.includes(saved) ? l : [...l, saved].sort((a, b) => a.localeCompare(b))) : [saved]));
+      onSelect(saved);
+      setAddedFlash(saved);
+      setTimeout(() => setAddedFlash(""), 2500);
+    } catch {
+      // best-effort: si falla la BD, el valor queda como texto escrito
+    } finally {
+      setAdding(false);
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center gap-2">
+        <input
+          value={value}
+          onChange={(e) => onSelect(e.target.value)}
+          onFocus={() => setFocused(true)}
+          onBlur={() => setFocused(false)}
+          placeholder={placeholder}
+          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+        />
+      </div>
+      {focused && (items ?? []).length > 0 && (
+        <div className="flex flex-wrap gap-1">
+          {matches.map((n) => (
+            <button
+              key={n}
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => onSelect(n)}
+              className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition ${
+                value === n ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"
+              }`}
+            >{n}</button>
+          ))}
+          {showAdd && (
+            <button
+              onMouseDown={(e) => e.preventDefault()}
+              onClick={() => void agregar()}
+              className="rounded-full bg-green-600 px-2.5 py-0.5 text-[11px] font-bold text-white transition hover:bg-green-700"
+            >
+              {adding ? "Agregando…" : `➕ Agregar "${value.trim()}"`}
+            </button>
+          )}
+        </div>
+      )}
+      {addedFlash && (
+        <p className="text-[11px] text-green-600">
+          ✓ "{addedFlash}" agregado al catálogo — disponible ya para todas las sedes
+        </p>
+      )}
+    </div>
+  );
+}
 
 function timeOfLima(iso: string): string {
   return new Date(iso).toLocaleString("es-PE", {
@@ -258,19 +348,20 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
   const [created, setCreated] = useState<{ code: string; notified: boolean } | null>(null);
 
   useEffect(() => {
-    // Doctores activos de la sede responsable (dropdown "médico que solicita")
+    // Médico solicitante: doctores ACTIVOS de la sede ORIGEN (quién genera
+    // la orden), no de la responsable.
     let active = true;
     (async () => {
       try {
-        const list = await fetchDoctors(sedeResponsable, "general");
-        const especialistas = await fetchDoctors(sedeResponsable, "especialista");
-        if (active) setDoctors([...(especialistas ?? []), ...(list ?? [])]);
+        const generales = await fetchDoctors(sedeOrigen, "general");
+        const especialistas = await fetchDoctors(sedeOrigen, "especialista");
+        if (active) setDoctors([...(especialistas ?? []), ...(generales ?? [])]);
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar doctores");
       }
     })();
     return () => { active = false; };
-  }, [sedeResponsable]);
+  }, [sedeOrigen]);
 
   async function guardar() {
     setBusy(true);
@@ -342,19 +433,18 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
                   Cross-sede: la orden se verá tanto en {branchShort(sedeOrigen)} (origen) como en {branchShort(sedeResponsable)} (responsable).
                 </p>
               )}
-              <input value={form.labName} onChange={(e) => setForm((f) => ({ ...f, labName: e.target.value }))} placeholder="Laboratorio externo (ej. LabVet Centro)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <div className="flex flex-col gap-1.5">
-                <input value={form.examType} onChange={(e) => setForm((f) => ({ ...f, examType: e.target.value }))} placeholder="Tipo de examen" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                <div className="flex flex-wrap gap-1">
-                  {EXAM_PRESETS.map((p) => (
-                    <button
-                      key={p}
-                      onClick={() => setForm((f) => ({ ...f, examType: p }))}
-                      className={`rounded-full px-2 py-0.5 text-[11px] font-medium transition ${form.examType === p ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600 hover:bg-slate-200"}`}
-                    >{p}</button>
-                  ))}
-                </div>
-              </div>
+              <SuggestField
+                kind="lab"
+                value={form.labName}
+                onSelect={(v) => setForm((f) => ({ ...f, labName: v }))}
+                placeholder="Laboratorio externo (escribe para filtrar o agrega uno nuevo)"
+              />
+              <SuggestField
+                kind="exam"
+                value={form.examType}
+                onSelect={(v) => setForm((f) => ({ ...f, examType: v }))}
+                placeholder="Tipo de examen (escribe para filtrar o agrega uno nuevo)"
+              />
               <div className="flex gap-2">
                 <input value={form.petName} onChange={(e) => setForm((f) => ({ ...f, petName: e.target.value }))} placeholder="Mascota (nombre)" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
                 <div className="flex gap-1">

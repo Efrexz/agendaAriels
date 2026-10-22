@@ -47,6 +47,7 @@ import labCreateHandler from "./lab/_create.js";
 import labListHandler from "./lab/_list.js";
 import labStatusHandler from "./lab/_status.js";
 import labPublicStatusHandler from "./lab/_public_status.js";
+import labCatalogHandler from "./lab/_catalog.js";
 
 export const maxDuration = 60;
 
@@ -90,6 +91,8 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /internal/lab/list": { handler: labListHandler as Handler },
   "PATCH /internal/lab/status": { handler: labStatusHandler as Handler },
   "GET /lab-status": { handler: labPublicStatusHandler as Handler },
+  "GET /internal/lab/catalog": { handler: labCatalogHandler as Handler },
+  "POST /internal/lab/catalog": { handler: labCatalogHandler as Handler },
 };
 
 export default async function handler(req: Req, res: Res) {

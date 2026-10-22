@@ -87,3 +87,16 @@ export async function patchLabStatus(
     body: JSON.stringify({ id: orderId, status }),
   });
 }
+
+export async function fetchLabCatalog(): Promise<{ exams: string[]; labs: string[] }> {
+  return authedFetch("/api/internal/lab/catalog");
+}
+
+/** Agrega un examen/laboratorio nuevo al catálogo global (idempotente). */
+export async function addLabCatalogItem(kind: "exam" | "lab", name: string): Promise<string> {
+  const res = await authedFetch("/api/internal/lab/catalog", {
+    method: "POST",
+    body: JSON.stringify({ kind, name }),
+  });
+  return (res as { name: string }).name;
+}

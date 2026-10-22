@@ -148,8 +148,8 @@ export default function App() {
           <input
             value={code}
             onChange={(e) => setCode(e.target.value.toUpperCase())}
+            maxLength={9}
             placeholder="VA-XXXXX · LAB-XXXXX"
-            maxLength={8}
             autoComplete="off"
             className="w-full bg-transparent py-2 font-mono text-lg tracking-widest uppercase outline-none placeholder:font-sans placeholder:tracking-normal placeholder:text-slate-300"
           />

@@ -264,4 +264,35 @@ export class LabDb {
     }
     return out;
   }
+
+  // ── Catálogos persistentes (tabla editada por el counter del panel) ──
+  // Global único: las 3 sedes comparten la misma lista de exámenes/labs.
+
+  async listCatalog(): Promise<{ exams: string[]; labs: string[] }> {
+    const [exams, labs] = await Promise.all([
+      this.client.from("lab_exam_types").select("name").eq("active", true).order("name"),
+      this.client.from("lab_labs").select("name").eq("active", true).order("name"),
+    ]);
+    if (exams.error) throw new Error(`listCatalog exams: ${exams.error.message}`);
+    if (labs.error) throw new Error(`listCatalog labs: ${labs.error.message}`);
+    return {
+      exams: (exams.data ?? []).map((r) => String(r.name)),
+      labs: (labs.data ?? []).map((r) => String(r.name)),
+    };
+  }
+
+  /** Agrega nombre nuevo; si ya existe devuelve el existente (no duplica). */
+  async addCatalogItem(kind: "exam" | "lab", name: string): Promise<string> {
+    const table = kind === "exam" ? "lab_exam_types" : "lab_labs";
+    const clean = name.trim();
+    const { error } = await this.client.from(table).insert({ name: clean });
+    if (error) {
+      if (error.code === "23505") {
+        const { data } = await this.client.from(table).select("name").eq("name", clean).maybeSingle();
+        if (data) return String(data.name);
+      }
+      throw new Error(`addCatalogItem: ${error.message}`);
+    }
+    return clean;
+  }
 }

@@ -124,6 +124,25 @@ async function main() {
     console.log("8. búsqueda por TELÉFONO:", tel ? "OK" : "FALLO", r2d.last().status);
     if (!tel) throw new Error("búsqueda por teléfono falló");
 
+    // ── Catálogo global (exam/labs): GET + agregar + duplicado idempotente ──
+    const catMod = await import("../api/lab/_catalog.js");
+    const r2e = makeRes();
+    await catMod.default({ method: "GET", headers: authHeaders, body: undefined }, r2e.res);
+    const cat0 = r2e.last().body as { exams: string[]; labs: string[] };
+    console.log("8b. catálogo:", r2e.last().status, `${cat0.labs.length} labs / ${cat0.exams.length} exámenes`,
+      cat0.labs.includes("Hemovet") ? "(Hemovet presente)" : "(FALTA Hemovet)");
+    if (r2e.last().status !== 200 || !cat0.labs.includes("Hemovet")) throw new Error("catálogo GET falló");
+
+    const NEW_EXAM = "Perfil Integration Lab";
+    const r2f = makeRes();
+    await catMod.default({ method: "POST", headers: authHeaders, body: { kind: "exam", name: NEW_EXAM } }, r2f.res);
+    const r2g = makeRes();
+    await catMod.default({ method: "POST", headers: authHeaders, body: { kind: "exam", name: NEW_EXAM } }, r2g.res);
+    const nameAdd = (r2f.last().body as { name: string }).name;
+    const nameDup = (r2g.last().body as { name: string }).name;
+    console.log("8c. agregar examen nuevo + duplicado idempotente:", nameAdd === NEW_EXAM && nameDup === NEW_EXAM ? "OK" : "FALLO");
+    if (nameAdd !== NEW_EXAM || nameDup !== NEW_EXAM) throw new Error("catálogo POST falló");
+
     // ── Flujo de estados + WhatsApp al quedar listo (dry-run) ──
     const order = (await db.findOrderByCode(code1))!;
     const statusMod = await import("../api/lab/_status.js");
@@ -165,7 +184,7 @@ async function main() {
         Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`,
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ query: "delete from public.lab_orders where owner_name like '%Test' or pet_name like '%Prueba%'" }),
+      body: JSON.stringify({ query: "delete from public.lab_orders where owner_name like '%Test' or pet_name like '%Prueba%'; delete from public.lab_exam_types where name like 'Perfil Integration%';" }),
     });
     await fetch(`${SUPA}/auth/v1/admin/users/${userId}`, {
       method: "DELETE",
