@@ -6,8 +6,9 @@ import { Panel } from "./Panel";
 import { ConsultasTab } from "./ConsultasTab";
 import { HorariosTab } from "./HorariosTab";
 import { ConfigTab } from "./ConfigTab";
+import { LabTab } from "./LabTab";
 
-type Tab = "grooming" | "consultas" | "horarios" | "config";
+type Tab = "grooming" | "consultas" | "horarios" | "laboratorio" | "config";
 
 export default function App() {
   const [session, setSession] = useState<Session | null>(null);
@@ -49,6 +50,7 @@ export default function App() {
         {([
           ["grooming", "🐕 Grooming"],
           ["consultas", "🩺 Consultas"],
+          ["laboratorio", "🧪 Laboratorio"],
           ["horarios", "🗓 Horarios médicos"],
           ["config", "⚙ Config"],
         ] as Array<[Tab, string]>).map(([v, label]) => (
@@ -74,6 +76,7 @@ export default function App() {
 
       {tab === "grooming" && <Panel email={session.user.email ?? ""} onSignOut={signOut} embedded />}
       {tab === "consultas" && <ConsultasTab />}
+      {tab === "laboratorio" && <LabTab />}
       {tab === "horarios" && <HorariosTab />}
       {tab === "config" && (
         <div>

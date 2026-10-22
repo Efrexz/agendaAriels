@@ -43,6 +43,10 @@ import mSchedulesHandler from "./medical/_schedules.js";
 import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
 import mRemindersHandler from "./medical/_reminders.js";
+import labCreateHandler from "./lab/_create.js";
+import labListHandler from "./lab/_list.js";
+import labStatusHandler from "./lab/_status.js";
+import labPublicStatusHandler from "./lab/_public_status.js";
 
 export const maxDuration = 60;
 
@@ -81,6 +85,11 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /medical/catalog": { handler: mCatalogHandler as Handler },
   "PATCH /medical/catalog": { handler: mCatalogHandler as Handler },
   "GET /medical/reminders": { handler: mRemindersHandler as Handler },
+
+  "POST /internal/lab/create": { handler: labCreateHandler as Handler },
+  "GET /internal/lab/list": { handler: labListHandler as Handler },
+  "PATCH /internal/lab/status": { handler: labStatusHandler as Handler },
+  "GET /lab-status": { handler: labPublicStatusHandler as Handler },
 };
 
 export default async function handler(req: Req, res: Res) {

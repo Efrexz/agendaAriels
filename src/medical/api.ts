@@ -53,10 +53,15 @@ export const MED_BRANCH_PHONES: Record<MedBranch, string> = {
 
 async function jsonFetch<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, init);
-  const body = (await res.json().catch(() => ({}))) as T & { ok?: boolean; error?: string };
-  if (!res.ok || body.ok === false) {
-    throw new Error(body.error ?? `Error del servidor (${res.status})`);
+  // Sin functions (vite dev puro) el fallback de Vite responde HTML: no es JSON
+  // → mensaje amigable en vez de "Cannot read properties of undefined".
+  if (!res.ok || !(res.headers.get("content-type") ?? "").includes("application/json")) {
+    const body = (await res.json().catch(() => null)) as { ok?: boolean; error?: string } | null;
+    if (res.ok && body?.ok !== false) throw new Error("No se pudo conectar con la veterinaria");
+    throw new Error(body?.error ?? `Error del servidor (${res.status})`);
   }
+  const body = (await res.json()) as T & { ok?: boolean; error?: string };
+  if (body.ok === false) throw new Error(body.error ?? `Error del servidor`);
   return body;
 }
 

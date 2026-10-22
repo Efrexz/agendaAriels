@@ -1,15 +1,22 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowLeft, Microscope, CalendarDays, CheckCircle2, ClipboardList,
-  FileWarning, Loader2, PawPrint, Phone, ScanLine, Stethoscope,
+  ArrowRight, CalendarDays, CheckCircle2, Check, ChevronLeft, ChevronRight,
+  ClipboardList, Clock, FileWarning, Heart, Loader2, MapPin, Microscope, Phone,
+  ScanLine, ShieldCheck, Stethoscope, UserRound, type LucideIcon,
 } from "lucide-react";
 import {
   createAppointment, fetchDoctors, fetchSlots, fetchSpecialties,
   MED_BRANCH_PHONES, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty,
 } from "./api";
+import { BRANCHES, isBranchOpen } from "../data/branches";
+import { LazyImage } from "../components/LazyImage";
+import { WhatsAppButton } from "../components/WhatsAppButton";
 
 // Wizard de citas médicas: sede → servicio → especialidad/doctor → fecha/hora → datos → CM-XXXXX.
-// Mismo estilo del wizard de grooming (tokens de marca en medical.css).
+// Presentación con el sistema Ariel del wizard grooming (BookingWizard): card grande,
+// logo, biombo, framer-motion (0.4s easeOut, reduced-motion) y mascota webp en hitos.
+// NO cambia lógica ni APIs — mismos handlers/estados queProduction probados.
 
 type ServiceType = "general" | "rayos" | "eco" | "especializada";
 type Step = "sede" | "servicio" | "orden" | "sin_orden" | "especialidad" | "doctor" | "agenda" | "datos" | "enviado";
@@ -37,6 +44,24 @@ const INITIAL: FormData = {
   branch: null, serviceType: null, specialtyId: null, specialtyName: null, specialtyCost: null,
   doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null,
   petName: "", petType: "Perro", petNotes: "", ownerName: "", ownerPhone: "", ownerEmail: "",
+};
+
+// Rutas FINALES de imágenes (placeholders actuales = copias de vetMascot/grooming;
+// reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
+const MASCOT = {
+  orden: "/images/vetMascot/orden.webp",
+  doctor: "/images/vetMascot/doctor.webp",
+  esperando: "/images/vetMascot/esperando.webp",
+  pago: "/images/vetMascot/pago.webp",
+  agendado: "/images/vetMascot/agendado.webp",
+  errorAgenda: "/images/vetMascot/errorAgenda.webp",
+};
+
+const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
+  general: { src: "/images/medical/servicio/general.webp", alt: "Consulta general veterinaria" },
+  rayos: { src: "/images/medical/servicio/rayos.webp", alt: "Radiografía veterinaria" },
+  eco: { src: "/images/medical/servicio/eco.webp", alt: "Ecografía veterinaria" },
+  especializada: { src: "/images/medical/servicio/especializada.webp", alt: "Consulta especializada veterinaria" },
 };
 
 function limaToday(): string {
@@ -72,6 +97,14 @@ const SERVICES: Array<{ id: ServiceType; label: string; desc: string; icon: type
   { id: "especializada", label: "Consulta Especializada", desc: "Cardiología, dermatología y más", icon: Microscope },
 ];
 
+// Grupos del progreso (4): sede / servicio / agenda / datos
+const PROGRESS_GROUPS: Array<{ label: string; steps: Step[] }> = [
+  { label: "Sede", steps: ["sede"] },
+  { label: "Servicio", steps: ["servicio", "orden", "sin_orden", "especialidad", "doctor"] },
+  { label: "Agenda", steps: ["agenda"] },
+  { label: "Datos", steps: ["datos"] },
+];
+
 export default function App() {
   const [step, setStep] = useState<Step>("sede");
   const [form, setForm] = useState<FormData>(INITIAL);
@@ -83,6 +116,21 @@ export default function App() {
   const [code, setCode] = useState("");
   const [error, setError] = useState<string | null>(null);
 
+  const cardRef = useRef<HTMLDivElement>(null);
+  const reduceMotion = useReducedMotion() ?? false;
+
+  useEffect(() => {
+    cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [step]);
+
+  // Candado anti doble-click (400ms): solo la primera transición pasa.
+  const transitionLock = useRef(0);
+  const go = useCallback((s: Step) => {
+    if (Date.now() - transitionLock.current < 400) return;
+    transitionLock.current = Date.now();
+    setStep(s);
+  }, []);
+
   const update = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [field]: value }));
   }, []);
@@ -93,8 +141,8 @@ export default function App() {
       sede: "sede", servicio: "sede", orden: "servicio", sin_orden: "servicio",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
     };
-    if (step === "agenda" && form.serviceType === "especializada") setStep("datos");
-    else setStep(prev[step]);
+    if (step === "agenda" && form.serviceType === "especializada") go("datos");
+    else go(prev[step]);
   };
 
   // Paso servicio → carga: doctores (general/rayos/eco) o especialidades
@@ -103,16 +151,14 @@ export default function App() {
     update("serviceType", t);
     if (t === "general" || t === "rayos" || t === "eco") {
       if (t !== "general") {
-        setStep("orden");
+        go("orden");
         return;
       }
-      setStep("doctor");
+      go("doctor");
     } else {
-      setStep("especialidad");
+      go("especialidad");
     }
   }
-
-
 
   async function loadSlots(date: string, doctorId: string) {
     await Promise.resolve();
@@ -200,7 +246,7 @@ export default function App() {
         ownerEmail: form.ownerEmail.trim() || "-",
       });
       setCode(result.appointmentCode);
-      setStep("enviado");
+      go("enviado");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar la cita");
     } finally {
@@ -209,385 +255,706 @@ export default function App() {
   }
 
   const branch = MED_BRANCHES.find((b) => b.value === form.branch) ?? null;
-  const title = "Agenda la cita médica de tu mascota";
+  const groupIndex = PROGRESS_GROUPS.findIndex((g) => g.steps.includes(step));
+  const progress = groupIndex >= 0 ? ((groupIndex + 1) / PROGRESS_GROUPS.length) * 100 : 0;
   const canSubmit =
     form.petName.trim().length >= 2 &&
     form.ownerName.trim().length >= 3 &&
     form.ownerPhone.trim().length >= 6;
 
   return (
-    <div className="mx-auto min-h-screen max-w-xl px-4 py-6">
-      {/* Header */}
-      <header className="mb-6 flex items-center justify-center gap-3">
-        <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-blue text-white shadow-md shadow-blue-600/20">
-          <PawPrint className="h-6 w-6" />
-        </div>
-        <div>
-          <h1 className="font-display text-xl font-bold text-slate-900">Veterinaria Ariel</h1>
-          <p className="text-xs text-slate-500">Citas médicas · grooming · 3 sedes</p>
-        </div>
-      </header>
-
-      {/* Stepper */}
-      {step !== "enviado" && (
-        <div className="mb-4 flex items-center justify-center gap-1.5 text-[11px] font-medium text-slate-400">
-          {["sede", "servicio", "agenda", "datos"].map((s, i) => {
-            const order = ["sede", "servicio", "orden", "sin_orden", "especialidad", "doctor", "agenda", "datos"];
-            const active = order.indexOf(step) >= order.indexOf(s);
-            return (
-              <span key={s} className={`rounded-full px-2.5 py-1 ${active ? "bg-brand-blue/10 text-brand-blue" : ""}`}>
-                {["1. Sede", "2. Servicio", (i >= 2 ? "3. Fecha" : "3. Fecha"), "4. Datos"][i]}
-              </span>
-            );
-          })}
-        </div>
-      )}
-
-      {branch && (
-        <div className={`mb-4 ${step === "datos" ? "" : "hidden"}`}></div>
-      )}
-
-      {error && (
-        <p className="mb-4 rounded-xl bg-red-50 px-3 py-2 text-center text-sm text-red-700">{error}</p>
-      )}
-
-      {/* ── Paso: sede ── */}
-      {step === "sede" && (
-        <SedeStep title={title} onPick={(b) => { update("branch", b); setStep("servicio"); }} />
-      )}
-
-      {/* ── Paso: servicio ── */}
-      {step === "servicio" && (
-        <section>
-          <StepTitle>Sede <b>{branch?.short}</b> — ¿Qué necesitas para tu mascota?</StepTitle>
-          <div className="grid gap-3">
-            {SERVICES.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => void chooseService(s.id)}
-                className="flex items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-brand-blue"
-              >
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
-                  <s.icon className="h-5 w-5" />
+    <div className="flex min-h-screen items-center justify-center p-2 pb-24 sm:p-4 sm:pb-28">
+      <div ref={cardRef} className="w-full max-w-2xl lg:max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl">
+        <div className="h-3 bg-gradient-to-r from-blue-500 to-orange-400" />
+        <div className="p-4 sm:p-6 lg:p-10">
+          {/* Brand header (idéntico al grooming) */}
+          <div className="mb-1">
+            <div className="flex items-center justify-between">
+              <a href="/" aria-label="Veterinaria Ariel — inicio">
+                <img
+                  src="/logo.webp"
+                  alt="Veterinaria Ariel"
+                  className="h-12 sm:h-14 lg:h-16"
+                />
+              </a>
+              <div className="hidden items-center gap-3 rounded-2xl bg-gradient-to-r from-[#FFF7ED] to-[#FFFDF8] py-2 pl-2.5 pr-4 shadow-sm ring-1 ring-orange-200/70 sm:flex">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-orange-100">
+                  <span className="text-lg">🩺</span>
                 </span>
-                <span>
-                  <span className="flex items-center gap-2 font-semibold text-slate-900">{s.label}</span>
-                  <span className="text-xs text-slate-500">{s.desc}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Orden médica: pregunta ── */}
-      {step === "orden" && (
-        <section>
-          <StepTitle>¿Tu mascota tiene <b>orden médica sellada</b> por un médico?</StepTitle>
-          <p className="mb-4 rounded-2xl bg-amber-50 p-3 text-xs text-amber-800 ring-1 ring-amber-200">
-            📄 Para radiografías y ecografías necesitamos una orden médica con sello de un médico
-            (de cualquier clínica). Sin orden, primero debe pasar por una consulta general.
-          </p>
-          <div className="grid grid-cols-2 gap-3">
-            <button
-              onClick={() => { update("hasOrder", true); setStep("doctor"); }}
-              className="rounded-2xl bg-green-50 p-4 font-semibold text-green-800 ring-1 ring-green-200 transition hover:-translate-y-0.5"
-            >✅ Sí, tengo orden</button>
-            <button
-              onClick={() => setStep("sin_orden")}
-              className="rounded-2xl bg-red-50 p-4 font-semibold text-red-800 ring-1 ring-red-200 transition hover:-translate-y-0.5"
-            >❌ No tengo</button>
-          </div>
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Sin orden: dos caminos ── */}
-      {step === "sin_orden" && (
-        <section>
-          <StepTitle>Sin orden médica, primero toca <b>consulta general</b></StepTitle>
-          <p className="mb-4 text-sm text-slate-600">
-            El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
-            radiografía o ecografía el mismo día.
-          </p>
-          <div className="flex flex-col gap-3">
-            <button
-              onClick={() => { update("serviceType", "general"); update("hasOrder", null); setStep("doctor"); }}
-              className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-orange-400 py-3 font-semibold text-white shadow-md transition hover:-translate-y-0.5"
-            >
-              🩺 Agendar consulta general ahora
-            </button>
-            <a
-              href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
-              target="_blank"
-              rel="noreferrer"
-              className="flex items-center justify-center gap-2 rounded-2xl bg-green-50 py-3 font-semibold text-green-800 ring-1 ring-green-200 transition hover:-translate-y-0.5"
-            >
-              <Phone className="h-4 w-4" /> Hablar con la sede por WhatsApp
-            </a>
-          </div>
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Especialidad (especializada) ── */}
-      {step === "especialidad" && (
-        <section>
-          <StepTitle>Elige la <b>especialidad</b> para {branch?.short}</StepTitle>
-          {!specialties && <Loading />}
-          {specialties && specialties.length === 0 && (
-            <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-              Esta sede no tiene especialidades activas por ahora — elige otra sede o comunícate con nosotros.
-            </p>
-          )}
-          <div className="grid gap-3">
-            {specialties?.map((s) => (
-              <button
-                key={s.id}
-                onClick={() => {
-                  update("specialtyId", s.id);
-                  update("specialtyName", s.name);
-                  update("specialtyCost", s.cost);
-                  setStep("datos");
-                }}
-                className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-brand-blue"
-              >
-                <span className="font-semibold text-slate-900">🎓 {s.name}</span>
-                <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-bold text-brand-orange">
-                  S/ {s.cost.toFixed(0)}
-                </span>
-              </button>
-            ))}
-          </div>
-          <p className="mt-3 text-[11px] text-slate-400">
-            La consulta se paga por adelantado; después confirmamos fecha, hora y doctor.
-          </p>
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Doctor ── */}
-      {step === "doctor" && (
-        <section>
-          <StepTitle>Elige el <b>doctor</b> en {branch?.short}</StepTitle>
-          {!doctors && <Loading />}
-          {doctors && doctors.length === 0 && (
-            <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-              Sin doctores disponibles en esta sede — elige otra sede o escríbenos por WhatsApp.
-            </p>
-          )}
-          <div className="grid gap-3">
-            {doctors?.map((d) => (
-              <button
-                key={d.id}
-                onClick={() => {
-                  update("doctorId", d.id);
-                  update("doctorName", d.name);
-                  setStep("agenda");
-                }}
-                className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-brand-blue"
-              >
-                <span className="flex h-10 w-10 items-center justify-center rounded-full bg-blue-50 font-bold text-brand-blue">🩺</span>
-                <span>
-                  <span className="font-semibold text-slate-900">{d.name}</span>
-                  <span className="block text-xs text-slate-500">{d.specialty ?? "Medicina Veterinaria General"}</span>
-                </span>
-              </button>
-            ))}
-          </div>
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Fecha + hora ── */}
-      {step === "agenda" && (
-        <section>
-          <StepTitle>Elige la <b>fecha y hora</b> de la cita</StepTitle>
-          <label className="mb-3 flex items-center gap-3 rounded-2xl bg-white px-4 py-3 shadow-sm ring-1 ring-slate-200">
-            <CalendarDays className="h-5 w-5 text-slate-400" />
-            <input
-              type="date"
-              min={limaToday()}
-              max={todayMinPlus()}
-              value={form.date ?? ""}
-              onChange={(e) => {
-                update("date", e.target.value);
-                update("startMinute", null);
-                if (e.target.value && form.doctorId) void loadSlots(e.target.value, form.doctorId);
-              }}
-              className="w-full text-sm outline-none"
-            />
-          </label>
-          {!form.date && (
-            <p className="rounded-xl bg-white/70 p-4 text-center text-sm text-slate-400">
-              Primero escoge un día (disponible con {30} días de anticipación)
-            </p>
-          )}
-          {form.date && slotsLoading && <Loading />}
-          {form.date && !slotsLoading && slots && slots.length === 0 && (
-            <p className="rounded-xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-              El doctor no tiene horas libres ese día — prueba otro día.
-            </p>
-          )}
-          {form.date && !slotsLoading && slots && slots.length > 0 && (
-            <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-              {slots.map((s) => (
-                <button
-                  key={s.startMinute}
-                  onClick={() => { update("startMinute", s.startMinute); setStep("datos"); }}
-                  className={`rounded-xl py-2.5 text-sm font-semibold transition ${
-                    form.startMinute === s.startMinute
-                      ? "bg-brand-orange text-white shadow-md"
-                      : "bg-white text-slate-700 ring-1 ring-slate-200 hover:ring-brand-blue"
-                  }`}
-                >
-                  {hora(s.startMinute)}
-                </button>
-              ))}
-            </div>
-          )}
-          <BackButton onClick={back} />
-        </section>
-      )}
-
-      {/* ── Datos ── */}
-      {step === "datos" && (
-        <section>
-          <StepTitle>Últimos <b>datos</b> y confirmamos</StepTitle>
-          <Resumen form={form} />
-          <div className="mt-4 grid gap-3">
-            <Field label="Nombre de la mascota" value={form.petName} onChange={(v) => update("petName", v)} placeholder="Ej: Manolo" />
-            <div className="grid grid-cols-2 gap-3">
-              <div className="flex flex-col gap-1">
-                <span className="text-xs font-medium text-slate-600">Tipo</span>
-                <div className="flex gap-2">
-                  {["Perro", "Gato"].map((t) => (
-                    <button
-                      key={t}
-                      onClick={() => update("petType", t)}
-                      className={`flex-1 rounded-xl py-2 text-sm font-semibold transition ${form.petType === t ? "bg-brand-blue text-white" : "bg-white text-slate-700 ring-1 ring-slate-200"}`}
-                    >{t === "Perro" ? "🐶 Perro" : "🐱 Gato"}</button>
-                  ))}
+                <div className="text-left leading-tight">
+                  <p className="text-[13px] font-bold text-[#475AAB]">Más de 10 años</p>
+                  <p className="text-[11px] text-[#546A8E]">cuidando la salud de tu mascota</p>
                 </div>
               </div>
             </div>
-            <Field label="Tu nombre completo" value={form.ownerName} onChange={(v) => update("ownerName", v)} placeholder="Ej: Juan Pérez" />
-            <Field label="Tu celular (WhatsApp)" value={form.ownerPhone} onChange={(v) => update("ownerPhone", v)} placeholder="999 111 222" />
-            <Field label="Correo (opcional)" value={form.ownerEmail} onChange={(v) => update("ownerEmail", v)} placeholder="tucorreo@ejemplo.com" />
-            <label className="flex flex-col gap-1">
-              <span className="text-xs font-medium text-slate-600">¿Qué le pasa a tu mascota? (opcional)</span>
-              <textarea
-                value={form.petNotes}
-                onChange={(e) => update("petNotes", e.target.value)}
-                maxLength={400}
-                rows={2}
-                placeholder="Síntomas, observaciones…"
-                className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
-              />
-            </label>
+            <div className="mt-3 sm:mt-4 h-px w-full bg-[#DCEBFF]" />
           </div>
-          {form.serviceType === "especializada" && (
-            <p className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-amber-800 ring-1 ring-amber-200">
-              💳 Esta consulta se paga por adelantado: al confirmar recibirás por WhatsApp nuestros
-              métodos de pago y vamos a confirmar fecha, hora y doctor cuando verifiquemos tu comprobante.
-            </p>
-          )}
-          <button
-            onClick={() => void submit()}
-            disabled={submitting || !canSubmit}
-            className={`mt-4 flex w-full items-center justify-center gap-2 rounded-2xl py-3.5 text-lg font-bold text-white transition ${
-              submitting || !canSubmit ? "cursor-not-allowed bg-blue-300" : "bg-gradient-to-r from-blue-600 to-orange-400 hover:-translate-y-0.5 hover:shadow-lg"
-            }`}
-          >
-            {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
-            {submitting ? "Registrando…" : "Confirmar cita"}
-          </button>
-          <BackButton onClick={back} />
-        </section>
-      )}
 
-      {/* ── Enviado ── */}
-      {step === "enviado" && (
-        <section className="flex flex-col items-center gap-4 py-6 text-center">
-          <div className="text-6xl">🎉</div>
-          <h2 className="font-display text-2xl font-bold text-green-700">¡Cita registrada!</h2>
-          <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4">
-            <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de cita</p>
-            <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{code}</p>
-          </div>
-          <p className="text-sm text-slate-600">
-            {form.serviceType === "especializada" ? (
-              <>Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
-              WhatsApp de la sede y te confirmamos fecha, hora y doctor.</>
-            ) : (
-              <>Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita (y llega puntual:
-              tolerancia “10 minutos” luego atendemos al siguiente 🐾).</>
-            )}
-          </p>
-          <button
-            onClick={() => { setForm(INITIAL); setStep("sede"); }}
-            className="rounded-xl bg-white px-5 py-2.5 text-sm font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:ring-brand-blue"
-          >
-            Agendar otra cita
-          </button>
-        </section>
+          {/* Progreso "Paso X de 4" (patrón grooming) */}
+          {groupIndex >= 0 && (
+            <div className="mb-6">
+              <div className="mb-2 flex items-center justify-between text-sm text-[#546A8E]">
+                <span className="flex items-center gap-2 font-medium text-[#1A2238]">
+                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
+                    {groupIndex + 1}
+                  </span>
+                  <span>Paso {groupIndex + 1} de {PROGRESS_GROUPS.length}</span>
+                </span>
+                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
+                  <span className="h-2 w-2 rounded-full bg-orange-400" />
+                  {PROGRESS_GROUPS[groupIndex].label}
+                </span>
+              </div>
+              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-orange-400 transition-all duration-300 ease-out"
+                  style={{ width: `${progress}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {error && (
+            <motion.p
+              initial={{ opacity: 0, y: -6 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.25 }}
+              className="mb-4 rounded-2xl border border-red-100 bg-red-50 px-4 py-2.5 text-center text-sm font-medium text-red-700"
+            >
+              {error}
+            </motion.p>
+          )}
+
+          <AnimatePresence mode="wait">
+            <motion.div
+              key={step}
+              initial={{ opacity: 0, x: reduceMotion ? 0 : 30 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: reduceMotion ? 0 : -30 }}
+              transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut" }}
+            >
+          {/* ── Paso: sede ── */}
+          {step === "sede" && (
+            <SedeStep
+              selected={form.branch}
+              onPick={(b) => update("branch", b)}
+              onContinue={() => go("servicio")}
+            />
+          )}
+
+              {/* ── Paso: servicio ── */}
+              {step === "servicio" && (
+                <section>
+                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
+                    ¿Qué <span className="text-orange-500">necesita tu mascota</span>?
+                  </StepHeading>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
+                    {SERVICES.map((s) => {
+                      const img = SERVICE_IMAGE[s.id];
+                      return (
+                        <button
+                          key={s.id}
+                          onClick={() => void chooseService(s.id)}
+                          className="group flex flex-col overflow-hidden rounded-3xl bg-white text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98]"
+                        >
+                          <div className="relative aspect-[16/10] w-full overflow-hidden">
+                            <LazyImage
+                              src={img.src}
+                              alt={img.alt}
+                              className="transition-transform duration-500 ease-out group-hover:scale-105"
+                            />
+                            <span className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-lg">
+                              <s.icon className="h-5 w-5" />
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-3 bg-[#EAF2FB] px-5 py-4">
+                            <div className="flex flex-1 flex-col gap-0.5">
+                              <span className="text-[15px] font-semibold tracking-tight text-[#1A2238]">{s.label}</span>
+                              <span className="text-xs leading-snug text-[#546A8E]">{s.desc}</span>
+                            </div>
+                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white">
+                              <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                            </span>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </section>
+              )}
+
+              {/* ── Orden médica: pregunta ── */}
+              {step === "orden" && (
+                <section>
+                  <StepHeading kicker="Radiografía y ecografía">
+                    ¿Tu mascota tiene <span className="text-orange-500">orden sellada</span> por un médico?
+                  </StepHeading>
+                  <p className="mx-auto mb-4 max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
+                    📄 Para radiografías y ecografías necesitamos una orden médica con sello de un médico
+                    (de cualquier clínica). Sin orden, primero debe pasar por una consulta general.
+                  </p>
+                  <motion.img
+                    src={MASCOT.orden}
+                    alt="Mascota con su orden médica"
+                    className="mx-auto -mb-1 h-auto w-36 object-contain sm:w-44"
+                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
+                  />
+                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
+                    <button
+                      onClick={() => { update("hasOrder", true); go("doctor"); }}
+                      className="rounded-3xl bg-green-50 ring-1 ring-green-200 px-3 py-5 text-center font-bold text-green-800 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <span className="mb-1 block text-2xl">📄</span>
+                      Sí, tengo orden
+                    </button>
+                    <button
+                      onClick={() => { setError(null); go("sin_orden"); }}
+                      className="rounded-3xl bg-red-50 ring-1 ring-red-200 px-3 py-5 text-center font-bold text-red-800 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <span className="mb-1 block text-2xl">❌</span>
+                      No tengo
+                    </button>
+                  </div>
+                </section>
+              )}
+
+              {/* ── Sin orden: dos caminos ── */}
+              {step === "sin_orden" && (
+                <section>
+                  <StepHeading kicker="Sin orden médica">
+                    Primero toca <span className="text-orange-500">consulta general</span>
+                  </StepHeading>
+                  <p className="mx-auto mb-5 max-w-md text-center text-sm text-[#546A8E]">
+                    El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
+                    radiografía o ecografía el mismo día.
+                  </p>
+                  <div className="flex flex-col gap-3">
+                    <button
+                      onClick={() => { update("serviceType", "general"); update("hasOrder", null); go("doctor"); }}
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-orange-400 py-3.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+                    >
+                      🩺 Agendar consulta general ahora
+                    </button>
+                    <a
+                      href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="flex items-center justify-center gap-2 rounded-2xl bg-green-50 py-3.5 font-semibold text-green-800 ring-1 ring-green-200 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                    >
+                      <Phone className="h-4 w-4" /> Hablar con la sede por WhatsApp
+                    </a>
+                  </div>
+                </section>
+              )}
+
+              {/* ── Especialidad (especializada) ── */}
+              {step === "especialidad" && (
+                <section>
+                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
+                    Elige la <span className="text-orange-500">especialidad</span>
+                  </StepHeading>
+                  {!specialties && <Loading />}
+                  {specialties && specialties.length === 0 && (
+                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
+                      Esta sede no tiene especialidades activas por ahora — elige otra sede o comunícate con nosotros.
+                    </p>
+                  )}
+                  <div className="grid gap-3">
+                    {specialties?.map((s) => (
+                      <button
+                        key={s.id}
+                        onClick={() => {
+                          update("specialtyId", s.id);
+                          update("specialtyName", s.name);
+                          update("specialtyCost", s.cost);
+                          go("datos");
+                        }}
+                        className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-md hover:ring-blue-300 active:scale-[0.98]"
+                      >
+                        <span className="font-semibold text-[#1A2238]">🎓 {s.name}</span>
+                        <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-bold text-brand-orange">
+                          S/ {s.cost.toFixed(0)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <p className="mt-3 text-center text-[11px] text-[#8A97B1]">
+                    La consulta se paga por adelantado; después confirmamos fecha, hora y doctor.
+                  </p>
+                </section>
+              )}
+
+              {/* ── Doctor ── */}
+              {step === "doctor" && (
+                <section>
+                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
+                    Elige el <span className="text-orange-500">doctor</span>
+                  </StepHeading>
+                  {!doctors && <Loading />}
+                  {doctors && doctors.length === 0 && (
+                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
+                      Sin doctores disponibles en esta sede — elige otra sede o escríbenos por WhatsApp.
+                    </p>
+                  )}
+                  <motion.img
+                    src={MASCOT.doctor}
+                    alt="Nuestro equipo médico te espera"
+                    className="mx-auto mb-4 h-auto w-32 object-contain sm:w-40"
+                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
+                  />
+                  <div className="grid gap-3">
+                    {doctors?.map((d) => (
+                      <button
+                        key={d.id}
+                        onClick={() => {
+                          update("doctorId", d.id);
+                          update("doctorName", d.name);
+                          go("agenda");
+                        }}
+                        className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-md hover:ring-blue-300 active:scale-[0.98]"
+                      >
+                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EFF6FF] text-xl">🩺</span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-semibold text-[#1A2238]">{d.name}</span>
+                          <span className="block text-xs text-[#546A8E]">{d.specialty ?? "Medicina Veterinaria General"}</span>
+                        </span>
+                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
+                      </button>
+                    ))}
+                  </div>
+                </section>
+              )}
+
+              {/* ── Fecha + hora ── */}
+              {step === "agenda" && (
+                <section>
+                  <StepHeading kicker={`Dr(a). ${form.doctorName ?? ""}`}>
+                    Elige la <span className="text-orange-500">fecha y hora</span>
+                  </StepHeading>
+                  <label className="mb-3 flex items-center gap-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 shadow-sm ring-1 ring-[#DCEBFF]">
+                    <CalendarDays className="h-5 w-5 text-blue-400" />
+                    <input
+                      type="date"
+                      min={limaToday()}
+                      max={todayMinPlus()}
+                      value={form.date ?? ""}
+                      onChange={(e) => {
+                        update("date", e.target.value);
+                        update("startMinute", null);
+                        if (e.target.value && form.doctorId) void loadSlots(e.target.value, form.doctorId);
+                      }}
+                      className="w-full bg-transparent text-sm outline-none"
+                    />
+                  </label>
+                  {!form.date && (
+                    <div className="rounded-[18px] border border-[#DCEBFF] bg-[#F7FBFF] p-5 text-center">
+                      <motion.img
+                        src={MASCOT.esperando}
+                        alt="Mascota revisando el calendario"
+                        className="mx-auto mb-2 h-auto w-32 object-contain sm:w-36"
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut" }}
+                      />
+                      <p className="text-sm text-[#546A8E]">
+                        Primero escoge un día (disponible con 30 días de anticipación)
+                      </p>
+                    </div>
+                  )}
+                  {form.date && slotsLoading && <Loading />}
+                  {form.date && !slotsLoading && slots && slots.length === 0 && (
+                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
+                      El doctor no tiene horas libres ese día — prueba otro día.
+                    </p>
+                  )}
+                  {form.date && !slotsLoading && slots && slots.length > 0 && (
+                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
+                      {slots.map((s) => (
+                        <button
+                          key={s.startMinute}
+                          onClick={() => { update("startMinute", s.startMinute); go("datos"); }}
+                          className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
+                            form.startMinute === s.startMinute
+                              ? "bg-brand-orange text-white shadow-md shadow-orange-200"
+                              : "bg-white text-slate-700 ring-1 ring-[#DCEBFF] hover:-translate-y-0.5 hover:ring-blue-300"
+                          }`}
+                        >
+                          {hora(s.startMinute)}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </section>
+              )}
+
+              {/* ── Datos ── */}
+              {step === "datos" && (
+                <section>
+                  <StepHeading kicker="Casi listo">
+                    Últimos <span className="text-orange-500">datos</span> y confirmamos
+                  </StepHeading>
+                  <Resumen form={form} />
+                  <div className="mt-4 grid gap-3">
+                    <Field label="Nombre de la mascota" value={form.petName} onChange={(v) => update("petName", v)} placeholder="Ej: Manolo" />
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-[#546A8E]">Tipo</span>
+                      <div className="flex gap-2">
+                        {["Perro", "Gato"].map((t) => (
+                          <button
+                            key={t}
+                            onClick={() => update("petType", t)}
+                            className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-all ${
+                              form.petType === t
+                                ? "bg-blue-600 text-white shadow-sm"
+                                : "bg-white text-[#1A2238] ring-1 ring-[#DCEBFF]"
+                            }`}
+                          >{t === "Perro" ? "🐶 Perro" : "🐱 Gato"}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <Field label="Tu nombre completo" value={form.ownerName} onChange={(v) => update("ownerName", v)} placeholder="Ej: Juan Pérez" />
+                    <Field label="Tu celular (WhatsApp)" value={form.ownerPhone} onChange={(v) => update("ownerPhone", v)} placeholder="999 111 222" />
+                    <Field label="Correo (opcional)" value={form.ownerEmail} onChange={(v) => update("ownerEmail", v)} placeholder="tucorreo@ejemplo.com" />
+                    <label className="flex flex-col gap-1">
+                      <span className="text-xs font-medium text-[#546A8E]">¿Qué le pasa a tu mascota? (opcional)</span>
+                      <textarea
+                        value={form.petNotes}
+                        onChange={(e) => update("petNotes", e.target.value)}
+                        maxLength={400}
+                        rows={2}
+                        placeholder="Síntomas, observaciones…"
+                        className="rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
+                      />
+                    </label>
+                  </div>
+                  {form.serviceType === "especializada" && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 6 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.1 }}
+                      className="mt-4 flex items-center gap-3 overflow-hidden rounded-2xl border border-orange-100 bg-[#FFF7EE] p-3"
+                    >
+                      <img
+                        src={MASCOT.pago}
+                        alt="Mascota con cartera"
+                        className="h-20 w-20 shrink-0 object-contain"
+                      />
+                      <p className="text-xs leading-relaxed text-amber-800">
+                        💳 Esta consulta se paga por adelantado: al confirmar recibirás por WhatsApp nuestros
+                        métodos de pago y confirmaremos fecha, hora y doctor cuando verifiquemos tu comprobante.
+                      </p>
+                    </motion.div>
+                  )}
+                  <button
+                    onClick={() => void submit()}
+                    disabled={submitting || !canSubmit}
+                    className={`mt-4 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white transition-all ${
+                      submitting || !canSubmit
+                        ? "cursor-not-allowed bg-blue-300"
+                        : "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
+                    }`}
+                  >
+                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
+                    {submitting ? "Registrando…" : "Confirmar cita"}
+                  </button>
+                </section>
+              )}
+
+              {/* ── Enviado ── */}
+              {step === "enviado" && (
+                <section className="flex flex-col items-center gap-4 py-4 text-center">
+                  <motion.img
+                    src={MASCOT.agendado}
+                    alt="Mascota celebrando su cita agendada"
+                    className="h-auto w-64 object-contain sm:w-80"
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    animate={{ opacity: 1, scale: 1, y: 0 }}
+                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut" }}
+                  />
+                  <h2 className="font-display text-2xl font-bold tracking-tight text-green-700 sm:text-3xl">
+                    ¡Cita registrada!
+                  </h2>
+                  <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4">
+                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de cita</p>
+                    <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{code}</p>
+                    <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+                  </div>
+                  <p className="max-w-md text-sm text-[#546A8E]">
+                    {form.serviceType === "especializada" ? (
+                      <>Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
+                      WhatsApp de la sede y te confirmamos fecha, hora y doctor.</>
+                    ) : (
+                      <>Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
+                      tolerancia de 10 minutos, luego atendemos al siguiente 🐾.</>
+                  )}
+                  </p>
+                  <button
+                    onClick={() => { setForm(INITIAL); go("sede"); }}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-[#DCEBFF] bg-white px-5 py-2.5 text-sm font-semibold text-[#546A8E] shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:text-[#475AAB] hover:shadow-md"
+                  >
+                    Agendar otra cita
+                  </button>
+                </section>
+              )}
+            </motion.div>
+          </AnimatePresence>
+
+          {step !== "sede" && step !== "enviado" && (
+            <button
+              onClick={back}
+              className="mt-8 inline-flex items-center gap-1.5 rounded-full border border-gray-200 bg-white px-4 py-2 text-sm font-medium text-[#546A8E] shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:text-[#475AAB] hover:shadow-md"
+            >
+              <ChevronLeft className="h-4 w-4" />
+              Volver atrás
+            </button>
+          )}
+        </div>
+      </div>
+
+      {form.branch && step !== "enviado" && (
+        <WhatsAppButton phone={MED_BRANCH_PHONES[form.branch]} />
       )}
     </div>
   );
 }
 
-function SedeStep({ title, onPick }: { title: string; onPick: (b: MedBranch) => void }) {
+// Sellos de confianza del paso de sede (adaptação médica del grooming).
+const MED_TRUST_BADGES: Array<{ icon: LucideIcon; title: string; description: string; color: string }> = [
+  {
+    icon: ShieldCheck,
+    title: "Atención profesional",
+    description: "Veterinarios y asistentes capacitados",
+    color: "text-blue-600",
+  },
+  {
+    icon: Microscope,
+    title: "Diagnóstico en sede",
+    description: "Rayos X · Ecografía · Laboratorio",
+    color: "text-orange-500",
+  },
+  {
+    icon: Heart,
+    title: "Amor y cuidado",
+    description: "Tratamos a tu mascota como parte de la familia",
+    color: "text-blue-600",
+  },
+];
+
+function SedeStep({ selected, onPick, onContinue }: {
+  selected: MedBranch | null;
+  onPick: (b: MedBranch) => void;
+  onContinue: () => void;
+}) {
   return (
     <section>
-      <StepTitle>{title}</StepTitle>
-      <div className="grid gap-3">
-        {MED_BRANCHES.map((b) => (
-          <button
-            key={b.value}
-            onClick={() => onPick(b.value)}
-            className="overflow-hidden rounded-2xl bg-white text-left shadow-sm ring-1 ring-slate-200 transition hover:-translate-y-0.5 hover:ring-brand-blue"
-          >
-            <img src={b.image} alt={b.label} className="h-32 w-full object-cover" />
-            <span className="block px-4 py-3 font-semibold text-slate-900">{b.label}</span>
-          </button>
-        ))}
+      <StepHeading kicker="3 sedes para atenderte">
+        Selecciona tu sede <span className="text-orange-500 underline decoration-orange-400 decoration-2 underline-offset-[3px]">más cercana</span>
+      </StepHeading>
+      <p className="-mt-2 mb-6 text-center text-sm text-[#546A8E]">
+        Elige la veterinaria donde atenderemos a tu mascota
+      </p>
+
+      {/* Cards de sede (patrón grooming: foto + chip distrito + datos + botón) */}
+      <div className="grid grid-cols-1 gap-4 sm:gap-5 md:grid-cols-3">
+        {BRANCHES.map((b) => {
+          const isSelected = selected === (b.value as MedBranch);
+          const district = b.label.replace("Sede ", "");
+          const open = isBranchOpen(b);
+          return (
+            <button
+              key={b.value}
+              type="button"
+              onClick={() => onPick(b.value as MedBranch)}
+              aria-pressed={isSelected}
+              className={`group relative flex flex-col overflow-hidden rounded-2xl border-2 bg-white text-left transition-all duration-300 hover:-translate-y-1 hover:shadow-xl focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-400 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98] ${
+                isSelected
+                  ? "border-orange-400 shadow-lg shadow-orange-100"
+                  : "border-gray-200 shadow-sm hover:border-orange-300"
+              }`}
+            >
+              <div className="relative aspect-[16/10] w-full overflow-hidden">
+                <LazyImage
+                  src={b.image}
+                  alt={b.label}
+                  className="transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                <div className={`absolute inset-0 transition-opacity duration-300 ${isSelected ? "bg-orange-400/10" : "bg-transparent"}`} />
+                <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-0.5 text-xs font-semibold text-gray-700 shadow-sm backdrop-blur-sm">
+                  <MapPin className="h-3 w-3 text-blue-600" />
+                  {district}
+                </div>
+                <div className={`absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-full shadow-md transition-colors ${
+                  isSelected ? "bg-orange-500 text-white" : "bg-white/80 text-gray-300 backdrop-blur-sm"
+                }`}>
+                  {isSelected && <Check className="h-4 w-4" strokeWidth={3} />}
+                </div>
+              </div>
+
+              <div className={`flex flex-col gap-2 px-4 py-3 transition-colors sm:px-5 sm:py-4 ${isSelected ? "bg-[#FFF7EE]" : "bg-white"}`}>
+                <span className={`text-lg font-bold leading-tight transition-colors ${isSelected ? "text-[#475AAB]" : "text-gray-800"}`}>
+                  {b.label}
+                </span>
+
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-1.5 text-sm text-[#546A8E]">
+                    <MapPin className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                    <span className="truncate">{b.address}</span>
+                  </div>
+                  <span className={`inline-flex shrink-0 items-center gap-1 text-xs font-medium ${open ? "text-green-600" : "text-gray-400"}`}>
+                    <span className={`h-2 w-2 rounded-full ${open ? "bg-green-500" : "bg-gray-300"}`} />
+                    {open ? "Abierto ahora" : "Cerrado"}
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-1.5 text-sm text-[#546A8E]">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                  {b.hours}
+                </div>
+
+                <div className="flex items-center gap-1.5 text-sm text-[#546A8E]">
+                  <Phone className="h-3.5 w-3.5 shrink-0 text-blue-500" />
+                  {b.phone}
+                </div>
+
+                <span className={`mt-2 flex items-center justify-center gap-1.5 rounded-xl border-2 px-3 py-2 text-sm font-semibold transition-colors ${
+                  isSelected
+                    ? "border-orange-500 bg-orange-500 text-white"
+                    : "border-blue-200 text-blue-700 group-hover:border-orange-300 group-hover:bg-orange-50"
+                }`}>
+                  {isSelected ? (
+                    <>
+                      <Check className="h-4 w-4" strokeWidth={3} />
+                      Sede seleccionada
+                    </>
+                  ) : (
+                    <>
+                      Seleccionar sede
+                      <ArrowRight className="h-4 w-4" />
+                    </>
+                  )}
+                </span>
+              </div>
+            </button>
+          );
+        })}
       </div>
+
+      {/* Sellos de confianza + mascota (patrón grooming) */}
+      <div className="relative mt-6">
+        <div className="rounded-2xl bg-[#EFF6FF] p-3 sm:p-5 sm:pr-36 md:pr-44">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:divide-x sm:divide-[#DCEBFF]">
+            {MED_TRUST_BADGES.map(({ icon: Icon, title, description, color }) => (
+              <div key={title} className="flex items-center gap-3 rounded-xl px-3 py-2">
+                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
+                  <Icon className={`h-5 w-5 ${color}`} />
+                </span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-[#475AAB]">{title}</p>
+                  <p className="text-xs text-[#546A8E]">{description}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="-mr-10 mt-3 flex items-end justify-end sm:absolute sm:-bottom-8 sm:right-0 sm:mt-0">
+          <div className="relative mb-14 max-w-25 -mr-14 rounded-2xl bg-white px-3 py-1 text-xs font-bold leading-snug text-gray-600 shadow-md">
+            Elige tu sede más cercana
+            <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
+          </div>
+          <img
+            src="/images/vetMascot/map.webp"
+            alt="Asistente veterinario"
+            className="h-24 select-none sm:h-28 lg:h-32"
+          />
+        </div>
+      </div>
+
+      {/* Confirmación de sede (patrón grooming "Iniciar Reserva") */}
+      <button
+        onClick={onContinue}
+        disabled={!selected}
+        className={`mt-6 flex w-full items-center rounded-2xl p-4 text-left transition-all sm:mt-8 ${
+          selected
+            ? "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:shadow-lg active:scale-[0.98]"
+            : "cursor-not-allowed bg-gray-300"
+        }`}
+      >
+        <span className={`mr-3 flex h-10 w-10 shrink-0 items-center justify-center rounded-full ${selected ? "bg-white/20" : "bg-white/30"}`}>
+          <Stethoscope className={`h-5 w-5 ${selected ? "text-white" : "text-gray-400"}`} />
+        </span>
+        <div className="flex-1 text-left">
+          <span className={`text-lg font-bold ${selected ? "text-white" : "text-[#546A8E]"}`}>
+            Ver servicios disponibles
+          </span>
+        </div>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
+          selected ? "bg-white text-blue-600 shadow" : "bg-gray-400 text-white"
+        }`}>
+          <ArrowRight className="h-5 w-5" />
+        </span>
+      </button>
     </section>
+  );
+}
+
+function StepHeading({ kicker, children }: { kicker?: string; children: React.ReactNode }) {
+  return (
+    <div className="mb-6 text-center">
+      {kicker && (
+        <p className="mb-1 text-xs font-semibold uppercase tracking-[0.18em] text-orange-600">{kicker}</p>
+      )}
+      <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">{children}</h2>
+    </div>
   );
 }
 
 function Resumen({ form }: { form: FormData }) {
   const b = MED_BRANCHES.find((x) => x.value === form.branch);
+  const serviceLabel = SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
   return (
-    <div className="rounded-2xl bg-white p-4 text-sm text-slate-700 ring-1 ring-slate-200">
-      <p>🏥 <b>{b?.label}</b></p>
-      <p>📋 {SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType}
-        {form.specialtyName ? ` · ${form.specialtyName}` : ""}
-        {form.specialtyCost !== null ? ` (S/ ${form.specialtyCost.toFixed(0)})` : ""}
-      </p>
-      {form.doctorName && <p>🩺 {form.doctorName}</p>}
-      {form.date && form.startMinute !== null && (
-        <p>🗓 {prettyDate(form.date)} · {hora(form.startMinute)}</p>
-      )}
-      {form.serviceType === "rayos" || form.serviceType === "eco" ? (
-        form.hasOrder && <p className="text-amber-700 text-xs mt-1 flex items-center gap-1"><FileWarning className="h-3.5 w-3.5" /> Preséntate con tu orden médica sellada</p>
-      ) : null}
+    <div className="rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] p-4 shadow-sm sm:p-5">
+      <ul className="grid gap-2">
+        {b && <SummaryRow icon={MapPin}>{b.label}</SummaryRow>}
+        <SummaryRow icon={form.serviceType === "especializada" ? Microscope : Stethoscope}>
+          {serviceLabel}
+          {form.specialtyName ? ` · ${form.specialtyName}` : ""}
+          {form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
+        </SummaryRow>
+        {form.doctorName && <SummaryRow icon={UserRound}>{form.doctorName}</SummaryRow>}
+        {form.date && form.startMinute !== null && (
+          <SummaryRow icon={CalendarDays}>{prettyDate(form.date)} · {hora(form.startMinute)}</SummaryRow>
+        )}
+        {form.serviceType === "rayos" || form.serviceType === "eco" ? (
+          form.hasOrder && (
+            <SummaryRow icon={FileWarning} accent>
+              Preséntate con tu orden médica sellada
+            </SummaryRow>
+          )
+        ) : null}
+      </ul>
     </div>
   );
 }
 
-function StepTitle({ children }: { children: React.ReactNode }) {
+function SummaryRow({ icon: Icon, children, accent = false }: { icon: LucideIcon; children: React.ReactNode; accent?: boolean }) {
   return (
-    <h2 className="mb-5 text-center text-step-title font-display font-bold text-[#475AAB]">{children}</h2>
-  );
-}
-
-function BackButton({ onClick }: { onClick: () => void }) {
-  return (
-    <button onClick={onClick} className="mt-5 flex items-center gap-1.5 text-sm text-slate-500 transition hover:text-brand-blue">
-      <ArrowLeft className="h-4 w-4" /> Atrás
-    </button>
+    <li className={`flex items-center gap-2.5 rounded-[12px] border px-3 py-2 text-sm ${
+      accent
+        ? "border-orange-100 bg-[#FFF7EE] text-[#1A2238]"
+        : "border-[#DCEBFF] bg-[#F7FBFF] text-[#546A8E]"
+    }`}>
+      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
+        accent ? "bg-orange-500 text-white" : "bg-[#EFF6FF] text-blue-600"
+      }`}>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="leading-snug">{children}</span>
+    </li>
   );
 }
 
@@ -604,13 +971,13 @@ function Field({ label, value, onChange, placeholder, type = "text" }: {
 }) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-xs font-medium text-slate-600">{label}</span>
+      <span className="text-xs font-medium text-[#546A8E]">{label}</span>
       <input
         type={type}
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
+        className="rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
       />
     </label>
   );

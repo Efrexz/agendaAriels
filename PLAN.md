@@ -27,14 +27,14 @@ El jefe pidió un **sistema de control interno**. Este plan lo construye:
 
 ## 2. Decisiones acordadas (con el usuario)
 
-| Decisión | Elección |
-|---|---|
-| ¿Mismo repo o proyecto aparte? | **Mismo repo**, segundo/third entry point de Vite (bundles separados, un deploy en Vercel) |
-| Base de datos | **Supabase** (tier gratis) + Supabase Auth para el login del panel |
-| Impresión | **QZ Tray** (impresión 100% silenciosa). Falta el modelo de la tiquetera |
-| Página del cliente | **Solo el código** `VA-XXXXX` para entrar (sin segunda clave); muestra SOLO estados en vivo — **sin foto de referencia, sin mapa, sin dirección/teléfono/DNI** |
-| WhatsApp al marcar "Listo" / salida de movilidad | **Sí**, se avisa al cliente por WhatsApp |
-| Días llenos | El staff cierra el día (o la franja) desde el panel → en el calendario del wizard el día se ve **rojo "Ocupado"** y no se puede agendar |
+| Decisión                                         | Elección                                                                                                                                                       |
+| ------------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| ¿Mismo repo o proyecto aparte?                   | **Mismo repo**, segundo/third entry point de Vite (bundles separados, un deploy en Vercel)                                                                     |
+| Base de datos                                    | **Supabase** (tier gratis) + Supabase Auth para el login del panel                                                                                             |
+| Impresión                                        | **QZ Tray** (impresión 100% silenciosa). Falta el modelo de la tiquetera                                                                                       |
+| Página del cliente                               | **Solo el código** `VA-XXXXX` para entrar (sin segunda clave); muestra SOLO estados en vivo — **sin foto de referencia, sin mapa, sin dirección/teléfono/DNI** |
+| WhatsApp al marcar "Listo" / salida de movilidad | **Sí**, se avisa al cliente por WhatsApp                                                                                                                       |
+| Días llenos                                      | El staff cierra el día (o la franja) desde el panel → en el calendario del wizard el día se ve **rojo "Ocupado"** y no se puede agendar                        |
 
 ### Descartado explícitamente (no volver a proponer sin preguntar)
 
@@ -77,7 +77,7 @@ Endpoints NUEVOS (Vercel Functions):
 ```
 
 - Estados de reserva: `en_camino_recojo, recibido, en_bano, en_secado, en_corte,
-  listo, en_camino_entrega, entregado, cancelado`.
+listo, en_camino_entrega, entregado, cancelado`.
 - Cada cambio de estado se registra con hora y usuario (`status_updates`) → ese log
   es el historial del día ("llegó 9:20, baño 9:35…").
 - Zona horaria del sistema: `America/Lima` (usar `src/utils/limaTime.ts`).
@@ -86,6 +86,7 @@ Endpoints NUEVOS (Vercel Functions):
 ## 4. Fases y checklist
 
 ### Fase 0 — Setup Supabase
+
 - [x] Usuario creó proyecto Supabase `CitasAriels` (org CitasVeterinaria, región Americas, RLS automático activado)
 - [x] Token de acceso en `.env.local` como `SUPABASE_ACCESS_TOKEN` (expira en 90 días)
 - [x] Instalar Supabase CLI (v2.121.0 vía npm global)
@@ -93,6 +94,7 @@ Endpoints NUEVOS (Vercel Functions):
 - [ ] Agregar `SUPABASE_URL` / `SUPABASE_SERVICE_ROLE_KEY` / `SUPABASE_ANON_KEY` a Vercel (en Fase 5, con el deploy)
 
 ### Fase 1 — BD + reservas guardadas + mensajes nuevos
+
 - [x] Migraciones SQL: `bookings`, `status_updates`, `day_closures` + RLS (deny por defecto; acceso solo desde funciones serverless con service_role) aplicadas a la nube
 - [x] `api/booking.ts`: inserta en BD **antes** de enviar WhatsApp (si falla la BD → flujo por WhatsApp igual; si falla WhatsApp → la reserva queda en BD con `whatsapp_delivered=false`)
 - [x] Dedupe robusto: UNIQUE de `booking_code` en BD + idempotencia del insert (quedó también el dedupe en memoria de 60s como capa rápida)
@@ -104,6 +106,7 @@ Endpoints NUEVOS (Vercel Functions):
 - [x] Prueba de integración real (scripts/integration.ts `npx tsx --env-file=.env.local scripts/integration.ts`): login staff, 401 sin token, insert/buscar/cambiar estado, cierre/reapertura de día, limpieza — 11/11 OK
 
 ### Fase 2 — Panel interno
+
 - [x] `internal.html` como segundo entry point de Vite (bundle separado) + ruta `/internal` (vercel.json)
 - [x] Login Supabase Auth (cuentas por persona del staff) — `src/internal/LoginScreen.tsx`
 - [x] Pantalla del día por sede/franja con estados clickeables + auto-refresco 30s (`Panel.tsx`)
@@ -114,12 +117,14 @@ Endpoints NUEVOS (Vercel Functions):
 - [ ] Crear las cuentas reales del staff (pendiente correos del usuario)
 
 ### Fase 3 — Página del cliente + calendario
+
 - [x] `status.html` (entry point propio) en `/estado` (vercel.json): input de código → estado actual + proceso paso a paso + timeline con horas; auto-refresco 30s; branding veterinaria
 - [x] `src/statuses.ts`: catálogo compartido de estados (panel, cliente y API)
 - [x] `ScheduleStep.tsx`: días cerrados en ROJO tachados "Ocupado" por sede; franjas cerradas bloqueadas con etiqueta "Ocupado"; si la fecha elegida se cierra, se deselecciona sola
 - [x] Tests unitarios de `closureFor` + e2e Playwright (10/10) con el fetch de disponibilidad
 
 ### Fase 4 — Impresión (QZ Tray)
+
 - [x] Modelo de tiquetera confirmado: **Epson TM-T20II** (térmica 80mm, ESC/POS, 48 columnas)
 - [x] Librería oficial QZ Tray Connector v2.3.0 incluida en `public/qz-tray.js`
 - [x] `src/internal/qz.ts`: builder de boleta ESC/POS (encabezado sede, código destacado, fecha/recojo, cliente, mascotas con indicaciones y extras, corte parcial GS V 66 0, ASCII puro)
@@ -128,13 +133,14 @@ Endpoints NUEVOS (Vercel Functions):
 - [ ] Instalar/pruebas físicas con la impresora real (requiere PCs del mostrador)
 
 ### Fase 5 — Cierre
+
 - [x] Tests: unit (vitest) + e2e (Playwright) actualizados
 - [x] `npm run lint` y `npm run build` sin errores (+ script nuevo `npm run typecheck` que revisa también `api/`)
 - [x] Deploy a Vercel + variables nuevas — **EN PRODUCCIÓN**: https://agenda-ariels-nu.vercel.app
       (wizard `/`, panel `/internal`, seguimiento `/estado`; verificado en vivo 2026-10-20:
       /api/status y /api/availability respondiendo datos reales)
-- [x] Variables en Vercel: SUPABASE_* (prod+preview+dev), TRACKING_ENABLED=true (prod+dev),
-      EVOLUTION_* demo + VET_MESSAGE_MODE=short (SOLO Development), WHATSAPP/EVOLUTION reales intactos en Production
+- [x] Variables en Vercel: SUPABASE*\* (prod+preview+dev), TRACKING_ENABLED=true (prod+dev),
+      EVOLUTION*\* demo + VET_MESSAGE_MODE=short (SOLO Development), WHATSAPP/EVOLUTION reales intactos en Production
 - [ ] **PENDIENTE post-demo** (cuando el staff ya conozca el panel): registrar `VET_MESSAGE_MODE=short` en Production + Preview + redeploy → activa el WhatsApp corto a la veterinaria
 - [ ] Instalación QZ Tray en la PC del trabajo + prueba física TM-T20II
 - [ ] Cambiar contraseña de vet_ariel@hotmail.com (quedó por chat)
@@ -172,6 +178,7 @@ Endpoints NUEVOS (Vercel Functions):
 ### Plantillas WhatsApp aprobadas (Fase 5 las activa con VET_MESSAGE_MODE=short y TRACKING_ENABLED=true)
 
 A la veterinaria (corto):
+
 ```
 🔔 NUEVA RESERVA
 🔖 Código: VA-XXXXX
@@ -185,6 +192,7 @@ A la veterinaria (corto):
 ```
 
 Al cliente (comprobante completo, ya existía + link nuevo):
+
 ```
 🐾 ¡Reserva registrada, {nombre}!
 🗓 {date_label} · ⏰ {time_range_label}
@@ -231,22 +239,26 @@ Especializada:      solicitud → pagado (counter valida comprobante enviado al
 ```
 
 ### WhatsApp automáticos del módulo médico
+
 - Solicitud especializada → aviso corto a Counter (igual patrón del grooming).
 - Al cliente al solicitar especializada: mensaje con métodos de pago (imágenes ya existentes, vía link + cuentas) + instrucción de enviar comprobante al WhatsApp de la sede.
 - Confirmación al cliente cuando counter asigna/Asigna cita.
 - Recordatorio automático día antes (cron de Vercel, gratis).
 
 ### Piezas técnicas
+
 - BD nueva (mismo Supabase): `doctors`, `doctor_schedules` (+ ausencias por doctor, reutilizando patrón day_closures), `specialties` (costo+sedes), `medical_appointments` (+ notas de pago), `app_config` (duración cita, etc.).
 - Wizard `/cita-medica` (entry point nuevo, mismo estilo del wizard grooming).
 - Panel: pestañas por área + "＋ Cita manual" + vistas Hoy (default) / Mañana (franja "N citas" fija) / Esta semana / Buscar.
 - Códigos de reserva de citas médicas: prefijo **CM-XXXXX** (grooming sigue VA-).
-- Belgas por sede: cada usuario con su sede; el panel filtra automático.  (~1h extra, agregar cuando se definan los usuarios reales)
+- Belgas por sede: cada usuario con su sede; el panel filtra automático. (~1h extra, agregar cuando se definan los usuarios reales)
 
 ### Fuera de alcance del módulo médico v1
+
 Recibos/facturas, historias clínicas, medicación, múltiples duraciones por servicio, pagos online, salas/consultorios físicos.
 
 ### Datos ficticios de ejemplo (REEMPLAZAR cuando el usuario pase los reales)
+
 Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el panel sin tocar código.
 
 ## 8. Registro de sesiones
@@ -282,7 +294,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
 - 2026-10-20 — **Pruebas del usuario en local: TODO OK** (reserva real VA-NYKU0 de
   Manolo/Los Olivos quedó en BD no obstante un 500 inicial por Evolution no configurada
   en el entorno Development de Vercel — resuelto: vercel dev carga env del proyecto
-  REMOTO no .env.local; se registraron SUPABASE_* en prod+preview+dev y EVOLUTION_*_
+  REMOTO no .env.local; se registraron SUPABASE*\* en prod+preview+dev y EVOLUTION*\*\_
   demo + VET_MESSAGE_MODE=short + TRACKING_ENABLED=true SOLO en Development). Still
   pendiente solo Fase 5 de grooming (deploy prod). Usuario confirmó Epson TM-T20II y
   probó todo el checklist local.
@@ -295,7 +307,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   archivo → imports relativos internos de api/ EXIGEN extensión ".js"
   (hay vite-plugin `js-to-ts-resolver` para que Vitest los resuelva a .ts — no
   quitarlo); ② Vercel compila api/ con SU tsconfig: se creó api/tsconfig.json
-  (moduleResolution bundler, types node, excluye *.test.ts) y script npm "typecheck";
+  (moduleResolution bundler, types node, excluye \*.test.ts) y script npm "typecheck";
   ③ `vercel dev` (CLI 64) carga NUESTRO .env.local ni para funciones: usa el entorno
   Development del proyecto; ④ los exit codes tras pipes (`| head`) ocultan fallos —
   verificar con redirection a archivo. Producción: agenda-ariels-nu.vercel.app
@@ -334,11 +346,11 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Hobby de Vercel limita a 12 serverless functions — teníamos 18. Consolidado en UNA
   función `api/index.ts` (router despachando por `${method} ${path}`) +
   vercel.json `{"source":"/api/(.*)","destination":"/api/index?apiPath=$1"}`.
- .Crítico: el catch-all estándar api/[...path].ts SÓLO matchea 1 segmento (bug del
+  .Crítico: el catch-all estándar api/[...path].ts SÓLO matchea 1 segmento (bug del
   runtime) — rutas profundas (medical/create) daban 404 de Vercel; con el rewrite +
   query apiPath funciona TODO (verificado local + prod). Handler files: renombrados
-  a `_*` (no exponen rutas): api/_booking, _status, _availability + api/internal/_*
-  + api/medical/_*. Los renames exigieron arreglar imports (.js) en tests/scripts.
+  a `_*` (no exponen rutas): api/_booking, \_status, \_availability + api/internal/_\*
+  - api/medical/\_\*. Los renames exigieron arreglar imports (.js) en tests/scripts.
 - 2026-10-20 — **M4 PANEL PESTAÑAS COMPLETADO Y DEPLOYADO** (Producción):
   /internal ahora tiene 4 pestañas — 🐕 Grooming (el existente), 🩺 Consultas
   (vistas Hoy/Mañana/Esta semana/Buscar + sección "Pendientes de asignar" para
@@ -357,14 +369,14 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
 - 2026-10-20 — **PENDIENTE: M5 recordatorios** → cron diario /api/medical/
   reminders en vercel.json (1 cron gratis en Hobby): consulta citas de mañana
   confirmada → WhatsApp por Evolution al cliente + aviso corto al counter.
-  Plantilla de envío copiable de api/medical/_create.ts. Tras M5: guía de
+  Plantilla de envío copiable de api/medical/\_create.ts. Tras M5: guía de
   pruebas del wizard médico en la PC del trabajo + actualizar el botón de la
   landing ("Agenda tu cita médica" → http://agenda-ariels-nu.vercel.app/cita-medica).
 - 2026-10-20 — **M5 COMPLETADO Y DEPLOYADO — TODAS LAS FASES M1-M5 LISTAS**:
-  api/medical/_reminders.ts (GET /api/medical/reminders vía router; CRON_SECRET
+  api/medical/\_reminders.ts (GET /api/medical/reminders vía router; CRON_SECRET
   opcional por header; mañana Lima = dayKey +1 UTC-safe; mensaje al cliente
   hora12 am/pm + tolerancia + orden si rayos/eco; RESUMEN al counter listado
-  ordenado por hora) + vercel.json crons: 0 23 * * * (23:00 UTC = 18:00 Lima,
+  ordenado por hora) + vercel.json crons: 0 23 \* \* \* (23:00 UTC = 18:00 Lima,
   1 cron de los 2 gratis de Hobby; el 2º queda para grooming si se activa).
   Verificado en integración real con dry-run: sent=1, resumen counter impreso.
   200 tests. Cron usa el router (rewrite apiPath) ✓.
@@ -374,14 +386,14 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   3. Botón de la landing "Agenda tu cita médica" → https://agenda-ariels-nu.vercel.app/cita-medica
   4. Cambiar clave vet_ariel@hotmail.com en Supabase → Authentication.
   5. VET_MESSAGE_MODE=short en Production (WhatsApp corto a la veterinaria) cuando staff conozca el panel.
-  Usuarios de prueba: staff médico creado/eliminado por scripts.
+     Usuarios de prueba: staff médico creado/eliminado por scripts.
 - 2026-10-20 — **FASE A (fixes producción) COMPLETADO**: registrado VITE_SUPABASE_URL
-  + VITE_SUPABASE_ANON_KEY (el CLI nuevo exige --type config/secret explícito para
-  nombres VITE_ con valor tipo JWT: "public_prefix_requires_type") + CRON_SECRET
-  generado (openssl rand hex 24; en 3 entornos de Vercel + copia en .env.local)
-  → REDEPLOY → VERIFICADO: el bundle del panel tiene la URL de Supabase horneada
-  (curl al asset). El panel en blanco que el usuario vio en la PC del trabajo era
-  ESTO (build sin las VITE_). Ya arreglado; el usuario lo confirma al probar.
+  - VITE*SUPABASE_ANON_KEY (el CLI nuevo exige --type config/secret explícito para
+    nombres VITE* con valor tipo JWT: "public*prefix_requires_type") + CRON_SECRET
+    generado (openssl rand hex 24; en 3 entornos de Vercel + copia en .env.local)
+    → REDEPLOY → VERIFICADO: el bundle del panel tiene la URL de Supabase horneada
+    (curl al asset). El panel en blanco que el usuario vio en la PC del trabajo era
+    ESTO (build sin las VITE*). Ya arreglado; el usuario lo confirma al probar.
 - 2026-10-20 — **DECISIÓN SERVIDOR DEMO: LAPTOP del usuario** (ni la PC del
   difusor ni otra PC sin nada instalado): en Vercel/Supabase vive TODO
   (web 24/7 gratis, la PC NO necesita estar prendida); SOLO el envío de WhatsApp
@@ -389,8 +401,8 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   intocado en su PC vieja). QR con NÚMERO PERSONAL solo para demo; cuando den
   el OK, VPS reemplaza la laptop con los MISMOS archivos. Creada
   deploy/evolution-server/: docker-compose.yml (evolution+pg+redis, restart
-  unless-stopped, vol persistente de instancias, AUTHENTICATION_API_KEY=
-  agenda-demo-key, puerto 8080, nombres agenda_server_* — NO choca con la demo
+  unless-stopped, vol persistente de instancias, AUTHENTICATION*API_KEY=
+  agenda-demo-key, puerto 8080, nombres agenda_server*\* — NO choca con la demo
   del repo raíz) + README-DOCKER.md (guía checklist + troubleshooting).
   **PENDIENTE USUARIO (FASE B, conmigo en vivo):** ① Docker Desktop → Settings
   → Resources → WSL Integration → activar la distro → Apply & Restart;
@@ -410,7 +422,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   ANTES de esto se arregló: (a) stack down/up en laptop por connection-reset
   tras el reinicio de WSL; (b) funnel --bg (el funnel normal NO persiste:
   "No serve config" al cerrarlo — con --bg queda en la config del servicio);
-  (c) los 4 EVOLUTION/*/WHATSAPP_DESTINO de producción RE-REGISTRADOS (el CLI
+  (c) los 4 EVOLUTION/\*/WHATSAPP_DESTINO de producción RE-REGISTRADOS (el CLI
   exige rm --yes antes de add si la variable ya existe: error
   "already exists... on branch undefined"; usar --type secret). Valores
   producción actuales: EVOLUTION_API_URL=https://laptop-e41ahls0.taila22326.ts.net,
@@ -438,33 +450,34 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
      http://localhost:8081/manager)
   4. (Tailscale+funnel: --bg persiste con systemd — si el curl falla:
      sudo tailscale funnel --bg 8081)
-  ⚠️ La demo requiere laptop ENCENDIDA y Docker abierto (Solo WhatsApp);
-  web/panel/BD/recordatorios corren 24/7 en la nube aunque la laptop esté apagada.
+     ⚠️ La demo requiere laptop ENCENDIDA y Docker abierto (Solo WhatsApp);
+     web/panel/BD/recordatorios corren 24/7 en la nube aunque la laptop esté apagada.
 
   ### 🖥️ PRUEBAS EN LA PC DEL TRABAJO (checklist sugerido, ~20 min)
+
   URLs (todas en https://agenda-ariels-nu.vercel.app):
   a) / → reserva grooming completa como cliente (teléfono=SU número;
-     luego otra con número de un familiar como "cliente" para ver ambos
-     mensajes) → WhatsApp real a la "clínica" + comprobante al cliente con
-     link de seguimiento + código VA-XXXXX.
+  luego otra con número de un familiar como "cliente" para ver ambos
+  mensajes) → WhatsApp real a la "clínica" + comprobante al cliente con
+  link de seguimiento + código VA-XXXXX.
   b) /estado?code=<código> → seguimiento visible.
   c) /internal (login vet_ariel@hotmail.com; CAMBIAR clave pendiente) →
-     pestaña 🐕 Grooming: reserva visible → estados clickeables (🛁→💨→✅)
-     → "Imprimir boleta" → sale en la TM-T20II (QZ función.Verificado ✓) →
-     página del cliente refleja el estado en ~30s.
+  pestaña 🐕 Grooming: reserva visible → estados clickeables (🛁→💨→✅)
+  → "Imprimir boleta" → sale en la TM-T20II (QZ función.Verificado ✓) →
+  página del cliente refleja el estado en ~30s.
   d) Búsqueda por teléfono/código en el panel; cerrar un día → calendario rojo.
   e) /cita-medica → wizard médico: sede → servicio (rayos/eco pregunta de
-     orden; especializada con costo) → doctor ficticio → fecha/hora →
-     código CM-XXXXX + WhatsApps de cita.
+  orden; especializada con costo) → doctor ficticio → fecha/hora →
+  código CM-XXXXX + WhatsApps de cita.
   f) Panel pestaña 🩺 Consultas: cita listada; ＋ Cita manual; flujo
-     especializada: 💰 Verifiqué el pago → 🩺 Asignar → 📨 Confirmar.
+  especializada: 💰 Verifiqué el pago → 🩺 Asignar → 📨 Confirmar.
   g) Pestaña 🗓 Horarios: editor semanal (clic marca/desmarca; ⧉ duplicar).
   h) Pestaña ⚙ Config: duración + payment_info + doctores/especialidades.
   i) Cron: 6pm Lima manda recordatorios de citas de MAÑANA (verificar que
-     llegó el resumen a 917104426 si hay citas confirmadas de mañana).
+  llegó el resumen a 917104426 si hay citas confirmadas de mañana).
 
   ### 🧹 PENDIENDENTES POST-DEMO (siguiente sesión)
-  1. Limpieza de reservas de prueba (VA-DEMO1, CM-* de prueba) — SQL/API.
+  1. Limpieza de reservas de prueba (VA-DEMO1, CM-\* de prueba) — SQL/API.
   2. Cambiar CLAVE de vet_ariel@hotmail.com (queda por chat) + borrar
      todos los datos ficticios → pasar DOCTORES/horarios/precios reales
      desde el panel ⚙ (o script).
@@ -477,6 +490,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
      grooming (2º cron libre).
   7. A LARGO PLAZO: VPS (~$5/mes) reemplaza la laptop — misma carpeta
      deploy/evolution-server + dominio real + firewall. IDEAS #2.
+
 - 2026-10-21 — **DIAGNÓSTICO 502 + LIMPIEZA DOCKER (post-demo)**: el usuario
   obtuvo 502 al reservar ("No se pudo entregar la reserva al WhatsApp") y el
   manager no abría en localhost:3000. Causa real: los 3 contenedores de
@@ -511,7 +525,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   "Sin resultados para ''" al borrar el texto rápido → debounce 300ms + guard
   por secuencia en Panel y ConsultasTab (onBlur médico, que tampoco tenía).
   Bonus arreglos de infra de testing: vitest arrastraba specs de
-  .vercel/builders (cache del CLI) → excluido .vercel/** en vitest.config +
+  .vercel/builders (cache del CLI) → excluido .vercel/\*\* en vitest.config +
   rm del cache; scripts/integration-medical tenía fecha hardcodeada
   ("2026-10-21" → creaba cita en el PASADO → 409) → día hábil dinámico Lima
   y el paso cron ahora envía Authorization Bearer CRON_SECRET (roto desde
@@ -527,13 +541,13 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   ① cambio de estado ATÓMICO — nuevo transitionStatus en api/db.ts (update
   condicional `.eq("status", anterior).select("id")`; el perdedor de la carrera
   NO notifica y NO duplica timeline; endpoint responde stale:true) con tests
-  api/internal/_status.test.ts (mocks de db/_verify/_booking);
+  api/internal/\_status.test.ts (mocks de db/\_verify/\_booking);
   ② AUTO-IMPRESIÓN APAGADA POR DEFECTO (decisión del usuario: el counter imprime
   MANUAL con el botón de la card; el toggle queda como opción futura) + corte
   por createdAt posterior a la apertura del panel (sin cascada al cambiar
   fecha/sede; Date.now() desde el effect por la regla purity de react-hooks);
   NO se hizo la migración printed_at (no necesaria con auto apagado);
-  ③ whatsapp_delivered REAL llega a _day.ts/_search.ts (antes hardcodeado
+  ③ whatsapp_delivered REAL llega a \_day.ts/\_search.ts (antes hardcodeado
   false) → badge "⚠️ WhatsApp" en la card + bloque rojo con botón "Reenviar
   avisos" vía NUEVO endpoint POST /api/internal/resend (reenvía aviso a la
   veterinaria short/full + comprobante al cliente, reconstruyendo
@@ -552,20 +566,20 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   grooming 12/12 (nuevo paso 12: resend sobre reserva no entregada) y médica
   15/15. Deploy prod verificado: timeline público sin email del staff,
   /api/internal/resend vivo y 401 sin sesión. MEJORA FUTURA anotada (no
- elegida): el "Reintentar" del wizard genera código NUEVO → fila fantasma;
+  elegida): el "Reintentar" del wizard genera código NUEVO → fila fantasma;
   solvable reusando el código del localStorage en el retry.
 - 2026-10-21 — **AUDITORÍA MÓDULO MÉDICO + 6 FIXES a producción** (grooming
   cerrado y probado por el usuario). Bugs espejo de grooming corregidos y más:
   ① PATCH /medical/status ATÓMICO: transitionApptStatus en medical/db.ts
   (condicional .eq status anterior) → doble click en "📨 Confirmar al cliente"
   ya NO envía doble WhatsApp; handler con guard previous===status + stale:true
-  (tests api/medical/_status.test.ts); ② ASIGNACIÓN: el overlap usaba
+  (tests api/medical/\_status.test.ts); ② ASIGNACIÓN: el overlap usaba
   durationMinutes=0 (citas por asignar) → ventana de longitud cero: se
   reemplazó el chequeo manual por computeFreeSlots (mismo cálculo de
   disponibilidad: horario semanal + grid + ocupadas con duración efectiva
   durOf + ausencias + hoy solo con minStart+10) y assignAppt ahora FIJA
   duration_minutes=app_config en la cita asignada → imposible ya dejar citas
-  encimadas (tests api/medical/_assign.test.ts: happy/ocupada/con duración
+  encimadas (tests api/medical/\_assign.test.ts: happy/ocupada/con duración
   0/fecha pasada/sin pago); ③ "＋ Cita manual" AHORA PERMITE especializadas:
   fetch specialties por sede + selector "Especialidad — S/ costo" + envía
   specialtyId (antes siempre 400 por falta del campo) + dropdown de doctores
@@ -596,7 +610,7 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   busca directo ilike límite 20 (searchApptsByName nueva en medical/db.ts;
   se elimina el full-scan 2000-2999); B) ASIGNACIÓN CON HORA MANUAL (elección
   del usuario: chips + manual): el counter puede dar 9:15/9:20 a una
-  especializada — server _assign ya NO exige grilla: valida ventana del
+  especializada — server \_assign ya NO exige grilla: valida ventana del
   horario semanal (inicio≥bloque, inicio+duración≤fin), sin solapamiento
   (duración efectiva)/ausencias, hoy solo ≥ ahora+10min; panel agrega campo
   "Hora manual" (HH:MM step 60) + chips quedan como atajos. Wizard del
@@ -604,20 +618,76 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Gates: 225 tests, lint, typecheck doble, build, integraciones 12/12 y 15/15
   (asignar+confirmar por el path nuevo OK). Deploy verificado /cita-medica 200.
 - 2026-10-21 — **LIMPIEZA POST-DEMO EJECUTADA + DOCTORES REALES**: borradas las
-  8 reservas VA-* de prueba (cascada borra sus timelines), las 7 citas CM-*
-  (cascade medical_status_updates ✓) y los 8 doctores FICTICIOS (Ejemplo-*) con
+  8 reservas VA-_ de prueba (cascada borra sus timelines), las 7 citas CM-_
+  (cascade medical_status_updates ✓) y los 8 doctores FICTICIOS (Ejemplo-\*) con
   sus horarios/ausencias. BD queda: bookings 0, medical_appointments 0,
   medical_schedules 72, time_off 0, timelines 0. Insertados los 6 doctores
   REALES como kind general (activos) con horario de EJEMPLO Lun-Sáb 9-13 y
   15-19 (72 bloques): Los Olivos → Dr. Andres, Dra. Karla; San Martín de
   Porres → Dra. Valeria, Dr. Luis; San Miguel → Dra. Katherin, Dr. Rafael.
-  Verificado /api/medical/doctors en prod con los reales. Auth: solo queda
-  vet_ariel@hotmail.com (los staff-test los limpió el script de integración).
-  Las 5 especialidades ficticias se MANTIENEN como catálogo editable (costo y
-  seses editables desde ⚙). Pendiente que el usuario pase: apellidos completos,
-  que médico es especialista, horarios reales por sede, #3 WHATSAPP_DESTINO
-  real, #4 VET_MESSAGE_MODE activar, #5 landing + dominio, y cambiar clave
-  vet_ariel (todo el lo hace desde el panel/Supabase o conmigo).
+   Verificado /api/medical/doctors en prod con los reales. Auth: solo queda
+   vet_ariel@hotmail.com (los staff-test los limpió el script de integración).
+   Las 5 especialidades ficticias se MANTIENEN como catálogo editable (costo y
+   seses editables desde ⚙). Pendiente que el usuario pase: apellidos completos,
+   que médico es especialista, horarios reales por sede, #3 WHATSAPP_DESTINO
+   real, #4 VET_MESSAGE_MODE activar, #5 landing + dominio, y cambiar clave
+   vet_ariel (todo el lo hace desde el panel/Supabase o conmigo).
+- 2026-10-22 — **FASE UX-A IMPLEMENTADA SIN DEPLOY (sin commit aún)** según
+  PLAN-UX.md: /cita-medica vistida con el cascarón del grooming — card grande
+  blanca con logo.webp + barra gradiente + progreso "Paso X de 4" (App.tsx),
+  biombo (medical.css ahora solo @import de src/index.css — tokens ÚNICOS),
+  transiciones framer-motion x:±30 dur 0.4 easeOut con useReducedMotion +
+   candado 400ms anti doble-click (helper go()) y LazyImage con imágenes webp
+   por paso (medical/servicio/{general,rayos,eco,especializada}.webp y
+   vetMascot/{doctor,orden,pago,esperando}.webp — SON PLACEHOLDERS copiados de
+   imágenes existentes del grooming: el usuario los reemplaza físicamente con
+  definitivas SIN tocar código), éxito con vetMascot/agendado.webp + código CM
+  grande, botón back estilo grooming, header con Caveat en medical.html y
+  WhatsApp flotante por sede. CERO cambios de lógica/APIs (mismos estados,
+  chooseService/loadSlots/submit/efectos). Gates: lint 0, typecheck doble 0,
+  build OK, 225 tests, e2e 10/10, humo Playwright /medical.html sin errores de
+   consola (screenshots verificadas). SIN REVISIÓN VISUAL del usuario aún.
+   2ª iteración UX-A (feedback del jefe en vivo): jsonFetch de src/medical/api.ts
+   ahora valida content-type (vite dev sin API muestra "No se pudo conectar…"
+   y no más "reading filter"); card widened a max-w-5xl en desktop; paso de
+   SEDES portado del grooming (3 cards md:cols-3 con foto+chip distrito+check,
+   dirección/horario/teléfono reales de data/branches.ts, abierto/cerrado,
+   botón Seleccionar + banda de sellos médicos + map.webp con cartel; flujo
+   2-clic: selecciona → "Ver servicios disponibles"); servicio 2×2 con
+   imágenes grandes. DECISIÓN DE ARTE: servicios médicos con la mascota
+   animada (bulldog) no fotos reales — llega arte: servicios 4 conceptos
+   (chequeo/placa-hueso/sonda-eco/collage-4-especialidades) + vetMascot
+   {doctor,orden,pago,esperando}; el código ya apunta a los nombres finales.
+- 2026-10-22 — **MÓDULO ⚗ LABORATORIO COMPLETADO (sin deploy, sin commit)** con
+  el usuario en vivo: reemplaza el cuaderno de exámenes externos.
+  L0 migración 20261022000001_lab_init.sql aplicada por Management API
+  (lab_orders: LAB-XXXXX, sede_ORIGEN auto + sede_RESPONSABLE editable
+  cross-sede, lab_name/exam_type/pet/history_code/doctor_name opcional,
+  owner_phone OBLIGATORIO, paid_notes opcional, status recibida→
+  en_laboratorio→resultado_listo→entregada + cancelado; lab_status_updates
+  cascade; deny-all). L1 API en api/lab/{db,_shared,_create,_list,_status,
+  _public_status}: router +4 rutas (POST /internal/lab/create con dedupe 60s
+  + reintentos 23505 + WA al cliente con su código; GET /internal/lab/list
+  con vistas activo/hoy/semana + sede por (origen OR responsable) + búsqueda
+  código/teléfonodígitos/pet/historia/dueño y overdue >7 días; PATCH
+  /internal/lab/status con transitionOrderStatus atómico → WA Evolution al
+  dueño cuando 'resultado_listo'; GET /lab-status pública con SOLO campos
+  seguros + rate limit). L2 panel: pestaña "🧪 Laboratorio" (LabTab:
+  modal ＋ Nueva orden con teléfono obligatorio + presets de examen +
+  dropdown médico + chips cross-sede; cards con 4 botones estado, timeline,
+  anillo ámbar overdue, avisos inline si WA falla). L3 /estado reconoce
+  prefijo LAB- (src/status/{api,types,App}: LabView con timeline propia
+  📥🔬✅📋; VA- sigue igual — grooming intacto). DECISIONES DEL USUARIO:
+  WhatsApp auto "resultado listo" SÍ; monto opcional; sin usuario "general"
+  (chip de sede en la pestaña reemplaza al grupo "Tres Sedes"); sin PDF
+  resultado en v1 (entrega física en sede). Gates: 241 tests (16 nuevos
+  lab: create/dedupe/23505/estado atómico/stale/public safe/401), lint,
+  typecheck doble, build, e2e 10/10 e INTEGRACIÓN REAL 12/12
+  (scripts/integration-lab.ts: cross-sede ambas vistas, flujo completo con
+  WA dry-run, endpoint público seguro, 401; limpieza BD OK = 0 lab_orders).
+  PENDIENTE: deploy + pruebas del usuario (resolver CUAL teléfono de
+  recepción si distinto al dueño), y UX-B/C (estilo Ariel en /estado y
+  /internal) pendientes con las imágenes webp del usuario.
 
 ---
 
@@ -650,20 +720,3 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
        TOCTOU post-insert en create/assign médico; marca cron "recordatorio
        enviado" (idempotencia); cuentas staff por sede (≈1h, al haber
        recepcionistas reales); guía de uso del staff.
-
-## 10. PRÓXIMA SESIÓN: ESTILOS/UX → ver PLAN-UX.md
-
-> **PROMPT DE CONTINUACIÓN (pegar en un chat nuevo):**
->
-> "Continúa el proyecto de la veterinaria (agendaAriels). Lee PRIMERO
-> PLAN-UX.md COMPLETO (el plan de estilos del sistema Ariel para el wizard
-> médico /cita-medica, la página del cliente /estado y el panel /internal)
-> y el FINAL de PLAN.md §9 (pendientes de datos del usuario) y §8
-> (aprendizajes técnicos: routing Vercel, zod uuid, lint purity, etc.).
-> Todo lo funcional está EN PRODUCCIÓN y probado por el usuario (grooming
-> completo + módulo médico M1-M5 + hallazgos). NO cambies lógica ni APIs —
-> solo presentación según PLAN-UX.md (fases UX-A en adelante). El usuario
-> busca un estilo premium consistente con el wizard de grooming (tokens
-> `src/index.css`, Fredoka/Inter/Caveat, framer-motion, mascota webp) y él
-> mismo aportará las imágenes webp nuevas cuando le indiques la lista."
-
