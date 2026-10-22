@@ -618,3 +618,52 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   que médico es especialista, horarios reales por sede, #3 WHATSAPP_DESTINO
   real, #4 VET_MESSAGE_MODE activar, #5 landing + dominio, y cambiar clave
   vet_ariel (todo el lo hace desde el panel/Supabase o conmigo).
+
+---
+
+## 9. PENDIENTES DE DATOS (respuesta del usuario — TODO 2026-10-21)
+
+> Cuando el usuario responda, estos pendientes se ejecutan y se tachan aquí.
+
+1. [ ] **Doctores reales**: apellidos completos de los 6 (hoy "Dr. Andres",
+       "Dra. Karla", "Dra. Valeria", "Dr. Luis", "Dra. Katherin", "Dr. Rafael")
+       y QUIÉN es especialista de qué (cardiología/odontología/nutrición/
+       traumatología/neurología) → actualizar ⚙ o SQL directo.
+2. [ ] **Horarios reales por sede/doctor** (hoy ejemplo Lun-Sáb 9-13 y 15-19)
+       → el usuario puede editarlo desde 🗓 Horarios del panel; o listado y
+       lo cargo yo.
+3. [ ] **WHATSAPP_DESTINO = número real de la veterinaria** en Vercel
+       (hoy: número personal demo 51917104426) — pendiente post-demo #3.
+4. [ ] **VET_MESSAGE_MODE=short en Production (+Preview) + redeploy** cuando
+       el staff ya conozca el panel — pendiente post-demo #4.
+5. [ ] **Botón de la landing** "Agenda una cita médica" →
+       https://agenda-ariels-nu.vercel.app/cita-medica (repo landing aparte:
+       pedir carpeta/acceso) — pendiente post-demo #5.
+6. [ ] **Dominio propio** (opcional, gratis: Vercel → Settings → Domains).
+7. [ ] **Cambiar clave de vet_ariel@hotmail.com** en Supabase → Authentication
+       → Users (lo hace el usuario; quedó compartida por chat).
+8. [ ] **Eliminar datos ficticios restantes** cuando lleguen los reales:
+       5 especialidades (precios editables desde ⚙ igualmente vigentes en la
+       demo) + payment_info de ejemplo en app_config.
+9. [ ] **Mejoras anotadas NO elegidas aún**: reintentar wizard guarda el código
+       en localStorage (evita fila fantasma al Reintentar); re-chequeo
+       TOCTOU post-insert en create/assign médico; marca cron "recordatorio
+       enviado" (idempotencia); cuentas staff por sede (≈1h, al haber
+       recepcionistas reales); guía de uso del staff.
+
+## 10. PRÓXIMA SESIÓN: ESTILOS/UX → ver PLAN-UX.md
+
+> **PROMPT DE CONTINUACIÓN (pegar en un chat nuevo):**
+>
+> "Continúa el proyecto de la veterinaria (agendaAriels). Lee PRIMERO
+> PLAN-UX.md COMPLETO (el plan de estilos del sistema Ariel para el wizard
+> médico /cita-medica, la página del cliente /estado y el panel /internal)
+> y el FINAL de PLAN.md §9 (pendientes de datos del usuario) y §8
+> (aprendizajes técnicos: routing Vercel, zod uuid, lint purity, etc.).
+> Todo lo funcional está EN PRODUCCIÓN y probado por el usuario (grooming
+> completo + módulo médico M1-M5 + hallazgos). NO cambies lógica ni APIs —
+> solo presentación según PLAN-UX.md (fases UX-A en adelante). El usuario
+> busca un estilo premium consistente con el wizard de grooming (tokens
+> `src/index.css`, Fredoka/Inter/Caveat, framer-motion, mascota webp) y él
+> mismo aportará las imágenes webp nuevas cuando le indiques la lista."
+
