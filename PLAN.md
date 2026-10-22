@@ -692,6 +692,21 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   sin errores de página), /api/availability 200, /api/lab-status RUTA VIVA
   (respuestas correctas 404 código inexistente; humo /estado?code=LAB- 404
   amigable en la página). Módulo lab listo para pruebas reales del usuario.
+- 2026-10-22 — **DEPLOY COMMIT 5551915 (fixes de la 1ª prueba del usuario)**:
+  ① /estado maxLength 8→9 (LAB-XXXXX se TRUNCABA en el input del cliente,
+  imposible observar el código completo — verificado en prod con Playwright);
+  ② los DOCTORES del modal lab salen ahora de la sede ORIGEN (quién emite la
+  orden, según el usuario: "los responsables son los que generaron la orden")
+  no de la responsable; ③ CATÁLOGO GLOBAL PERSISTENTE: migración 2
+  lab_exam_types + lab_labs (seed 5 labs reales: VetSupport, AR Bioanálisis,
+  SF Laboratorio, Hemovet, CediVet + 8 presets de examen) + GET/POST
+  /internal/lab/catalog (POST idempotente con 23505→existente) + combobox
+  UI (SuggestField): escribe → filtra en vivo máx 6; si no existe → botón
+  "➕ Agregar «X»" lo crea para TODAS las sedes; labs y exámenes igual.
+  Gates: 245 tests (20 lab), e2e 10/10, integración lab 15/15 (8b/8c
+  catálogo incluidos), lint/tc/build verdes. La lista es GLOBAL (una sola):
+  los counters de las 3 sedes comparten catálogo conforme al uso real
+  (decisión confirmada usuario). Pendientes previos sin cambios.
 
 ---
 
