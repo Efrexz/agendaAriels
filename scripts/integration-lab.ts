@@ -175,6 +175,74 @@ async function main() {
     console.log("12. listado sin token (esperado 401):", r5.last().status);
     if (r5.last().status !== 401) throw new Error("devió datos privados");
 
+    // ── RESULTADO al cliente (Storage privado + URL firmada + purga 20 días) ──
+    const { createClient } = await import("@supabase/supabase-js");
+    const service = createClient(SUPA, SERVICE, { auth: { persistSession: false } });
+
+    const rA = makeRes();
+    await createMod.default(
+      { method: "POST", headers: authHeaders, body: {
+        sedeOrigen: "san_martin", sedeResponsable: "san_martin",
+        labName: "LabPrueba Externo", examType: "Perfil pre-order",
+        petName: "Nina Prueba", petType: "Gato",
+        ownerName: "Lab Test Dos", ownerPhone: "999777888",
+      } }, rA.res,
+    );
+    const codeA = (rA.last().body as { orderCode: string }).orderCode;
+    const orderA = (await db.findOrderByCode(codeA))!;
+    console.log("13. orden 2 creada:", codeA, orderA.id ? "id OK" : "id MAL");
+
+    const rA2 = makeRes();
+    await statusMod.default({ method: "PATCH", headers: authHeaders, body: { id: orderA.id, status: "resultado_listo" } }, rA2.res);
+    if (rA2.last().status !== 200) throw new Error("→ resultado_listo falló");
+
+    const pdfBytes = Uint8Array.from(
+      "%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>\n%%EOF\n".split("").map((c) => c.charCodeAt(0)),
+    );
+    const pathA = `${orderA.id}/${codeA}-resultado-${Date.now()}.pdf`;
+    const up = await service.storage.from("lab-results").upload(pathA, pdfBytes, { contentType: "application/pdf" });
+    if (up.error) throw new Error(`upload storage falló: ${up.error.message}`);
+    console.log("14. PDF subido al bucket privado:", up.data?.path === pathA ? "OK" : "MAL");
+
+    const resultMod = await import("../api/lab/_result.js");
+    const rB = makeRes();
+    await resultMod.default(
+      { method: "POST", headers: authHeaders, body: { id: orderA.id, path: pathA, name: "resultado-prueba.pdf", mime: "application/pdf", size: pdfBytes.length } },
+      rB.res,
+    );
+    console.log("15. registrar resultado:", rB.last().status);
+    if (rB.last().status !== 200) throw new Error("publicar resultado falló");
+
+    const rC = makeRes();
+    await pubMod.default({ method: "GET", url: `/api/lab-status?code=${codeA}`, headers: {} }, rC.res);
+    const bC = rC.last().body as { order: { resultFile?: { url: string; name: string }; resultExpired?: boolean } };
+    const linkOk = !!bC.order.resultFile?.url && !bC.order.resultExpired;
+    console.log("16. /estado ve el resultado (URL firmada):", linkOk ? "OK" : "FALLO", bC.order.resultFile?.name ?? "");
+    if (!linkOk) throw new Error("resultado no llegó al cliente");
+
+    // Forzar expiración y correr el cron de purga
+    await fetch(`https://api.supabase.com/v1/projects/${PROJECT}/database/query`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${process.env.SUPABASE_ACCESS_TOKEN}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ query: `update public.lab_orders set result_published_at = now() - interval '21 days' where order_code = '${codeA}'` }),
+    });
+    const purgeMod = await import("../api/lab/_purge.js");
+    const rD = makeRes();
+    await purgeMod.default(
+      { method: "GET", headers: process.env.CRON_SECRET ? { authorization: `Bearer ${process.env.CRON_SECRET}` } : {} },
+      rD.res,
+    );
+    const bD = rD.last().body as { ok: boolean; expired: number; purged: number; failed: number };
+    console.log("17. cron purge:", rD.last().status, JSON.stringify(bD));
+    if (rD.last().status !== 200 || bD.purged < 1 || bD.failed > 0) throw new Error("purga falló");
+
+    const rE = makeRes();
+    await pubMod.default({ method: "GET", url: `/api/lab-status?code=${codeA}`, headers: {} }, rE.res);
+    const bE = rE.last().body as { order: { resultFile?: unknown; resultExpired?: boolean; status: string } };
+    const expiredOk = bE.order.resultExpired === true && !bE.order.resultFile && bE.order.status === "entregada";
+    console.log("18. expirado: aviso + orden 'entregada':", expiredOk ? "OK" : `FALLO(${bE.order.status}/${bE.order.resultExpired})`);
+    if (!expiredOk) throw new Error("expiración no reflejada");
+
     console.log("\n✅ INTEGRACIÓN LAB COMPLETA");
   } finally {
     // ── Limpieza ──

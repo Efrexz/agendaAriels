@@ -38,6 +38,10 @@ export interface LabOrderRecord extends Omit<LabOrderInput, "orderCode"> {
   orderCode: string;
   createdAt: string;
   updatedAt: string;
+  // Resultado publicado al cliente (\Storage privado, ventan todas de 20 días)
+  resultPath: string | null;
+  resultName: string | null;
+  resultPublishedAt: string | null;
 }
 
 export type UniqueViolation = "23505";
@@ -61,6 +65,9 @@ interface LabDbRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+  result_path: string | null;
+  result_name: string | null;
+  result_published_at: string | null;
 }
 
 function rowToRecord(r: LabDbRow): LabOrderRecord {
@@ -83,13 +90,16 @@ function rowToRecord(r: LabDbRow): LabOrderRecord {
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    resultPath: r.result_path,
+    resultName: r.result_name,
+    resultPublishedAt: r.result_published_at,
   };
 }
 
 const LAB_COLUMNS =
   "id, order_code, sede_origen, sede_responsable, lab_name, exam_type, pet_name, pet_type, " +
   "history_code, doctor_name, owner_name, owner_phone, paid_notes, notes, status, " +
-  "created_by, created_at, updated_at";
+  "created_by, created_at, updated_at, result_path, result_name, result_published_at";
 
 export class LabDb {
   constructor(private client: SupabaseClient) {}
@@ -294,5 +304,57 @@ export class LabDb {
       throw new Error(`addCatalogItem: ${error.message}`);
     }
     return clean;
+  }
+
+  // ── Resultado del examen (Storage privado + ventana de 20 días) ──
+
+  /** Registra el archivo ya subido por el staff al bucket (browser directo). */
+  async setResultFile(orderId: string, path: string, name: string): Promise<void> {
+    const { error } = await this.client
+      .from("lab_orders")
+      .update({ result_path: path, result_name: name, result_published_at: new Date().toISOString() })
+      .eq("id", orderId);
+    if (error) throw new Error(`setResultFile: ${error.message}`);
+  }
+
+  /** Borra el registro del archivo (el storage lo elimina el llamador). */
+  async clearResultFile(orderId: string): Promise<void> {
+    const { error } = await this.client
+      .from("lab_orders")
+      .update({ result_path: null, result_name: "", result_published_at: null })
+      .eq("id", orderId);
+    if (error) throw new Error(`clearResultFile: ${error.message}`);
+  }
+
+  /** Órdenes con resultado EXPIRADO (publicado hace más de la ventana dada). */
+  async listExpiredResults(publishedBeforeIso: string): Promise<LabOrderRecord[]> {
+    const { data, error } = await this.client
+      .from("lab_orders")
+      .select(LAB_COLUMNS)
+      .not("result_path", "is", null)
+      .lt("result_published_at", publishedBeforeIso)
+      .limit(100);
+    if (error) throw new Error(`listExpiredResults: ${error.message}`);
+    return (data ?? []).map((r) => rowToRecord(r as unknown as LabDbRow));
+  }
+
+  /** Purga post-borrado del archivo: limpia el path/nombre pero CONSERVA
+   *  result_published_at (es la señal "resultado existió pero ya expiró"
+   *  para el aviso en /estado). Si siguió en 'resultado_listo' pasa a
+   *  'entregada' (cron, el estado queda coherente). */
+  async finalizePurge(orderId: string, hadStatus: string): Promise<void> {
+    const { error } = await this.client
+      .from("lab_orders")
+      .update({ result_path: null, result_name: "" })
+      .eq("id", orderId);
+    if (error) throw new Error(`finalizePurge: ${error.message}`);
+    if (hadStatus === "resultado_listo") {
+      const { error: e2 } = await this.client
+        .from("lab_orders")
+        .update({ status: "entregada" })
+        .eq("id", orderId)
+        .eq("status", "resultado_listo");
+      if (e2) throw new Error(`finalizePurge status: ${e2.message}`);
+    }
   }
 }

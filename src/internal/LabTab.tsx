@@ -1,11 +1,13 @@
 import { useEffect, useRef, useState } from "react";
 import { ChevronDown, PlusCircle } from "lucide-react";
 import {
-  addLabCatalogItem, createLabOrder, fetchLabCatalog, fetchLabList, patchLabStatus,
+  addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
+  getLabResultUrl, patchLabStatus, publishLabResult, uploadLabResultFile,
   type LabOrder, type LabView,
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
+import { ModalShell } from "./ModalShell";
 
 // Pestaña 🧪 Laboratorio: reemplazo digital del cuaderno de exámenes externos.
 // Vista por defecto "En curso" + Hoy/Semana/Búsqueda. Cross-sede: cada orden
@@ -239,7 +241,7 @@ export function LabTab() {
         <div className="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
           <p className="mb-2 text-xs text-slate-500">Resultados de búsqueda ({searchResults.length})</p>
           {searchResults.length === 0 && <p className="text-sm text-slate-400">Sin resultados.</p>}
-          {searchResults.map((o) => <LabCard key={o.id} o={o} onStatus={setOrderStatus} />)}
+          {searchResults.map((o) => <LabCard key={o.id} o={o} onStatus={setOrderStatus} onChanged={() => { setSearchResults(null); setQuery(""); setTick((t) => t + 1); }} />)}
         </div>
       )}
 
@@ -253,7 +255,7 @@ export function LabTab() {
               {branch !== "all" ? ` — ${branchShort(branch)}` : ""}
             </p>
           )}
-          {orders.map((o) => <LabCard key={o.id} o={o} onStatus={setOrderStatus} />)}
+          {orders.map((o) => <LabCard key={o.id} o={o} onStatus={setOrderStatus} onChanged={() => setTick((t) => t + 1)} />)}
         </div>
       )}
 
@@ -262,12 +264,67 @@ export function LabTab() {
   );
 }
 
-function LabCard({ o, onStatus }: {
+function LabCard({ o, onStatus, onChanged }: {
   o: LabOrder;
   onStatus: (o: LabOrder, status: string) => void;
+  onChanged: () => void;
 }) {
   const [open, setOpen] = useState(false);
+  const [resultBusy, setResultBusy] = useState(false);
+  const [resultMsg, setResultMsg] = useState<string | null>(null);
+  const resultFileRef = useRef<HTMLInputElement | null>(null);
   const meta = labStatusMeta(o.status);
+
+  async function publicarResultado(file: File | null) {
+    if (!file) return;
+    setResultBusy(true);
+    setResultMsg(null);
+    try {
+      const { path } = await uploadLabResultFile(o.id, file, o.orderCode);
+      await publishLabResult({
+        id: o.id,
+        path,
+        name: file.name,
+        mime: file.type,
+        size: file.size,
+      });
+      setResultMsg("✓ Resultado publicado — el cliente ya puede verlo en /estado con su código.");
+      onChanged();
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "No se pudo publicar el resultado.");
+    } finally {
+      setResultBusy(false);
+      if (resultFileRef.current) resultFileRef.current.value = "";
+    }
+  }
+
+  async function verResultado() {
+    setResultBusy(true);
+    setResultMsg(null);
+    try {
+      const { url } = await getLabResultUrl(o.id);
+      window.open(url, "_blank", "noopener,noreferrer");
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "No se pudo abrir el resultado.");
+    } finally {
+      setResultBusy(false);
+    }
+  }
+
+  async function borrarResultado() {
+    if (!window.confirm(`¿Borrar el resultado publicado de ${o.orderCode}? El cliente dejará de verlo.`)) return;
+    setResultBusy(true);
+    setResultMsg(null);
+    try {
+      await deleteLabResult(o.id);
+      setResultMsg("✓ Resultado borrado.");
+      onChanged();
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "No se pudo borrar.");
+    } finally {
+      setResultBusy(false);
+    }
+  }
 
   const nextActions: Array<[string, string]> = [];
   if (o.status === "recibida") nextActions.push(["en_laboratorio", "🔬 Enviar al laboratorio"], ["cancelado", "❌ Cancelar"]);
@@ -316,6 +373,48 @@ function LabCard({ o, onStatus }: {
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${s === "cancelado" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
                 >{label}</button>
               ))}
+            </div>
+          )}
+
+          {/* Resultado publicado al cliente (PDF/foto, ventana de 20 días) */}
+          {o.status === "resultado_listo" && (
+            <div className="mt-3 rounded-xl bg-blue-50/60 p-3 ring-1 ring-blue-100">
+              <p className="text-xs font-semibold text-slate-700">📄 Resultado del examen</p>
+              {!o.resultPath ? (
+                <>
+                  <p className="mt-1 text-xs text-slate-500">
+                    Sube el PDF o la foto del resultado: el cliente lo descarga gratis desde /estado con su código (se borra solo a los 20 días).
+                  </p>
+                  <input
+                    ref={resultFileRef}
+                    type="file"
+                    accept=".pdf,.jpg,.jpeg,.png"
+                    disabled={resultBusy}
+                    onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)}
+                    className="mt-2 w-full text-xs text-slate-600 file:mr-2 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-blue file:px-3 file:py-1.5 file:text-xs file:font-semibold file:text-white hover:file:bg-blue-700 disabled:opacity-50"
+                  />
+                </>
+              ) : (
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <span className="text-xs text-green-700">
+                    ✓ Publicado {o.resultPublishedAt ? timeOfLima(o.resultPublishedAt) : ""}
+                  </span>
+                  <button onClick={() => void verResultado()} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">👁 Ver</button>
+                  <label className="cursor-pointer rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
+                    🔁 Reemplazar
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)} />
+                  </label>
+                  <button onClick={() => void borrarResultado()} disabled={resultBusy} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">🗑 Borrar</button>
+                </div>
+              )}
+              {resultMsg && <p className="mt-1.5 text-xs text-slate-600">{resultMsg}</p>}
+            </div>
+          )}
+
+          {o.status === "entregada" && o.resultPath && (
+            <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
+              📄 Resultado publicado {o.resultPublishedAt ? `(${timeOfLima(o.resultPublishedAt)})` : ""}
+              <button onClick={() => void verResultado()} disabled={resultBusy} className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-200">👁 Ver</button>
             </div>
           )}
 
@@ -396,11 +495,19 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
     form.ownerName.trim().length >= 3 &&
     form.ownerPhone.trim().length >= 6;
 
+  // dirty: cualquier campo tocado por el USUARIO (las cargas automáticas no cuentan)
+  const dirty =
+    form.labName.trim() !== "" || form.examType.trim() !== "" ||
+    form.petName.trim() !== "" || form.ownerName.trim() !== "" ||
+    form.ownerPhone.trim() !== "" ||
+    form.historyCode.trim() !== "" || form.paidNotes.trim() !== "" ||
+    form.notes.trim() !== "" || form.petType !== "Perro" || form.doctorName !== "-" ||
+    sedeOrigen !== "san_miguel" || sedeResponsable !== "san_miguel";
+
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm" onClick={() => onClose(false)}>
-      <div className="mt-10 w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-3 font-display text-lg font-bold text-slate-900">🧪 Nueva orden de laboratorio</h3>
-        {created ? (
+    <ModalShell title="🧪 Nueva orden de laboratorio" dirty={dirty && !created} onClose={onClose}>
+      {(maybeClose) =>
+      created ? (
           <div className="flex flex-col items-center gap-3 py-4 text-center">
             <p className="text-3xl">✅</p>
             <p className="text-sm text-slate-600">Orden registrada y el cliente ya tiene su código:</p>
@@ -484,12 +591,12 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
               >
                 {busy ? "Registrando…" : "Registrar orden"}
               </button>
-              <button onClick={() => onClose(false)} className="text-sm text-slate-400">Cancelar</button>
+              <button onClick={() => maybeClose(false)} className="text-sm text-slate-400">Cancelar</button>
             </div>
           </>
-        )}
-      </div>
-    </div>
+          )
+      }
+    </ModalShell>
   );
 }
 

@@ -9,6 +9,7 @@ vi.mock("./_shared.js", () => ({
   getLabDb: () => dbMock,
   notConfigured: () => undefined,
   staffGuard: vi.fn(async () => null),
+  LAB_BRANCH_PHONES: { san_miguel: "+51 954 599 221" },
 }));
 
 const { default: handler, buildLabStatusResponse } = await import("./_public_status.js");
@@ -24,6 +25,9 @@ const order = {
   paidNotes: "S/ 150",
   notes: "pagó en caja",
   labName: "LabVet Centro",
+  resultPath: null,
+  resultName: null,
+  resultPublishedAt: null,
 };
 
 function makeRes() {

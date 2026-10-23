@@ -707,6 +707,29 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   catálogo incluidos), lint/tc/build verdes. La lista es GLOBAL (una sola):
   los counters de las 3 sedes comparten catálogo conforme al uso real
   (decisión confirmada usuario). Pendientes previos sin cambios.
+- 2026-10-22 — **LAB: MODALES BLINDADOS + RESULTADO AL CLIENTE (L5a+b+c)**:
+  L5a ModalShell.tsx compartido (X + Esc + "¿Salir sin guardar cambios?" cuando
+  dirty; NADA cierra por clic afuera) aplicado a NewLabOrderModal y
+  ManualApptModal (los 2 únicos modales del panel; REGLA para modales nuevos).
+  L5b resultado: migración 3 (result_path/result_name/result_published_at +
+  bucket privado lab-results: storage policy insert SOLO authenticated,
+  lectura/update/delete denegados; service_role bypass). API /internal/lab/
+  result POST (mime pdf/jpeg/png ≤25MB + el path DEBE vivir en ${id}/,
+  reemplazo borra el anterior) / GET URL firmada 10 min (staff) / DELETE
+  (solo antes de entregada). Subida DIRECTA browser→Storage con JWT del staff
+  (sin límite 4.5MB de functions). /api/lab-status: resultFile {url firmada
+  10 min} si vigente, resultExpired si la ventana (20 días fijos) pasó;
+  /estado: "⬇ Descargar resultado" o aviso amigable + "👋 Escribir a la sede"
+  (wa.me teléfono público de la sede, texto prellenado mascota+código) —
+  privacidad: el archivo se nombra por CÓDIGO, se borra de la web a los 20d
+  y queda en la historia clínica. L5c cron purge diario 06:10 UTC (2º cron
+  free en vercel.json + CRON_SECRET como reminders): borra archivo + limpia
+  path/nombre (CONSERVA result_published_at = memoria de expiración) y
+  resultado_listo→entregada. Costo storage: megas con auto-limpieza (free tier
+  intacto). Gates: 252 tests (27 lab), lint, typecheck doble, build, e2e
+  10/10, INTEGRACIÓN REAL 18/18 (PDF real subido al bucket → URL firmada
+  vista por /estado → expiración forzada +21d → purge OK + orden 'entregada'
+  + expirado reflejado; limpieza total).
 
 ---
 

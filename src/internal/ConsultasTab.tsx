@@ -6,6 +6,7 @@ import {
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
+import { ModalShell } from "./ModalShell";
 
 // Pestaña Consultas: vista del counter para citas médicas.
 // Por defecto HOY, con franja de "Mañana", semana, búsqueda y citas manuales.
@@ -458,6 +459,13 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
     try { setSlotsList(await fetchSlots(doctorId, d)); } catch { setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha."); }
   }
 
+  // dirty (para la confirmación de salida): solo campos tocados por el USUARIO.
+  // doctorId/specialtyId quedan fuera: los setea la carga automática.
+  const dirty =
+    name.petName !== "" || name.ownerName !== "" || name.ownerPhone !== "" ||
+    name.petNotes !== "" || name.petType !== "Perro" || date !== "" ||
+    startMinute !== null || serviceType !== "general" || branch !== "san_miguel";
+
   async function guardar() {
     setError(null);
     try {
@@ -477,9 +485,9 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm" onClick={() => onClose(false)}>
-      <div className="mt-10 w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <h3 className="mb-3 font-display text-lg font-bold text-slate-900">＋ Cita manual (teléfono / mostrador)</h3>
+    <ModalShell title="＋ Cita manual (teléfono / mostrador)" dirty={dirty} onClose={onClose}>
+      {(maybeClose) => (
+      <>
         {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
         <div className="grid gap-3">
           <Row label="Sede">
@@ -543,10 +551,11 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
           >
             Crear cita
           </button>
-          <button onClick={() => onClose(false)} className="text-sm text-slate-400">Cancelar</button>
+          <button onClick={() => maybeClose(false)} className="text-sm text-slate-400">Cancelar</button>
         </div>
-      </div>
-    </div>
+      </>
+      )}
+    </ModalShell>
   );
 }
 

@@ -15,8 +15,14 @@ export interface TrackingLab {
   petName: string;
   examType: string;
   sedeLabel: string;
+  /** Teléfono PÚBLICO de la sede responsable (para consultas; nunca tel. del dueño). */
+  sedePhone: string;
   createdAt: string;
   timeline: Array<{ status: string; createdAt: string }>;
+  /** Resultado publicado: link firmado (10 min, generado por el servidor). */
+  resultFile?: { url: string; name: string; publishedAt: string } | null;
+  /** true → el resultado existió pero su ventana de 20 días ya terminó. */
+  resultExpired?: boolean;
 }
 
 export type TrackingResult = TrackingBooking | TrackingLab;

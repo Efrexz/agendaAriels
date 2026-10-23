@@ -263,6 +263,44 @@ function LabView({
         <LabStep status="entregada" active={order.status} timeline={order.timeline} last />
       </section>
 
+      {/* Resultado del examen */}
+      {order.resultFile && (
+        <section className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-2 ring-green-200">
+          <p className="text-sm font-semibold text-slate-800">📄 Tu resultado ya está disponible</p>
+          <p className="mt-1 text-xs text-slate-500">{order.resultFile.name}</p>
+          <a
+            href={order.resultFile.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700"
+          >
+            ⬇ Descargar resultado
+          </a>
+          <p className="mt-2 text-[11px] text-slate-400">
+            El enlace dura 10 minutos y se regenera cada vez que abres esta página. El archivo se borra de la web a los 20 días.
+          </p>
+        </section>
+      )}
+      {order.resultExpired && (
+        <section className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200">
+          <p className="text-sm font-semibold text-slate-800">Tu resultado ya no está disponible aquí</p>
+          <p className="mt-2 text-xs text-slate-500">
+            Por proteger tus datos, el resultado se comparte por esta página durante 20 días y luego se elimina de la web.
+            Tu mascota lo tiene en su historia clínica — puedes pedirlo o consultarlo por WhatsApp.
+          </p>
+          <a
+            href={`https://wa.me/${(order.sedePhone || "").replace(/\D/g, "")}?text=${encodeURIComponent(
+              `Hola 🐾 quisiera consultar el resultado del examen de ${order.petName}, código ${order.orderCode}.`,
+            )}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#1EBE5A]"
+          >
+            👋 Escribir a la sede
+          </a>
+        </section>
+      )}
+
       <footer className="mt-8 flex flex-col items-center gap-1 text-center text-xs text-slate-400">
         <span className="flex items-center gap-1.5">
           <HeartHandshake className="h-3.5 w-3.5" /> Esta página se actualiza sola. El resultado se entrega impreso en la sede.

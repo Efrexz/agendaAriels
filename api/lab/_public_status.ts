@@ -1,13 +1,22 @@
 import { z } from "zod/v4";
-import { getLabDb, notConfigured } from "./_shared.js";
+import { createClient } from "@supabase/supabase-js";
+import { getLabDb, notConfigured, LAB_BRANCH_PHONES } from "./_shared.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/lab-status?code=LAB-XXXXX
 // Página del cliente: estado del EXAMEN en tiempo real. Expone
 // SOLO campos seguros: mascota, examen, estado e timeline.
-// NUNCA teléfono, notas, montos, médico ni laboratorio.
-// (Los resultados se entregan impresos/in-person en la sede.)
+// NUNCA teléfono del dueño, notas, montos ni médico.
+// Resultado publicado: URL FIRMADA de 10 minutos (storage privado);
+// tras 20 días la API dice "expirado" y la página muestra el aviso
+// con WhatsApp de la sede. (Los resultados se purgan con el cron.)
 // ─────────────────────────────────────────────────────────────
+
+const RESULT_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
+
+function OrderParseDate(iso: string | null): number {
+  return iso ? Date.parse(iso) : NaN;
+}
 
 const CODE_SCHEMA = z.string().regex(/^LAB-[A-Z0-9]{5}$/);
 
@@ -50,21 +59,47 @@ export async function buildLabStatusResponse(
     return { status: 404, body: { ok: false, error: "No encontramos una orden con ese código." } };
   }
   const timeline = await db.listStatusUpdatesMany([order.id]);
+  const orderBody: Record<string, unknown> = {
+    orderCode: order.orderCode,
+    status: order.status,
+    // Campos seguros: mascota + examen para que el cliente reconozca la orden.
+    petName: order.petName,
+    examType: order.examType,
+    // Teléfono de la sede (no del dueño): para el botón WhatsApp cuando el
+    // resultado ya expiró. Es el número público de veterinaria.
+    sedeLabel: order.sedeResponsable,
+    sedePhone: LAB_BRANCH_PHONES[order.sedeResponsable] ?? "",
+    createdAt: order.createdAt,
+    timeline: timeline[order.id] ?? [],
+  };
+
+  // Resultado publicado → link firmado corto (nunca público permanente).
+  // Expirado (ventana 20 días, archivo ya borrado por el cron) → resultExpired:
+  // la página muestra el aviso amigable + WhatsApp de la sede.
+  const publishedMs = OrderParseDate(order.resultPublishedAt);
+  if (order.resultPath && Number.isFinite(publishedMs) && Date.now() - publishedMs <= RESULT_WINDOW_MS) {
+    const client = createClient(
+      process.env.SUPABASE_URL ?? "",
+      process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
+      { auth: { persistSession: false } },
+    );
+    const { data, error } = await client.storage.from("lab-results").createSignedUrl(order.resultPath, 600);
+    if (!error && data?.signedUrl) {
+      orderBody.resultFile = {
+        url: data.signedUrl,
+        name: order.resultName || order.orderCode,
+        publishedAt: order.resultPublishedAt,
+      };
+    }
+  } else if (!order.resultPath && Number.isFinite(publishedMs)) {
+    orderBody.resultExpired = true;
+  }
+
   return {
     status: 200,
     body: {
       ok: true,
-      order: {
-        orderCode: order.orderCode,
-        status: order.status,
-        // Campos seguros: mascota + examen para que el cliente reconozca la orden.
-        petName: order.petName,
-        examType: order.examType,
-        // sin sede_responsable label? Sí, útil y es información no sensible:
-        sedeLabel: order.sedeResponsable,
-        createdAt: order.createdAt,
-        timeline: timeline[order.id] ?? [],
-      },
+      order: orderBody,
     },
   };
 }
