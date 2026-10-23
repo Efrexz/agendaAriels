@@ -730,6 +730,20 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   10/10, INTEGRACIÓN REAL 18/18 (PDF real subido al bucket → URL firmada
   vista por /estado → expiración forzada +21d → purge OK + orden 'entregada'
   + expirado reflejado; limpieza total).
+- 2026-10-22 — **DOCUMENTO COSTOS-Y-LIMITES.md creado + entrada §9 #10**
+  (preguntas del jefe-owner sobre dónde se suben resultados/si es seguro/
+  cuándo pagar): mapa del sistema 1 página, límites free tier verificados
+  con fuentes (Vercel Pro $20 = $20 crédito incl, Hobby NO comercial;
+  Supabase Pro $25 = 100GB storage+backups; Netlify free SÍ permite
+  comercial según su blog oficial — verificación web hoy), triggers de pago
+  (OK jefe → migrar Netlify o Vercel Pro; Supabase Pro solo si storage>70%
+  o backups; VPS $5 WhatsApp), guía completa de migración Vercel→Netlify
+  (netlify.toml + adaptador ~20 líneas de la función única + envs + crons
+  scheduled + checklist humo + rollback), alertas anti-sorpresa (spend
+  management Vercel, revisión mensual Supabase Usage, entornos de supuestos
+  de prueba pausables), línea en README. Decisión registrada: seguir en
+  Vercel demo; en día de producción → Netlify primero (los múltiples
+  clientes caben en proyectos free por clínica).
 
 ---
 
@@ -762,3 +776,8 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
        TOCTOU post-insert en create/assign médico; marca cron "recordatorio
        enviado" (idempotencia); cuentas staff por sede (≈1h, al haber
        recepcionistas reales); guía de uso del staff.
+10. [ ] **Decisión infra el día de producción (OK del jefe)**: migrar a
+       Netlify (free con uso comercial permitido — guía completa en
+       COSTOS-Y-LIMITES.md §5, ~½ día) o Vercel Pro $20/mes. Triggers y
+       comparación honesta en COSTOS-Y-LIMITES.md §3-4. Mientras: seguir en
+       Vercel Hobby SOLO para demo/interno.

@@ -2,6 +2,8 @@
 
 Página web para que los clientes agenden servicios de baño y corte (grooming) para sus mascotas: eligen sede, servicio, fecha y horario, y la reserva llega por WhatsApp a la veterinaria.
 
+> 📁 Documentos del proyecto: `PLAN.md` (plan y registro de sesiones) · `PLAN-UX.md` (estilos) · `COSTOS-Y-LIMITES.md` (dónde vive el sistema, cuándo pagar Vercel/Supabase y guía de migración a Netlify) · `IDEAS.md`.
+
 ## Stack
 
 - React 19 + TypeScript (strict) + Vite
