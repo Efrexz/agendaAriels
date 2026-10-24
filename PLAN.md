@@ -874,6 +874,44 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
   captura del preview sin pageerrors. SIN REVISIÓN VISUAL del usuario
   aún.
+- 2026-10-23 — **PASO "ORDEN" DEL WIZARD MÉDICO REDESIGN (3ª maqueta
+  referencia.png del usuario, SOLO ese paso + sin_orden — decisión:
+  no extender a los demás pasos todavía)**: ① layout 2 columnas lg
+  (texto+opciones izq / mascota der); ② variante izquierda de título
+  (guioncito naranja + kicker uppercase + H1 Fredoka 3xl/4xl con "orden
+  sellada" en naranja) — StepHeading centrado se conserva para los demás
+  pasos; ③ nota informativa pasa de barrita ámbar a card azul suave con
+  icono FileCheck2 en cuadro blanco; ④ opciones Sí/No como cards
+  horizontales XL: icono círculo (FileCheck2 verde / FileX2 naranja con
+  mini-badge ✕), label Fredoka bold, flecha circular derecha (verde
+  sólida Sí / gris No, se desliza al hover) — los onClick EXACTAMENTE
+  los mismos (hasOrder+go("doctor") / go("sin_orden")); ⑤ mascota
+  derecha con FONDO pedido: blobs pastel (disco azul 45%, óvalos
+  blue/orange) + huellitas lucide + 2.tiles flotantes rotados con
+  rayos.webp y eco.webp (assets YA existentes del propio wizard, sin
+  arte nuevo) detrás-alrededor de orden.webp; entrada escalonada con
+  framer-motion delays y reduced-motion pasando dur 0.2 (gates ya en
+  App); móvil: columna única compacta. ⑥ sin_orden mismo aire: título
+  izq + 2 cards horizontales con icono (Stethoscope gradiente azul/
+  naranja; Phone verde) y flechas. CERO cambia de lógica/estados/API.
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  preview Playwright navega sede→servicio→orden real y captura sin
+  pageerrors. SIN REVISIÓN VISUAL del usuario aún (pendiente push).
+- 2026-10-23 — afinación del paso orden tras 1ª revisión del usuario:
+  ① el usuario trajo orden2.webp (vetMascot/) — la ILUSTRACIÓN COMPLETA
+  de la maqueta (mascota + placa + eco + orden + blobs + destellos ya
+  horneados) y reemplaza mi collage CSS (blobs/tiles/huellitas borrados
+  del paso — el arte los lleva) → acento MASCOT.orden2;
+  ② título en DOS LÍNEAS como la maqueta ("¿Tu mascota tiene" navy /
+  "orden sellada" naranja + "por un médico?") con spans block;
+  ③ fundido blanco abajo de la ilustración (mismo patrón
+  WelcomeBackStep: absolute h-12/16 bg-gradient-to-t from-white —
+  disimula el corte del webp, pedido explícito del usuario);
+  ④ opacidades: nota y 2 cards de opción entran escalonadas
+  (delay 0.2/0.3/0.4, reduced-motion dur 0.2). Gates TODOS: lint 0,
+  typecheck doble 0, build OK, 252 tests, e2e 10/10, capturas
+  desktop+móvil del flujo real sin pageerrors. SIN REVISIÓN VISUAL
+  final del usuario (pendiente commit+push).
 
 ---
 

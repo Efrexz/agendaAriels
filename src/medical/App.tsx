@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CalendarDays, CheckCircle2, Check, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, FileWarning, Heart, Loader2, MapPin, Microscope, Phone,
+  ClipboardList, Clock, FileCheck2, FileX2, FileWarning, Heart, Loader2, MapPin, Microscope, Phone,
   ScanLine, ShieldCheck, Stethoscope, UserRound, type LucideIcon,
 } from "lucide-react";
 import {
@@ -50,6 +50,7 @@ const INITIAL: FormData = {
 // reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
 const MASCOT = {
   orden: "/images/vetMascot/orden.webp",
+  orden2: "/images/vetMascot/orden2.webp",
   doctor: "/images/vetMascot/doctor.webp",
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
@@ -383,67 +384,134 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Orden médica: pregunta ── */}
+              {/* ── Orden médica: pregunta (estilo maqueta: 2 columnas, mascota con rayos/eco/orden) ── */}
               {step === "orden" && (
-                <section>
-                  <StepHeading kicker="Radiografía y ecografía">
-                    ¿Tu mascota tiene <span className="text-orange-500">orden sellada</span> por un médico?
-                  </StepHeading>
-                  <p className="mx-auto mb-4 max-w-md rounded-2xl border border-amber-200 bg-amber-50 p-4 text-xs leading-relaxed text-amber-800">
-                    📄 Para radiografías y ecografías necesitamos una orden médica con sello de un médico
-                    (de cualquier clínica). Sin orden, primero debe pasar por una consulta general.
-                  </p>
-                  <motion.img
-                    src={MASCOT.orden}
-                    alt="Mascota con su orden médica"
-                    className="mx-auto -mb-1 h-auto w-36 object-contain sm:w-44"
-                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
-                  />
-                  <div className="grid grid-cols-2 gap-3 sm:gap-4">
-                    <button
-                      onClick={() => { update("hasOrder", true); go("doctor"); }}
-                      className="rounded-3xl bg-green-50 ring-1 ring-green-200 px-3 py-5 text-center font-bold text-green-800 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  {/* Columna izquierda: título + nota + opciones */}
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Radiografía y ecografía</p>
+                    </div>
+                    <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">¿Tu mascota tiene</span>
+                      <span className="block">
+                        <span className="text-orange-500">orden sellada</span> por un médico?
+                      </span>
+                    </h2>
+                    <motion.div
+                      className="mb-5 flex items-start gap-3 rounded-2xl bg-[#EFF5FC] p-4 ring-1 ring-[#DCEBFF]"
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 }}
                     >
-                      <span className="mb-1 block text-2xl">📄</span>
-                      Sí, tengo orden
-                    </button>
-                    <button
-                      onClick={() => { setError(null); go("sin_orden"); }}
-                      className="rounded-3xl bg-red-50 ring-1 ring-red-200 px-3 py-5 text-center font-bold text-red-800 shadow-sm transition-all hover:-translate-y-1 hover:shadow-md active:scale-[0.98]"
-                    >
-                      <span className="mb-1 block text-2xl">❌</span>
-                      No tengo
-                    </button>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
+                        <FileCheck2 className="h-5 w-5" />
+                      </span>
+                      <p className="pt-1 text-xs leading-relaxed text-[#3B5178]">
+                        Necesitamos una orden médica <b>con sello de un médico</b> (de cualquier clínica).
+                        Sin orden, primero debe pasar por una consulta general.
+                      </p>
+                    </motion.div>
+                    <div className="flex flex-col gap-3">
+                      <motion.button
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.3 }}
+                        onClick={() => { update("hasOrder", true); go("doctor"); }}
+                        className="group flex items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
+                          <FileCheck2 className="h-6 w-6" />
+                        </span>
+                        <span className="flex-1 font-display text-xl font-bold text-green-800">Sí, tengo orden</span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                          <ArrowRight className="h-5 w-5" />
+                        </span>
+                      </motion.button>
+                      <motion.button
+                        onClick={() => { setError(null); go("sin_orden"); }}
+                        className="group flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-1 ring-slate-200 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.4 }}
+                      >
+                        <span className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-orange-50 text-orange-600 ring-1 ring-orange-200">
+                          <FileX2 className="h-6 w-6" />
+                          <span className="absolute -right-1 -top-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-white">
+                            <span className="text-[9px] font-black leading-none">✕</span>
+                          </span>
+                        </span>
+                        <span className="flex-1 font-display text-xl font-bold text-[#475AAB]">No tengo</span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-slate-200 text-slate-500 transition-transform group-hover:translate-x-1">
+                          <ArrowRight className="h-5 w-5" />
+                        </span>
+                      </motion.button>
+                    </div>
+                  </div>
+
+                  {/* Columna derecha: ilustración completa (orden2.webp ya trae
+                      blobs, placa, eco, orden, huellitas y destellos dentro) */}
+                  <div className="relative mx-auto flex w-full justify-center">
+                    <motion.img
+                      src={MASCOT.orden2}
+                      alt="Mascota con su orden médica, radiografía y ecografía"
+                      className="h-56 w-auto select-none object-contain sm:h-64 lg:h-80"
+                      draggable={false}
+                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
+                    />
+                    {/* Fundido blanco abajo: disimula el corte brusco del arte
+                        (mismo patrón que WelcomeBackStep en la agenda) */}
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
+                    />
                   </div>
                 </section>
               )}
 
-              {/* ── Sin orden: dos caminos ── */}
+              {/* ── Sin orden: dos caminos (mismo aire que la maqueta) ── */}
               {step === "sin_orden" && (
-                <section>
-                  <StepHeading kicker="Sin orden médica">
+                <section className="mx-auto max-w-2xl">
+                  <div className="mb-1.5 flex items-center gap-2.5">
+                    <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Sin orden médica</p>
+                  </div>
+                  <h2 className="mb-3 font-display text-3xl font-bold leading-[1.15] tracking-tight text-[#475AAB] sm:text-4xl">
                     Primero toca <span className="text-orange-500">consulta general</span>
-                  </StepHeading>
-                  <p className="mx-auto mb-5 max-w-md text-center text-sm text-[#546A8E]">
+                  </h2>
+                  <p className="mb-5 text-sm leading-relaxed text-[#546A8E]">
                     El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
                     radiografía o ecografía el mismo día.
                   </p>
                   <div className="flex flex-col gap-3">
                     <button
                       onClick={() => { update("serviceType", "general"); update("hasOrder", null); go("doctor"); }}
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-orange-400 py-3.5 font-semibold text-white shadow-md transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+                      className="group flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-1 ring-slate-200 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
                     >
-                      🩺 Agendar consulta general ahora
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
+                        <Stethoscope className="h-6 w-6" />
+                      </span>
+                      <span className="flex-1 font-display text-xl font-bold text-[#475AAB]">Agendar consulta general ahora</span>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-orange-400 text-white shadow-md transition-transform group-hover:translate-x-1">
+                        <ArrowRight className="h-5 w-5" />
+                      </span>
                     </button>
                     <a
                       href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
                       target="_blank"
                       rel="noreferrer"
-                      className="flex items-center justify-center gap-2 rounded-2xl bg-green-50 py-3.5 font-semibold text-green-800 ring-1 ring-green-200 transition-all hover:-translate-y-0.5 hover:shadow-md active:scale-[0.98]"
+                      className="group flex items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
                     >
-                      <Phone className="h-4 w-4" /> Hablar con la sede por WhatsApp
+                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
+                        <Phone className="h-6 w-6" />
+                      </span>
+                      <span className="flex-1 font-display text-xl font-bold text-green-800">Hablar con la sede por WhatsApp</span>
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                        <ArrowRight className="h-5 w-5" />
+                      </span>
                     </a>
                   </div>
                 </section>
