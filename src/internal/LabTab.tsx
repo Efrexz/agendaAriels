@@ -264,6 +264,15 @@ export function LabTab() {
   );
 }
 
+// Borde de color por estado (mismo semáforo del panel).
+const LAB_BORDER: Record<string, string> = {
+  recibida: "border-l-blue-500",
+  en_laboratorio: "border-l-amber-400",
+  resultado_listo: "border-l-green-500",
+  entregada: "border-l-slate-400",
+  cancelado: "border-l-red-500",
+};
+
 function LabCard({ o, onStatus, onChanged }: {
   o: LabOrder;
   onStatus: (o: LabOrder, status: string) => void;
@@ -334,12 +343,15 @@ function LabCard({ o, onStatus, onChanged }: {
   const crossSede = o.sedeOrigen !== o.sedeResponsable;
 
   return (
-    <article className={`rounded-2xl bg-white shadow-sm ring-1 ${o.overdue ? "ring-2 ring-amber-400" : "ring-slate-200"}`}>
+    <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ${LAB_BORDER[o.status] ?? "border-l-slate-300"} ${o.overdue ? "ring-2 ring-amber-400" : "ring-slate-200"}`}>
       <div className="flex cursor-pointer items-center justify-between gap-3 p-4" onClick={() => setOpen((v) => !v)}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-bold text-brand-blue">{o.orderCode}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.emoji} {meta.label}</span>
+            <p className="truncate text-sm font-semibold text-slate-800">
+              {o.petName} ({o.ownerName}) · {o.examType} · {o.labName}
+              {!crossSede && <span className="font-normal text-slate-400"> · {branchShort(o.sedeResponsable)}</span>}
+            </p>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             {o.overdue && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">⚠ &gt;7 días en lab</span>}
             {crossSede && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
@@ -347,10 +359,7 @@ function LabCard({ o, onStatus, onChanged }: {
               </span>
             )}
           </div>
-          <p className="mt-1 truncate text-sm text-slate-600">
-            {o.petName} ({o.ownerName}) · {o.examType} · {o.labName}
-            {!crossSede && <span className="text-slate-400"> · {branchShort(o.sedeResponsable)}</span>}
-          </p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">{o.orderCode}</p>
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
       </div>

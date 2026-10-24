@@ -352,6 +352,18 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
 
 interface MedDoctorLite { id: string; name: string; kind: string; specialty: string | null }
 
+// Borde de color por estado (mismo semáforo que las cards de grooming).
+const MED_BORDER: Record<string, string> = {
+  solicitud: "border-l-amber-400",
+  pagado: "border-l-yellow-400",
+  asignada: "border-l-blue-500",
+  confirmada: "border-l-green-500",
+  en_consulta: "border-l-sky-500",
+  atendida: "border-l-slate-400",
+  no_llego: "border-l-orange-400",
+  cancelado: "border-l-red-500",
+};
+
 function ApptCard({ a, onChanged, onStatus }: {
   a: MedAppt;
   onChanged: () => void;
@@ -366,17 +378,19 @@ function ApptCard({ a, onChanged, onStatus }: {
   else if (a.status === "asignada") nextActions.push(["confirmada", "📨 Confirmar al cliente"]);
 
   return (
-    <article className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${MED_BORDER[a.status] ?? "border-l-slate-300"}`}>
       <div className="flex cursor-pointer items-center justify-between gap-3 p-4" onClick={() => setOpen((v) => !v)}>
-        <div className="min-w-0">
+        <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <span className="font-mono text-sm font-bold text-brand-blue">{a.appointmentCode}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.emoji} {meta.label}</span>
+            <p className="truncate text-sm font-semibold text-slate-800">
+              {a.petName} ({a.ownerName})
+              {a.apptDate ? ` · ${DIAS[new Date(a.apptDate + "T12:00:00Z").getUTCDay()]} ${a.apptDate}` : " · Sin fecha"}
+              {a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""}
+            </p>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             <span className="text-xs text-slate-500">{MED_SERVICE_LABELS[a.serviceType]}{a.specialtyName ? ` · ${a.specialtyName}` : ""}</span>
           </div>
-          <p className="mt-1 truncate text-sm text-slate-600">
-            {a.apptDate ? `${DIAS[new Date(a.apptDate + "T12:00:00Z").getUTCDay()]} ${a.apptDate}` : "Sin fecha"}{a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""} · {a.petName} ({a.ownerName})
-          </p>
+          <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">{a.appointmentCode}</p>
         </div>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
       </div>

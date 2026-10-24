@@ -1,5 +1,23 @@
 import { useMemo, useState } from "react";
-import { ChevronDown, ExternalLink, Printer } from "lucide-react";
+import {
+  Bath,
+  Building2,
+  Cat,
+  CheckCircle2,
+  ChevronDown,
+  Clock,
+  Dog,
+  ExternalLink,
+  MapPin,
+  PackageCheck,
+  Phone,
+  Printer,
+  Scissors,
+  Truck,
+  User,
+  Wind,
+  type LucideIcon,
+} from "lucide-react";
 import { updateStatus, resendWhatsapp, type PanelBooking } from "./api";
 import { printViaQz } from "./qz";
 import { NOTIFIABLE_STATUSES, SLOT_LABELS, STATUS_ORDER, statusMeta } from "../statuses";
@@ -11,6 +29,45 @@ function formatTime(iso: string): string {
     minute: "2-digit",
   }).format(new Date(iso));
 }
+
+// Color del borde izquierdo por estado (semáforo visual de la maqueta):
+// de un vistazo se ve en qué etapa está cada mascota del tablero.
+const BORDER_COLOR: Record<string, string> = {
+  pendiente: "border-l-amber-400",
+  en_camino_recojo: "border-l-sky-500",
+  recibido: "border-l-blue-500",
+  en_bano: "border-l-cyan-500",
+  en_secado: "border-l-indigo-500",
+  en_corte: "border-l-violet-500",
+  listo: "border-l-green-500",
+  en_camino_entrega: "border-l-sky-500",
+  entregado: "border-l-slate-400",
+  cancelado: "border-l-red-500",
+};
+
+const STATE_COLOR: Record<string, string> = {
+  pendiente: "bg-amber-100 text-amber-800 hover:bg-amber-200",
+  en_camino_recojo: "bg-sky-100 text-sky-800 hover:bg-sky-200",
+  recibido: "bg-blue-100 text-blue-800 hover:bg-blue-200",
+  en_bano: "bg-cyan-100 text-cyan-800 hover:bg-cyan-200",
+  en_secado: "bg-indigo-100 text-indigo-800 hover:bg-indigo-200",
+  en_corte: "bg-violet-100 text-violet-800 hover:bg-violet-200",
+  listo: "bg-green-100 text-green-800 hover:bg-green-200",
+  en_camino_entrega: "bg-sky-100 text-sky-800 hover:bg-sky-200",
+  entregado: "bg-slate-200 text-slate-800 hover:bg-slate-300",
+};
+
+const STATE_ICON: Record<string, LucideIcon> = {
+  pendiente: Clock,
+  en_camino_recojo: Truck,
+  recibido: Building2,
+  en_bano: Bath,
+  en_secado: Wind,
+  en_corte: Scissors,
+  listo: CheckCircle2,
+  en_camino_entrega: Truck,
+  entregado: PackageCheck,
+};
 
 export function BookingCard({
   booking,
@@ -33,6 +90,14 @@ export function BookingCard({
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   const meta = statusMeta(booking.status);
+  const firstType = (booking.pets[0]?.type ?? "").toLowerCase();
+  const SpeciesIcon = firstType.includes("gato") ? Cat : firstType.includes("perro") ? Dog : User;
+  const avatarTint = firstType.includes("gato")
+    ? "bg-orange-100 text-orange-600"
+    : firstType.includes("perro")
+      ? "bg-sky-100 text-sky-600"
+      : "bg-slate-100 text-slate-400";
+  const border = BORDER_COLOR[booking.status] ?? "border-l-slate-300";
 
   /** Siguientes estados razonables: los que siguen en el flujo (+ cancelar). */
   const nextStatuses = useMemo(() => {
@@ -92,31 +157,42 @@ export function BookingCard({
   }
 
   return (
-    <article className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${border}`}>
       {/* Impresión: solo visible con @media print cuando es el ticket activo */}
       {printing && <PrintableTicket booking={booking} />}
 
       <div
-        className={`flex cursor-pointer items-center justify-between gap-3 p-4 ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
+        className={`no-print flex cursor-pointer items-center gap-3 p-4 ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
         onClick={() => setOpen((v) => !v)}
       >
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="font-mono text-sm font-bold text-brand-blue">{booking.bookingCode}</span>
-            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>
-              {meta.emoji} {meta.short}
-            </span>
+        {/* Avatar de la mascota (icono por especie) */}
+        <div className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${avatarTint}`}>
+          <SpeciesIcon className="h-5 w-5" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <p className="truncate text-sm font-semibold text-slate-800">
+              {booking.ownerName} · {booking.pets.map((p) => p.name).join(", ")}
+            </p>
+            <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.short}</span>
             {booking.whatsappDelivered === false && (
               <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-semibold text-red-700">
                 ⚠️ WhatsApp
               </span>
             )}
           </div>
-          <p className="mt-1 truncate text-sm text-slate-600">
-            {booking.ownerName} · {booking.pets.map((p) => p.name).join(", ")}
+          <p className="mt-0.5 flex min-w-0 items-center gap-1 text-xs text-slate-400">
+            <MapPin className="h-3 w-3 shrink-0" />
+            <span className="truncate">{booking.ownerAddress}</span>
+            {booking.mapsUrl && (
+              <a href={booking.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 text-brand-blue" title="Abrir en Maps">
+                <ExternalLink className="h-3.5 w-3.5" />
+              </a>
+            )}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-1 text-slate-400">
+        <div className="flex shrink-0 items-center gap-2 text-slate-500">
+          <span className="font-mono text-[11px] font-bold text-slate-400">{booking.bookingCode}</span>
           {showDate && <span className="text-xs">📅 {booking.serviceDate}</span>}
           <span className="text-xs">{SLOT_LABELS[booking.timeSlot]?.split(" – ")[0]}</span>
           <ChevronDown className={`h-4 w-4 transition ${open ? "rotate-180" : ""}`} />
@@ -125,29 +201,43 @@ export function BookingCard({
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
+          {/* Banner WhatsApp fallido (estilo maqueta) */}
           {booking.whatsappDelivered === false && (
-            <div className="no-print mb-3 rounded-xl bg-red-50 px-3 py-2.5 text-sm text-red-700">
-              <p>⚠️ El WhatsApp inicial de esta reserva no llegó a la veterinaria ni al cliente.</p>
-              {resendMsg && <p className="mt-1 text-xs">{resendMsg}</p>}
+            <div className="no-print mb-3 rounded-xl border-l-4 border-red-500 bg-red-50 p-3">
+              <div className="flex items-start gap-2">
+                <span className="mt-0.5 text-base leading-none">❗</span>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-red-700">
+                    El WhatsApp inicial de esta reserva no llegó a la veterinaria ni al cliente.
+                  </p>
+                </div>
+              </div>
+              {resendMsg && <p className="mt-1.5 text-xs text-red-600">{resendMsg}</p>}
               <button
                 onClick={handleResend}
                 disabled={resendBusy}
                 className="mt-2 rounded-lg bg-red-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-red-500 disabled:opacity-50"
               >
-                {resendBusy ? "Reenviando…" : "Reenviar avisos"}
+                {resendBusy ? "Reenviando…" : "↩ Reenviar avisos"}
               </button>
             </div>
           )}
 
           {/* Cliente */}
-          <div className="mb-3 grid gap-1 text-sm text-slate-600">
-            <p>
-              👤 {booking.ownerName} · 📞 <a className="text-brand-blue underline decoration-dotted" href={`tel:${booking.ownerPhone}`}>{booking.ownerPhone}</a>
+          <div className="mb-3 grid gap-1.5 text-sm text-slate-600">
+            <p className="flex items-center gap-2">
+              <User className="h-4 w-4 shrink-0 text-slate-400" />
+              {booking.ownerName}·
+              <a className="flex items-center gap-1 text-brand-blue underline decoration-dotted" href={`tel:${booking.ownerPhone}`}>
+                <Phone className="h-3.5 w-3.5" />
+                {booking.ownerPhone}
+              </a>
             </p>
-            <p className="flex items-center gap-1">
-              📍 {booking.ownerAddress}
+            <p className="flex min-w-0 items-center gap-2">
+              <MapPin className="h-4 w-4 shrink-0 text-slate-400" />
+              <span className="truncate">{booking.ownerAddress}</span>
               {booking.mapsUrl && (
-                <a href={booking.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex text-brand-blue" title="Abrir en Maps">
+                <a href={booking.mapsUrl} target="_blank" rel="noreferrer" className="inline-flex shrink-0 text-brand-blue" title="Abrir en Maps">
                   <ExternalLink className="h-4 w-4" />
                 </a>
               )}
@@ -198,6 +288,7 @@ export function BookingCard({
             </button>
             {nextStatuses.map((s) => {
               const m = statusMeta(s);
+              const StateIcon = STATE_ICON[s];
               return (
                 <button
                   key={s}
@@ -208,13 +299,14 @@ export function BookingCard({
                       ? `${m.label} (además avisa al cliente por WhatsApp)`
                       : m.label
                   }
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
+                  className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition disabled:opacity-50 ${
                     s === "cancelado"
                       ? "bg-red-50 text-red-700 hover:bg-red-100"
-                      : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                      : (STATE_COLOR[s] ?? "bg-slate-100 text-slate-700 hover:bg-slate-200")
                   }`}
                 >
-                  {m.emoji} {m.short}
+                  {StateIcon && <StateIcon className="h-3.5 w-3.5" />}
+                  {m.short}
                 </button>
               );
             })}

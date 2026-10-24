@@ -17,6 +17,16 @@ function limaToday(): string {
 
 const BRANCH_OPTIONS = Object.entries(BRANCH_LABELS);
 
+function limaTomorrow(): string {
+  // Mañana en la zona de la clínica (avanza el "reloj" +24h).
+  return new Intl.DateTimeFormat("en-CA", {
+    timeZone: "America/Lima",
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+  }).format(new Date(Date.now() + 24 * 3600 * 1000));
+}
+
 export function Panel({ onSignOut, embedded = false }: { email?: string; onSignOut: () => void; embedded?: boolean }) {
   const [date, setDate] = useState(limaToday);
   const [branch, setBranch] = useState<string>("all");
@@ -151,7 +161,7 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
   }, [bookings, searchResults]);
 
   return (
-    <div className="mx-auto min-h-screen max-w-6xl p-4 pb-24 lg:p-8">
+    <div className={`mx-auto max-w-6xl ${embedded ? "p-0" : "min-h-screen p-4 pb-24 lg:p-8"}`}>
       {/* Encabezado */}
       <header className={`mb-6 flex items-center justify-between gap-4 ${embedded ? "hidden" : ""}`}>
         <div className="flex items-center gap-3">
@@ -201,6 +211,31 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
             </option>
           ))}
         </select>
+        {/* Atajos rápidos (maqueta): un clic y la lista del día aparece */}
+        <div className="flex overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+          <button
+            onClick={() => {
+              setDate(limaToday());
+              resetDayView();
+            }}
+            className={`px-3 py-2.5 text-sm font-semibold transition hover:bg-blue-50 hover:text-brand-blue ${
+              date === limaToday() ? "bg-brand-blue/10 text-brand-blue" : "text-slate-600"
+            }`}
+          >
+            Hoy
+          </button>
+          <button
+            onClick={() => {
+              setDate(limaTomorrow());
+              resetDayView();
+            }}
+            className={`border-l border-slate-200 px-3 py-2.5 text-sm font-semibold transition hover:bg-blue-50 hover:text-brand-blue ${
+              date === limaTomorrow() ? "bg-brand-blue/10 text-brand-blue" : "text-slate-600"
+            }`}
+          >
+            Mañana
+          </button>
+        </div>
         <button
           onClick={() => {
             autoPrintRef.current = !autoPrint;

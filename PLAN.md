@@ -812,6 +812,68 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
   mock Playwright VA(en_corte)+LAB(resultado_listo con resultFile):
   capturas verificadas sin pageerrors. SIN REVISIÓN VISUAL aún.
+- 2026-10-23 — **WHATSAPP LOCAL REVIVIDO + FONDO PASTEL /estado**:
+  ① el usuario reportó que el Docker no enviaba WhatsApps: eran 3 capas —
+  (a) Docker Desktop abierto pero SIN contenedores (las "Images" de la
+  foto son solo imágenes: redis/evolution/postgres — se REUSAN, no borran);
+  (b) el stack REAL de producción vive en deploy/evolution-server/
+  (contenedores agenda_server_*, puerto host 8081, key agenda-demo-key que
+  comparte con Vercel — su comentario lo confirma) y estaba APAGADO 34h;
+  su volumen evolution-server_agenda_evolution_instances conserva el
+  teléfono del usuario escaneado (instancia ariels-agenda-2, estado open,
+  SESIÓN INTACTA — sin re-escanear QR); (c) .env.local estaba desalineado
+  (URL 8080, key del demo nuevo, EVOLUTION_DRY_RUN=true simulaba) —
+  corregido a 8081/agenda-demo-key/ariels-agenda-2/DRY_RUN=false (backup
+  en /tmp/opencode/env.local.backup). Los MSJS DE PRUEBA ahora SON
+  REALES. El stack viejo NO es raro: es el servidor WA previsto para
+  prod (Tailscale Funnel + Vercel); el compose demo (ariels_demo_*)
+  sigue como sandbox aislado para QR de prueba. Detalle: integración
+  Docker-WSL desactivada → operamos con docker.exe.
+  ② FONDO /estado: el usuario subió "Fondo Veterinario Pastel con
+  Huellas.webp" → movido a public/images/bg/estado-fondo.webp (14 KB,
+  pasal, con blobs azul/orange + huellitas + hueso dibujado); reemplaza
+  los blobs CSS puros en src/status/App.tsx (fixed inset-0 object-cover,
+  z-0 bajo el contenido); borrado referencia.jpeg (solo guía).
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  humo Playwright móvil 640px con mock en_bano sin pageerrors
+  (screenshot verificada). SIN REVISIÓN VISUAL del usuario aún.
+- 2026-10-23 — **PANEL INTERNO REDESIGN AL ESTILO DE LA 2ª MAQUETA
+  (Rerefencia.jpeg — nombre con typo del usuario)** con criterio
+  "bonito pero no confuso, es herramienta de recepción": SÍ adoptado —
+  ① navbar superior STICKY (logo + "Ariel's Clinic" Caveat "Hospital
+  veterinario" + tabs con iconos lucide y subrayado activo — desktop en
+  línea y móvil scrollando abajo; antes pestañas píldora debajo) + chip
+  👤 Recepción + botón Salir (sin campana fake sin sistema ni menú de
+  usuario drop); ② decoración sutil de fondo (paw grande abajo-izq +
+  blobs pastel abajo-der); ③ card de GROOMING estilo maqueta: borde
+  IZQ color-estado (semáforo: amber/sky/blue/cyan/indigo/violet/green/
+  slate/red), avatar redondo con icono de ESPECIE (Dog/Cat lucide, sin
+  foto por mascota que no existe), chip de estado, dirección + icono
+  Maps en la cabecera colapsada, código mono conservado a la derecha
+  (renglón de trabajo del counter); banner WhatsApp fallido con borde
+  rojo + botón Reenviar (se ELIMINÓ la línea fija "Recién se envió un
+  reenvío" que el mock ponía pero que en la realidad no siempre
+  aplica); botones de estado con COLOR semántico + icono lucide
+  (STATE_COLOR/STATE_ICON en BookingCard) — MISMA lógica de nextStatuses
+  (solo estados siguientes + cancelar, unchanged); ④ chips "Hoy /
+  Mañana" (liniaTomorrow) junto al calendario; ⑤ Consultas: borde por
+  estado + cabecera reordenada (nombre+fecha bold, código mono abajo —
+  SE CONSERVA el guard "Sin fecha" para especializada sin fecha) +
+  mismos botones con etiqueta clara que ya had; ⑥ LabTab: borde por
+  estado LAB_BORDER + mismo patrón de cabecera; anillo overdue intacto.
+  NO adoptado: fusionar 3 módulos en un dashboard de 2 columnas (el
+  mock pierde las franjas del grooming y mezcla módulos difícil de
+  leer), foto real de mascota (no existe), burbuja decorativa,
+  notificaciones. NUEVO page dev-only preview-panel.html +
+  PreviewPanel.tsx (NO entra al build de Vite — input list de vite
+  config no lo incluye) monta cards ficticias para el usuario sin
+  loguearse (nombres con typo b3 spread hereda whatsappDelivered=false
+  a propósito — comportamiento correcto verific en captura).
+  Panel embedded: root pasa de min-h-screen p-4 a p-0 (ya no duplica
+  padding con el main del App). CERO cambios de lógica/API/QZ/polling.
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  captura del preview sin pageerrors. SIN REVISIÓN VISUAL del usuario
+  aún.
 
 ---
 

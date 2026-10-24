@@ -359,16 +359,9 @@ export default function App() {
 
   return (
     <div className="relative mx-auto min-h-screen max-w-md px-4 py-8">
-      {/* Fondo decorativo (estilo referencia): blobs difusos + huellitas tenues */}
-      <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <div className="absolute -left-28 -top-24 h-80 w-80 rounded-full bg-blue-200/50 blur-3xl" />
-        <div className="absolute -right-28 top-16 h-72 w-72 rounded-full bg-orange-200/40 blur-3xl" />
-        <div className="absolute -left-24 bottom-0 h-64 w-64 rounded-full bg-blue-100/60 blur-3xl" />
-        <PawPrint className="absolute right-6 top-6 h-8 w-8 rotate-[25deg] text-orange-300/30" strokeWidth={2.5} />
-        <PawPrint className="absolute right-16 top-24 h-6 w-6 rotate-[45deg] text-orange-300/25" strokeWidth={2.5} />
-        <PawPrint className="absolute left-2 bottom-32 h-8 w-8 rotate-[-20deg] text-blue-300/30" strokeWidth={2.5} />
-        <PawPrint className="absolute left-16 bottom-24 h-5 w-5 rotate-[-45deg] text-blue-300/25" strokeWidth={2.5} />
-        <PawPrint className="absolute right-4 bottom-40 h-7 w-7 rotate-[10deg] text-blue-300/20" strokeWidth={2.5} />
+      {/* Fondo decorativo: imagen pastel con huellitas (public/images/bg/estado-fondo.webp) */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <img src="/images/bg/estado-fondo.webp" alt="" className="h-full w-full object-cover" />
       </div>
 
       <div className="relative z-10">
