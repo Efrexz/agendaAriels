@@ -50,7 +50,6 @@ const INITIAL: FormData = {
 // reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
 const MASCOT = {
   orden: "/images/vetMascot/orden.webp",
-  orden2: "/images/vetMascot/orden2.webp",
   doctor: "/images/vetMascot/doctor.webp",
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
@@ -454,7 +453,7 @@ export default function App() {
                       blobs, placa, eco, orden, huellitas y destellos dentro) */}
                   <div className="relative mx-auto flex w-full justify-center">
                     <motion.img
-                      src={MASCOT.orden2}
+                      src={MASCOT.orden}
                       alt="Mascota con su orden médica, radiografía y ecografía"
                       className="h-56 w-auto select-none object-contain sm:h-64 lg:h-80"
                       draggable={false}
@@ -554,45 +553,75 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Doctor ── */}
+              {/* ── Doctor (mismo lenguaje que el paso orden: 2 columnas + título a la izquierda) ── */}
               {step === "doctor" && (
-                <section>
-                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
-                    Elige el <span className="text-orange-500">doctor</span>
-                  </StepHeading>
-                  {!doctors && <Loading />}
-                  {doctors && doctors.length === 0 && (
-                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-                      Sin doctores disponibles en esta sede — elige otra sede o escríbenos por WhatsApp.
-                    </p>
-                  )}
-                  <motion.img
-                    src={MASCOT.doctor}
-                    alt="Nuestro equipo médico te espera"
-                    className="mx-auto mb-4 h-auto w-32 object-contain sm:w-40"
-                    initial={{ opacity: 0, scale: 0.85, y: 8 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
-                  />
-                  <div className="grid gap-3">
-                    {doctors?.map((d) => (
-                      <button
-                        key={d.id}
-                        onClick={() => {
-                          update("doctorId", d.id);
-                          update("doctorName", d.name);
-                          go("agenda");
-                        }}
-                        className="flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-md hover:ring-blue-300 active:scale-[0.98]"
-                      >
-                        <span className="flex h-11 w-11 items-center justify-center rounded-full bg-[#EFF6FF] text-xl">🩺</span>
-                        <span className="min-w-0 flex-1">
-                          <span className="block font-semibold text-[#1A2238]">{d.name}</span>
-                          <span className="block text-xs text-[#546A8E]">{d.specialty ?? "Medicina Veterinaria General"}</span>
-                        </span>
-                        <ChevronRight className="h-4 w-4 shrink-0 text-gray-300" />
-                      </button>
-                    ))}
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Sede {branch?.short ?? ""}</p>
+                    </div>
+                    <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Elige al especialista</span>
+                      <span className="block">
+                        que <span className="text-orange-500">atenderá a tu mascota</span>
+                      </span>
+                    </h2>
+                    {!doctors && <Loading />}
+                    {doctors && doctors.length === 0 && (
+                      <p className="rounded-2xl bg-amber-50 p-4 text-sm text-amber-800">
+                        Sin doctores disponibles en esta sede por ahora — elige otra sede o escríbenos por WhatsApp.
+                      </p>
+                    )}
+                    <div className="grid gap-3">
+                      {doctors?.map((d, i) => (
+                        <motion.button
+                          key={d.id}
+                          onClick={() => {
+                            update("doctorId", d.id);
+                            update("doctorName", d.name);
+                            go("agenda");
+                          }}
+                          className="group flex items-center gap-4 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 hover:ring-blue-300 active:translate-y-0 active:scale-[0.99]"
+                          initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 + i * 0.08 }}
+                        >
+                          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF]">
+                            <Stethoscope className="h-6 w-6 text-blue-600" />
+                          </span>
+                          <span className="min-w-0 flex-1">
+                            <span className="block font-display text-lg font-bold text-[#1A2238]">{d.name}</span>
+                            <span className="block text-xs text-[#546A8E]">{d.specialty ?? "Medicina Veterinaria General"}</span>
+                          </span>
+                          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-[#546A8E] transition-all group-hover:bg-brand-blue group-hover:text-white group-hover:shadow-md">
+                            <ChevronRight className="h-5 w-5" />
+                          </span>
+                        </motion.button>
+                      ))}
+                    </div>
+                    {doctors && doctors.length > 0 && (
+                      <p className="mt-3 text-[11px] text-[#8A97B1]">
+                        ¿No sabes a quién elegir? Cualquiera de ellos te atendrá muy bien — al pasar se agendará directo.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Mascota del equipo médico (doctor.webp: en recepción) */}
+                  <div className="relative mx-auto hidden w-full justify-center sm:flex">
+                    <motion.img
+                      src={MASCOT.doctor}
+                      alt="Nuestro equipo médico te espera"
+                      className="h-64 w-auto select-none self-center object-contain lg:h-80"
+                      draggable={false}
+                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
+                    />
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
+                    />
                   </div>
                 </section>
               )}

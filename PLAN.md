@@ -912,6 +912,27 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   typecheck doble 0, build OK, 252 tests, e2e 10/10, capturas
   desktop+móvil del flujo real sin pageerrors. SIN REVISIÓN VISUAL
   final del usuario (pendiente commit+push).
+- 2026-10-24 — **PAZO DOCTOR AL ESTILO "ORDEN" + ORGANIZACIÓN DE ARTE
+  (pedido: "vamos a ir mejorando poco a poco")**: Assets: el usuario
+  trajo más arte (medical/servicio/{eco,general,rayos}.webp reemplazados
+  por las versiones nuevas 3D, doctor.webp refrescado —bulldog en
+  recepción con mesa—); orden.webp (bulldog señalando orden sellada,
+  fondo transparente) RENOMBRADO a recibida.webp (su rol real: /estado
+  LAB 'recibida' — mascots.ts LAB_MASCOT actualizado) y orden2.webp
+  (ilustración completa de la maqueta) renombrado a CANÓNICO orden.webp
+  (wizard usa MASCOT.orden — se elimina la key orden2). referencia.png
+  borrado del repo (solo guía). PASO doctor reestiliado al lenguaje /
+  orden (captura del usuario mostró que "la página anterior tiene
+  estilos más poderosos"): 2 columnas lg — izquierda título en 2 líneas
+  ("Elige al especialista" / "que atenderá a tu mascota" naranja) +
+  cards de doctores ENRIQUECIDAS (avatar degradado azul con stetoscopio
+  lucide real en vez de emoji, nombre Fredoka bold, fiecha circular que
+  se vuelca azul al hover, entrada escalonada delay 0.2+i*0.08,
+  microcopy "¿No sabes a quién elegir?..."); derecha doctor.webp con
+  fundido blanco abajo (hidden en móvil < sm para densidad). CERO
+  lógica (mismos onClick/estados). Gates: lint 0, typecheck doble 0,
+  build OK, 252 tests, e2e 10/10, captura con mock de doctores sin
+  pageerrors. SIN REVISIÓN VISUAL final del usuario.
 
 ---
 

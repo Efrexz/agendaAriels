@@ -27,7 +27,7 @@ export const VA_MASCOT: Record<string, string> = {
 
 /** Laboratorio (LAB-): estado → archivo final. */
 export const LAB_MASCOT: Record<string, string> = {
-  recibida: `${MASCOT_BASE}orden.webp`,
+  recibida: `${MASCOT_BASE}recibida.webp`,
   en_laboratorio: `${MASCOT_BASE}laboratorio.webp`,
   resultado_listo: `${MASCOT_BASE}aprobado.webp`,
   entregada: `${MASCOT_BASE}DogAndCatFamilia.webp`,
