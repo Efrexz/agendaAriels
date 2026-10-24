@@ -933,6 +933,28 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   lógica (mismos onClick/estados). Gates: lint 0, typecheck doble 0,
   build OK, 252 tests, e2e 10/10, captura con mock de doctores sin
   pageerrors. SIN REVISIÓN VISUAL final del usuario.
+- 2026-10-24 — **PASO DOCTOR: PULIDO MAQUETA 4ª (referencia (2).png) +
+  CASCADA DE FOTOS DE DOCTORES**: ① kicker de sede pasa de guioncito a
+  ICONO MapPin naranja + texto (como la maqueta — aplica también a
+  orden? no, solo doctor); ② microcopy con icono ⓘ azul; ③ avatar del
+  doctor: cascada foto real → estetoscopio — las fotos irán en
+  public/images/doctores/{slug}.webp (slug del nombre: dr-andres,
+  dra-karla...; NFD sin acentos, espacios→"-") y aparecen solas cuando
+  el usuario las suelte; SIN foto repetida de placeholder (decisión
+  mía explicada: repetida se ve barata, el icono queda pro);
+  ④ mascota doctor con fundido + SE ESCONDE si el webp falta
+  (DoctorMascot con onError→null — sin icono roto); ERROR MÍO: rm
+  mal encadenado BORRÓ doctor (2).webp del usuario (no estaba en git)
+  → pedir re-subida; el doctor.webp viejo también fuera (solo se usaba
+  aquí).   ESTADO: doctor.webp/referencia pendiente del usuario; resto
+  gates verdes (lint 0, tc doble 0, build OK, 252 tests, e2e 10/10,
+  captura con mock sin pageerrors). Pendiente commit+push.
+- 2026-10-24 — doctor.webp RE-SUBIDO por el usuario (la ilustración
+  completa de la 4ª maqueta con "Tu mascota en buenas manos" Caveat
+  horneado) + mix-blend-multiply para integrar su fondo suave con la
+  card blanca (sin borde de rectángulo). Captura final verificada con
+  mock: paso doctor idéntico ala maqueta. Commit+push (la referencia
+  NO se sube — guía local sola).
 
 ---
 

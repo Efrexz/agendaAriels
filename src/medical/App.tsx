@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CalendarDays, CheckCircle2, Check, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, FileCheck2, FileX2, FileWarning, Heart, Loader2, MapPin, Microscope, Phone,
+  ClipboardList, Clock, FileCheck2, FileX2, FileWarning, Heart, Info, Loader2, MapPin, Microscope, Phone,
   ScanLine, ShieldCheck, Stethoscope, UserRound, type LucideIcon,
 } from "lucide-react";
 import {
@@ -557,9 +557,9 @@ export default function App() {
               {step === "doctor" && (
                 <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
                   <div>
-                    <div className="mb-1.5 flex items-center gap-2.5">
-                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Sede {branch?.short ?? ""}</p>
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <MapPin className="h-4 w-4 text-brand-orange" strokeWidth={2.5} />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-orange">Sede {branch?.short ?? ""}</p>
                     </div>
                     <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
                       <span className="block">Elige al especialista</span>
@@ -587,9 +587,7 @@ export default function App() {
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 + i * 0.08 }}
                         >
-                          <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF]">
-                            <Stethoscope className="h-6 w-6 text-blue-600" />
-                          </span>
+                          <DoctorAvatar name={d.name} />
                           <span className="min-w-0 flex-1">
                             <span className="block font-display text-lg font-bold text-[#1A2238]">{d.name}</span>
                             <span className="block text-xs text-[#546A8E]">{d.specialty ?? "Medicina Veterinaria General"}</span>
@@ -601,28 +599,16 @@ export default function App() {
                       ))}
                     </div>
                     {doctors && doctors.length > 0 && (
-                      <p className="mt-3 text-[11px] text-[#8A97B1]">
-                        ¿No sabes a quién elegir? Cualquiera de ellos te atendrá muy bien — al pasar se agendará directo.
+                      <p className="mt-3 flex items-start gap-2 text-[11px] leading-relaxed text-[#546A8E]">
+                        <Info className="mt-0.5 h-4 w-4 shrink-0 rounded-full bg-[#EFF5FC] p-0.5 text-blue-600" />
+                        ¿No sabes a quién elegir? Cualquiera de ellos te atenderá muy bien — al pasar se agendará directo.
                       </p>
                     )}
                   </div>
 
-                  {/* Mascota del equipo médico (doctor.webp: en recepción) */}
-                  <div className="relative mx-auto hidden w-full justify-center sm:flex">
-                    <motion.img
-                      src={MASCOT.doctor}
-                      alt="Nuestro equipo médico te espera"
-                      className="h-64 w-auto select-none self-center object-contain lg:h-80"
-                      draggable={false}
-                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
-                    />
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
-                    />
-                  </div>
+                  {/* Mascota del equipo médico (doctor.webp: en recepción).
+                      Si el asset aún no existe, la columna se esconde (sin icono roto). */}
+                  <DoctorMascot />
                 </section>
               )}
 
@@ -1007,6 +993,66 @@ function StepHeading({ kicker, children }: { kicker?: string; children: React.Re
       )}
       <h2 className="text-step-title font-display font-bold tracking-tight text-[#475AAB]">{children}</h2>
     </div>
+  );
+}
+
+// Mascota del paso doctor con fundido blanco; si el webp falta, la
+// columna desaparece (patrón de cascada de /estado, sin icono roto).
+function DoctorMascot() {
+  const reduceMotion = useReducedMotion() ?? false;
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+  return (
+    <div className="relative mx-auto hidden w-full justify-center sm:flex">
+      <motion.img
+        src={MASCOT.doctor}
+        alt="Nuestro equipo médico te espera"
+        className="h-64 w-auto select-none self-center object-contain mix-blend-multiply lg:h-80"
+        draggable={false}
+        onError={() => setHidden(true)}
+        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
+      />
+    </div>
+  );
+}
+
+// Avatar del doctor: intenta la foto real en /images/doctores/{slug}.webp
+// (ej. dra-karla.webp — el counter las suelta ahí y aparecen solas);
+// si no existe aún, estetoscopio sobre degradado azul.
+function doctorPhotoSrc(name: string): string {
+  const slug = name
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-|-$/g, "");
+  return `/images/doctores/${slug}.webp`;
+}
+
+function DoctorAvatar({ name }: { name: string }) {
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF] ring-1 ring-[#DCEBFF]">
+        <Stethoscope className="h-6 w-6 text-blue-600" />
+      </span>
+    );
+  }
+  return (
+    <img
+      src={doctorPhotoSrc(name)}
+      alt={`Foto de ${name}`}
+      loading="lazy"
+      onError={() => setFailed(true)}
+      draggable={false}
+      className="h-12 w-12 shrink-0 select-none rounded-full object-cover ring-1 ring-[#DCEBFF]"
+    />
   );
 }
 
