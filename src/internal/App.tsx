@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
+import { PawPrint } from "lucide-react";
 import { getSupabaseClient } from "./supabaseClient";
 import { LoginScreen } from "./LoginScreen";
 import { Panel } from "./Panel";
@@ -45,6 +46,20 @@ export default function App() {
 
   return (
     <div className="mx-auto min-h-screen max-w-6xl p-4 pb-24 lg:p-8">
+      {/* Encabezado de marca (pulido UX-C: sobrio, sin robar espacio de trabajo) */}
+      <header className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-blue text-white shadow-md shadow-blue-600/20">
+          <PawPrint className="h-5 w-5" />
+        </div>
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-baseline gap-x-2.5">
+            <h1 className="font-display text-lg font-semibold leading-tight text-slate-900">Panel Interno</h1>
+            <span className="font-hand text-lg leading-none text-brand-orange">Ariels Clinic</span>
+          </div>
+          <p className="text-xs text-slate-400">Grooming · Consultas · Laboratorio</p>
+        </div>
+      </header>
+
       {/* Barra de pestañas */}
       <div className="mb-6 flex flex-wrap items-center gap-2">
         {([

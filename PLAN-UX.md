@@ -75,8 +75,11 @@ transparente, estilo consistente con `vetMascot/`):
 
 - `public/images/medical/servicio/{general,rayos,eco,especializada}.webp`
 - `public/images/medical/sede/{sanMartin,olivos,sanMiguel}Cola.webp` (opcional)
-- `public/images/vetMascot/{doctor,orden,pago,esperando,burbujas,camino}.webp`
-- El resto se reutiliza del grooming (aprobado/agendado/error/familia…).
+- `public/images/vetMascot/{camino,recibido,burbujas,secado,corte,laboratorio}.webp`
+  (las 6 nuevas de UX-B — ya implementado con fallback a placeholder, se
+  reemplazan solas al soltarlas)
+- El resto se reutiliza del grooming (aprobado/esperando/agendado/
+  DogAndCatFamilia/error-dog/orden).
 - Mientras falten assets: placeholder con el patrón `LazyImage` ya existente
   (`src/components/LazyImage.tsx`) y referencia de 24 usos en el wizard
   grooming: `grep -c webp src/components`.

@@ -744,6 +744,74 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   de prueba pausables), línea en README. Decisión registrada: seguir en
   Vercel demo; en día de producción → Netlify primero (los múltiples
   clientes caben en proyectos free por clínica).
+- 2026-10-23 — **FASE UX-B IMPLEMENTADA (/estado, estilo Ariel)**:
+  mascota por estado (nuevo src/status/mascots.ts — mapas VA_MASCOT y
+  LAB_MASCOT a nombres FINALES: camino/recibido/burbujas/secado/corte/
+  laboratorio.webp son PENDIENTES de arte del usuario; el resto reutiliza
+  esperando/agendado/aprobado/DogAndCatFamilia/error-dog/orden existentes),
+  componente Mascot con cascada de fallback archivo final →
+  DogAndCat.webp genérica → emoji (al soltar el .webp definitivo se
+  reemplaza solo, sin código), crossfade AnimatePresence 0.4 easeOut +
+  remount por key=status al llegar el polling (30 s), "respiración"
+  CSS mascot-breathe en la mascota. Timeline pulida (TimelineRow
+  compartido VA/LAB): nodos done con check verde lucide, nodo ACTUAL
+  con anillo pulsante pulse-ring + chip "AHORA" con punto dot-pulse,
+  conector con gradiente verde→gris, hora bajo cada paso. Doble
+  blindaje reduced-motion: @media (prefers-reduced-motion) en
+  tracking.css anula los 3 keyframes + gating useReducedMotion en
+  BookingView/LabView/Mascot (patrón medical/App.tsx). Header con
+  acento Caveat "Ariels Clinic" naranja (Caveat añadido a status.html,
+  token --font-hand en tracking.css). CERO cambios de lógica/API
+  (polling, lookup, días de resultado intactos). Gates: lint 0,
+  typecheck doble 0, build OK, 252 tests, e2e 10/10, humo Playwright
+  con mock de /api/status y /api/lab-status: VA- en_corte y LAB- en
+  en_laboratorio renderizan con fallback correcto, 404 amigable,
+  reduced-motion sin animación, SIN errores fatales de consola
+  (screenshots verificadas). SIN REVISIÓN VISUAL del usuario aún;
+  pendiente: soltar los 6 webp definitivos.
+- 2026-10-23 — **FASE UX-C IMPLEMENTADA (panel interno, pulido suave)**:
+  internal.html ahora carga Fredoka + Caveat (tokens --font-display y
+  --font-hand añadidos a panel.css @theme — SIN duplicar la cuenta de
+  Google Fonts del grooming). App.tsx: encabezado de marca NUEVO y
+  sobrio (paw azul + "Panel Interno" Fredoka + acento Caveat naranja
+  "Ariels Clinic" + subtítulo mínimo) sobre la barra de pestañas que
+  NO cambia; densidad de trabajo intacta. LoginScreen: mascota de
+  bienvenida (vetMascot/DogAndCat.webp con fallback a paw si el asset
+  falla) + tipografía Fredoka/Caveat; card y form intactos. La sesión
+  con tabs activo sigue idéntica (cero cambios de lógica/auth/impresión
+  QZ). El usuario YA SOLTÓ arte nuevo en vetMascot/: doctor, esperando
+  y orden RECIBIDOS + general/rayos/eco webp nuevos (los /estado
+  pendientes siguen: camino/recibido/burbujas/secado/corte/laboratorio).
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  humo Playwright internal.html (login renderiza con mascota y fuentes,
+  sin errores de consola). SIN REVISIÓN VISUAL del usuario aún.
+- 2026-10-23 — **/ESTADO REDESIGN AL ESTILO DE LA REFERENCIA (referencia.jpeg
+  del usuario)**: la maqueta del jefe se procede 1:1 en presentación —
+  ① header EN LÍNEA izq (logo azul + "Ariel's Clinic" Caveat naranja)
+  + H1 grande Fredoka a la + subtítulo (hoy centrado pequeño);
+  ② FONDO DECORADO CSS puro (fixed, pointer-events-none, z-0/datos z-10):
+  blobs blur blue/orange en esquinas + 5 huellitas lucide rotadas baja
+  opacidad — el usuario pidió fondo nosotros sin imagen extra;
+  ③ StatusCard compartida VA/LAB: chip pill azul "VIAJE DE ROCKY"/
+  "EXAMEN DE MIA" arriba-izq + indicador "actualizando…" arriba-der en
+  polling, mascota sobre CÍRCULO azul suave con huellitas laterales,
+  estado como PASTILLA de color (reutiliza clases badge de statuses.ts/
+  labStatuses.ts: violeta en_corte, verde listo...) con icono line-art
+  del estado, detalles como filas icono-cuadro azul (fecha+slot / examen,
+  sede, código) value bold sin truncar;
+  ④ timeline: título "Seguimiento del proceso" con chip de reloj, nodo
+  actual = ANILLO blanco + disco azul + punto blanco (nodito target de
+  la referencia) con pulso, pendientes = ICONOS line-art lucide
+  (Hourglass/Truck/Building2/Bath/Wind/Scissors/CheckCircle2/PackageCheck/
+  Inbox/FlaskConical/FileText — mapas VA_ICON/LAB_ICON en mascots.ts);
+  ⑤ footer barra ⓘ tintada azul con el link de siempre. Regla del lint
+  react-hooks/static-components: iconos del estado actual pasan COMO
+  PROP (stateIcon) — componentes creados en render fuera de JSX.
+  CERO lógica tocaada (lookup/URL/polling/resultFile intactos).
+  El usuario decidió APLICAR este aire también al panel/wizard después.
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  mock Playwright VA(en_corte)+LAB(resultado_listo con resultFile):
+  capturas verificadas sin pageerrors. SIN REVISIÓN VISUAL aún.
 
 ---
 

@@ -7,6 +7,7 @@ export function LoginScreen() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [mascotFailed, setMascotFailed] = useState(false);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -24,10 +25,22 @@ export function LoginScreen() {
     <div className="flex min-h-screen items-center justify-center p-4">
       <div className="w-full max-w-sm rounded-3xl bg-white p-8 shadow-xl shadow-slate-900/5">
         <div className="mb-6 flex flex-col items-center gap-2 text-center">
-          <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue text-white">
-            <PawPrint className="h-7 w-7" />
-          </div>
-          <h1 className="text-xl font-bold text-slate-900">Panel Interno</h1>
+          {/* Mascota de bienvenida (pulido UX-C): fallback a paw si falta el webp */}
+          {mascotFailed ? (
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-brand-blue text-white">
+              <PawPrint className="h-7 w-7" />
+            </div>
+          ) : (
+            <img
+              src="/images/vetMascot/DogAndCat.webp"
+              alt="Mascotas de Ariels Clinic"
+              onError={() => setMascotFailed(true)}
+              draggable={false}
+              className="h-24 w-24 select-none object-contain"
+            />
+          )}
+          <h1 className="font-display text-xl font-bold text-slate-900">Panel Interno</h1>
+          <p className="font-hand text-lg leading-none text-brand-orange">Ariels Clinic</p>
           <p className="text-sm text-slate-500">Veterinaria Ariel · Grooming</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
