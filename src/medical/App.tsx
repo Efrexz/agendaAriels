@@ -136,8 +136,15 @@ export default function App() {
       sede: "sede", servicio: "sede", orden: "servicio", sin_orden: "servicio",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
     };
-    if (step === "agenda" && form.serviceType === "especializada") go("datos");
-    else go(prev[step]);
+    // Especializada ("interconsulta") no pasa por el calendario: su fecha la
+    // fija el counter después del pago. El back de datos/agenda regresa a la
+    // especialidad — igual al paso que llamó a go() — y NUNCA recrea el bucle
+    // datos ⇄ agenda que atrapaba al usuario.
+    if (form.serviceType === "especializada" && (step === "datos" || step === "agenda")) {
+      go("especialidad");
+    } else {
+      go(prev[step]);
+    }
   };
 
   // Paso servicio → carga: doctores (general/rayos/eco) o especialidades

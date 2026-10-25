@@ -1019,6 +1019,20 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   doble 0, build OK, 252 tests, e2e 10/10, capturas desktop+móvil con
   mocks sin pageerrors. PENDIENTE: push (sin referencia (2).png — solo
   guía local).
+- 2026-10-24 — **FIX BUG DE NAVEGACIÓN (reportado por el usuario: bucle
+  en el wizard de especializada "interconsulta")**: causa — el back del
+  paso "datos" usaba el mapa genérico datos→agenda (cierto SOLO para
+  general/rayos/eco, que sí pasan por el calendario) y en especializada
+  el caso especial agenda→datos recreaba el ciclo datos⇄agenda
+  (además ese calendario huérfano no podía elegir hora: no hay doctor
+  en ese flujo — la fecha la fija el counter tras el pago). FIX en
+  back(): especializada + (datos | agenda) → go("especialidad") (el
+  paso que llamó a datos; agenda inalcanzable ya por rutas legítimas).
+  Verificación con Playwright sede→especializada→especialidad→datos→
+  atras→especialidad→atras→servicio y ninguna ruta cae en calendario;
+  gates: lint 0, typecheck doble 0, build, 252 tests, e2e 10/10.
+  El QA de QZ (impresión boleta) queda para UX-D: solo VERIFICAR que
+  el botón Imprimir/Salon print-area sigue intacto — SIN tocar código.
 
 ---
 
