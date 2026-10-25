@@ -118,7 +118,7 @@ function branchShort(v: string): string {
   return MED_BRANCHES.find((b) => b.value === v)?.short ?? v;
 }
 
-export function LabTab() {
+export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
   const [vista, setVista] = useState<LabView>("active");
   const [branch, setBranch] = useState<string>("all");
   const [orders, setOrders] = useState<LabOrder[]>([]);
@@ -130,6 +130,28 @@ export function LabTab() {
   const [tick, setTick] = useState(0);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Salto desde 📚 Historial: busca la orden al montar en la frontera async.
+  useEffect(() => {
+    if (!jumpSearch) return;
+    let active = true;
+    (async () => {
+      await Promise.resolve();
+      if (!active) return;
+      const term = jumpSearch.trim();
+      if (term.length < 3) return;
+      setQuery(term);
+      try {
+        const { orders: results } = await fetchLabList("active", branch, term);
+        if (active) setSearchResults(results);
+      } catch {
+        /* silencioso */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [jumpSearch]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // datos de la vista (setState siempre tras await — regla de purity)
   useEffect(() => {

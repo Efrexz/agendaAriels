@@ -184,15 +184,21 @@ export class LabDb {
   }
 
   /** Órdenes registradas en un rango de fechas (hoy/semana), por created_at. */
-  async listOrdersByCreated(sede: string | null, fromIso: string, toIso: string): Promise<LabOrderRecord[]> {
+  async listOrdersByCreated(
+    sede: string | null,
+    fromIso: string,
+    toIso: string,
+    includeCancelled = false,
+  ): Promise<LabOrderRecord[]> {
     let q = this.client
       .from("lab_orders")
-      .select(LAB_COLUMNS)
-      .neq("status", "cancelado")
+      .select(LAB_COLUMNS);
+    if (!includeCancelled) q = q.neq("status", "cancelado");
+    q = q
       .gte("created_at", fromIso)
       .lt("created_at", toIso)
       .order("created_at", { ascending: false })
-      .limit(100);
+      .limit(200);
     if (sede) q = q.or(`sede_origen.eq.${sede},sede_responsable.eq.${sede}`);
     const { data, error } = await q;
     if (error) throw new Error(`listOrdersByCreated: ${error.message}`);

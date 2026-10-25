@@ -28,7 +28,7 @@ export interface LabOrder {
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
 }
 
-export type LabView = "active" | "today" | "week";
+export type LabView = "active" | "today" | "week" | "history";
 
 async function authedFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
   const client = getSupabaseClient();

@@ -69,6 +69,17 @@ export async function fetchDay(date: string, branch: string | "all"): Promise<{ 
   return authedFetch(`/api/internal/day?${params.toString()}`);
 }
 
+/** Historial del panel: rango de fechas (hasta un mes, incluyen canceladas). */
+export async function fetchHistory(
+  fromDate: string,
+  toDate: string,
+  branch: string | "all",
+): Promise<{ bookings: PanelBooking[] }> {
+  const params = new URLSearchParams({ from: fromDate, to: toDate });
+  if (branch !== "all") params.set("branch", branch);
+  return authedFetch(`/api/internal/history?${params.toString()}`);
+}
+
 export async function searchBookings(q: string): Promise<{ results: PanelBooking[] }> {
   return authedFetch(`/api/internal/search?q=${encodeURIComponent(q)}`);
 }

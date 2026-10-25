@@ -27,8 +27,17 @@ function limaTomorrow(): string {
   }).format(new Date(Date.now() + 24 * 3600 * 1000));
 }
 
-export function Panel({ onSignOut, embedded = false }: { email?: string; onSignOut: () => void; embedded?: boolean }) {
+export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { email?: string; onSignOut: () => void; embedded?: boolean; jumpSearch?: string | null }) {
   const [date, setDate] = useState(limaToday);
+
+  // Salto desde 📚 Historial: left-search al aterrizar en la pestaña.
+  useEffect(() => {
+    if (!jumpSearch) return;
+    void (async () => {
+      await Promise.resolve();
+      handleSearch(jumpSearch);
+    })();
+  }, [jumpSearch]);
   const [branch, setBranch] = useState<string>("all");
   const [bookings, setBookings] = useState<PanelBooking[]>([]);
   const [closures, setClosures] = useState<PanelClosure[]>([]);
@@ -153,7 +162,7 @@ export function Panel({ onSignOut, embedded = false }: { email?: string; onSignO
   }
 
   const bySlot = useMemo(() => {
-    const list = searchResults ?? bookings;
+    const list = searchResults ?? bookings ?? [];
     return {
       "9-11": list.filter((b) => b.timeSlot === "9-11"),
       "11-14": list.filter((b) => b.timeSlot === "11-14"),

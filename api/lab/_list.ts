@@ -43,6 +43,12 @@ export async function buildLabListResponse(
 
   if (opts.q.trim().length >= 3) {
     orders = await db.searchOrders(opts.q, sede);
+  } else if (opts.view === "history") {
+    // Historial (pestaña 📚 del panel): últimos 30 días ENTREGADAS/estado
+    // completo donde incluimos canceladas. Orden por created_at desc.
+    const toIso = new Date().toISOString();
+    const fromIso = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
+    orders = await db.listOrdersByCreated(sede, fromIso, toIso, true);
   } else if (opts.view === "today") {
     const { fromIso, toIso } = dayBoundsIso(getLimaDayKey());
     orders = await db.listOrdersByCreated(sede, fromIso, toIso);

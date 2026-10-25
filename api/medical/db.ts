@@ -454,14 +454,22 @@ export class MedicalDb {
     return (data ?? []).map((r) => apptRowToRecord(r as unknown as ApptDbRow));
   }
 
-  async listApptsRange(branch: string | null, fromDate: string, toDate: string): Promise<MedicalAppointmentRecord[]> {
+  async listApptsRange(
+    branch: string | null,
+    fromDate: string,
+    toDate: string,
+    includeCancelled = false,
+  ): Promise<MedicalAppointmentRecord[]> {
     let q = this.client
       .from("medical_appointments")
-      .select(APPT_COLUMNS)
-      .neq("status", "cancelado")
+      .select(APPT_COLUMNS);
+    if (!includeCancelled) q = q.neq("status", "cancelado");
+    q = q
       .gte("appt_date", fromDate)
       .lte("appt_date", toDate)
-      .order("appt_date").order("start_minute");
+      .order("appt_date", { ascending: false })
+      .order("start_minute", { ascending: false })
+      .limit(500);
     if (branch) q = q.eq("branch", branch);
     const { data, error } = await q;
     if (error) throw new Error(`listApptsRange: ${error.message}`);

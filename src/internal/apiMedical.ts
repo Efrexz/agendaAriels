@@ -82,8 +82,18 @@ async function authedFetch<T>(url: string, init: RequestInit = {}): Promise<T> {
 }
 
 export async function fetchMedDay(date: string, branch: string | "all"): Promise<{ appointments: MedAppt[] }> {
-  const b = branch === "all" ? "" : `&branch=${branch}`;
+  const b = branch !== "all" ? `&branch=${branch}` : "";
   return authedFetch(`/api/medical/day?date=${date}${b}`);
+}
+
+/** Historial del panel: rango (hasta un mes, incluyen canceladas). */
+export async function fetchMedHistory(
+  fromDate: string,
+  toDate: string,
+  branch: string | "all",
+): Promise<{ appointments: MedAppt[] }> {
+  const b = branch !== "all" ? `&branch=${branch}` : "";
+  return authedFetch(`/api/medical/history?from=${fromDate}&to=${toDate}${b}`);
 }
 
 export async function fetchMedPending(branch: string | "all"): Promise<{ appointments: MedAppt[] }> {

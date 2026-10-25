@@ -320,6 +320,26 @@ export class SupabaseBookingDb implements BookingDb {
     return (data ?? []).map(rowToRecord);
   }
 
+  /** Historial del panel: rango de fechas y SÍ incluye canceladas. */
+  async listBookingsRange(
+    branch: string | null,
+    fromDate: string,
+    toDate: string,
+  ): Promise<BookingRecord[]> {
+    let query = this.client
+      .from("bookings")
+      .select("*")
+      .gte("service_date", fromDate)
+      .lte("service_date", toDate)
+      .order("service_date", { ascending: false })
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (branch) query = query.eq("branch", branch);
+    const { data, error } = await query;
+    if (error) throw new Error(`listBookingsRange falló: ${error.message}`);
+    return (data ?? []).map(rowToRecord);
+  }
+
   /** Búsqueda por código exacto, teléfono o nombre (mínimo 3 caracteres). */
   async searchBookings(query: string): Promise<BookingRecord[]> {
     const q = query.trim();

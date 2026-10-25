@@ -34,7 +34,7 @@ function hour(min: number): string {
 
 type Vista = "hoy" | "manana" | "semana";
 
-export function ConsultasTab() {
+export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
   const [vista, setVista] = useState<Vista>("hoy");
   const [branch, setBranch] = useState<string>("all");
   const [appts, setAppts] = useState<MedAppt[]>([]);
@@ -47,6 +47,28 @@ export function ConsultasTab() {
   const [tick, setTick] = useState(0);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Salto desde 📚 Historial: busca el código al montar en la frontera async.
+  useEffect(() => {
+    if (!jumpSearch) return;
+    let active = true;
+    (async () => {
+      await Promise.resolve();
+      if (!active) return;
+      const term = jumpSearch.trim();
+      if (term.length < 3) return;
+      setQuery(term);
+      try {
+        const { results } = await searchMedAppts(term);
+        if (active) setSearchResults(results);
+      } catch {
+        /* silencioso */
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, [jumpSearch]);  
 
   // datos de la vista (setState siempre tras await)
   useEffect(() => {

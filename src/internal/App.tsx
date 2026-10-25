@@ -3,6 +3,7 @@ import type { Session } from "@supabase/supabase-js";
 import {
   CalendarDays,
   FlaskConical,
+  History,
   LogOut,
   PawPrint,
   Settings,
@@ -15,8 +16,9 @@ import { ConsultasTab } from "./ConsultasTab";
 import { HorariosTab } from "./HorariosTab";
 import { ConfigTab } from "./ConfigTab";
 import { LabTab } from "./LabTab";
+import { HistoryTab, type HistTarget } from "./HistoryTab";
 
-type Tab = "grooming" | "consultas" | "horarios" | "laboratorio" | "config";
+type Tab = "grooming" | "consultas" | "horarios" | "laboratorio" | "historial" | "config";
 
 // Navbar estilo maqueta: brand + pestañas con iconos en línea + chip de
 // usuario. Sin campana/menú fake: lo que existe es visible.
@@ -25,6 +27,7 @@ const TABS: Array<[Tab, string, typeof PawPrint]> = [
   ["consultas", "Consultas", Stethoscope],
   ["laboratorio", "Laboratorio", FlaskConical],
   ["horarios", "Horarios médicos", CalendarDays],
+  ["historial", "Historial", History],
   ["config", "Config", Settings],
 ];
 
@@ -66,6 +69,14 @@ export default function App() {
   const [session, setSession] = useState<Session | null>(null);
   const [ready, setReady] = useState(false);
   const [tab, setTab] = useState<Tab>("grooming");
+  // Salto desde 📚 Historial: contenido pestaña destino + código que debe
+  // quedar buscado al montar la pestaña correspondiente.
+  const [jump, setJump] = useState<{ tab: Tab; q: string } | null>(null);
+
+  const jumpTo = (target: HistTarget, q: string) => {
+    setTab(target);
+    setJump({ tab: target, q });
+  };
 
   useEffect(() => {
     const client = getSupabaseClient();
@@ -145,10 +156,11 @@ export default function App() {
       </header>
 
       <main className="relative z-10 mx-auto max-w-6xl p-4 pb-24 lg:p-8">
-        {tab === "grooming" && <Panel email={session.user.email ?? ""} onSignOut={signOut} embedded />}
-        {tab === "consultas" && <ConsultasTab />}
-        {tab === "laboratorio" && <LabTab />}
+        {tab === "grooming" && <Panel email={session.user.email ?? ""} onSignOut={signOut} embedded jumpSearch={jump?.tab === "grooming" ? jump.q : null} />}
+        {tab === "consultas" && <ConsultasTab jumpSearch={jump?.tab === "consultas" ? jump.q : null} />}
+        {tab === "laboratorio" && <LabTab jumpSearch={jump?.tab === "laboratorio" ? jump.q : null} />}
         {tab === "horarios" && <HorariosTab />}
+        {tab === "historial" && <HistoryTab onJump={jumpTo} />}
         {tab === "config" && (
           <div>
             <h1 className="mb-4 font-display text-xl font-bold text-slate-900">⚙ Configuración del sistema médico</h1>

@@ -31,6 +31,7 @@ import gSearchHandler from "./internal/_search.js";
 import gStatusHandler from "./internal/_status.js";
 import gClosuresHandler from "./internal/_closures.js";
 import gResendHandler from "./internal/_resend.js";
+import gHistoryHandler from "./internal/_history.js";
 import mDoctorsHandler from "./medical/_doctors.js";
 import mSpecialtiesHandler from "./medical/_specialties.js";
 import mAvailabilityHandler from "./medical/_availability.js";
@@ -43,6 +44,7 @@ import mSchedulesHandler from "./medical/_schedules.js";
 import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
 import mRemindersHandler from "./medical/_reminders.js";
+import mHistoryHandler from "./medical/_history.js";
 import labCreateHandler from "./lab/_create.js";
 import labListHandler from "./lab/_list.js";
 import labStatusHandler from "./lab/_status.js";
@@ -70,6 +72,7 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /internal/closures": { handler: gClosuresHandler as Handler },
   "DELETE /internal/closures": { handler: gClosuresHandler as Handler },
   "POST /internal/resend": { handler: gResendHandler as Handler },
+  "GET /internal/history": { handler: gHistoryHandler as Handler },
 
   "GET /medical/doctors": { handler: mDoctorsHandler as Handler },
   "GET /medical/specialties": { handler: mSpecialtiesHandler as Handler },
@@ -88,6 +91,7 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /medical/catalog": { handler: mCatalogHandler as Handler },
   "PATCH /medical/catalog": { handler: mCatalogHandler as Handler },
   "GET /medical/reminders": { handler: mRemindersHandler as Handler },
+  "GET /medical/history": { handler: mHistoryHandler as Handler },
 
   "POST /internal/lab/create": { handler: labCreateHandler as Handler },
   "GET /internal/lab/list": { handler: labListHandler as Handler },
