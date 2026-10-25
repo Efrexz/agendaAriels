@@ -70,6 +70,7 @@ function hour(min: number): string {
 }
 
 export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) => void }) {
+  const [tipo, setTipo] = useState<HistTarget>("grooming");
   const [rango, setRango] = useState<"hoy" | "semana" | "mes">("semana");
   const [sede, setSede] = useState<string>("all");
   const [query, setQuery] = useState("");
@@ -82,65 +83,73 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
   const todayKey = limaISO();
   const days = RANGOS.find((r) => r.value === rango)!.days;
 
-  // Carga de las 3 fuentes (setState tras await — regla de purity).
+  // Carga SOLO de la fuente del tipo activo (1 tabla por consulta: la BD
+  // responde más rápido y el counter ve una sola sección a la vez).
   useEffect(() => {
     let active = true;
     (async () => {
+      // Frontera async: los setState ocurren tras await (regla react-hooks).
+      await Promise.resolve();
+      if (!active) return;
+      setItems(null);
       setLoading(true);
       try {
         const from = limaDayKey(days);
         const to = todayKey;
-        const [g, m, l] = await Promise.all([
-          fetchHistory(from, to, sede),
-          fetchMedHistory(from, to, sede),
-          fetchLabList("history", sede, ""),
-        ]);
-        if (!active) return;
         const out: HistItem[] = [];
-        for (const b of g.bookings) {
-          if (outOfRange(b.serviceDate, from, to)) continue;
-          const meta = statusMeta(b.status);
-          out.push({
-            kind: "grooming", code: b.bookingCode,
-            title: `${b.ownerName} · ${b.pets.map((p) => p.name).join(", ")}`,
-            detail: b.pets.map((p) => p.service).join(" + "),
-            dateKey: b.serviceDate,
-            timeLabel: `${b.serviceDate} · ${SLOT_LABELS[b.timeSlot]} · ${b.branchLabel.replace("Sede ", "")}`,
-            status: b.status, statusLabel: meta.label, statusBadge: meta.badge,
-            sedeLabel: b.branchLabel.replace("Sede ", ""),
-            timeline: b.timeline,
-          });
+        if (tipo === "grooming") {
+          const g = await fetchHistory(from, to, sede);
+          for (const b of g.bookings) {
+            if (outOfRange(b.serviceDate, from, to)) continue;
+            const meta = statusMeta(b.status);
+            out.push({
+              kind: "grooming", code: b.bookingCode,
+              title: `${b.ownerName} · ${b.pets.map((p) => p.name).join(", ")}`,
+              detail: b.pets.map((p) => p.service).join(" + "),
+              dateKey: b.serviceDate,
+              timeLabel: `${b.serviceDate} · ${SLOT_LABELS[b.timeSlot]} · ${b.branchLabel.replace("Sede ", "")}`,
+              status: b.status, statusLabel: meta.label, statusBadge: meta.badge,
+              sedeLabel: b.branchLabel.replace("Sede ", ""),
+              timeline: b.timeline,
+            });
+          }
+        } else if (tipo === "consultas") {
+          const m = await fetchMedHistory(from, to, sede);
+          for (const a of m.appointments) {
+            if (!a.apptDate || outOfRange(a.apptDate, from, to)) continue;
+            const meta = medStatusMeta(a.status);
+            out.push({
+              kind: "consultas", code: a.appointmentCode,
+              title: `${a.petName} (${a.ownerName})`,
+              detail: `${MED_SERVICE_LABELS[a.serviceType]}${a.specialtyName ? ` · ${a.specialtyName}` : ""}${a.doctorName ? ` · ${a.doctorName}` : ""}`,
+              dateKey: a.apptDate,
+              timeLabel: `${a.apptDate}${a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""}`,
+              status: a.status, statusLabel: meta.label, statusBadge: meta.badge,
+              sedeLabel: a.branch,
+              timeline: a.timeline,
+            });
+          }
+        } else {
+          const l = await fetchLabList("history", sede, "");
+          for (const o of l.orders) {
+            const dayKey = o.updatedAt.slice(0, 10) <= todayKey ? o.updatedAt.slice(0, 10) : todayKey;
+            const meta = labStatusMeta(o.status);
+            out.push({
+              kind: "laboratorio", code: o.orderCode,
+              title: `${o.petName} (${o.ownerName})`,
+              detail: `${o.examType} · ${o.labName}`,
+              dateKey: dayKey,
+              timeLabel: `Registrada ${o.createdAt.slice(0, 10)}`,
+              status: o.status, statusLabel: meta.label, statusBadge: meta.badge,
+              sedeLabel: `${o.sedeOrigen} → ${o.sedeResponsable}`,
+              timeline: undefined,
+            });
+          }
         }
-        for (const a of m.appointments) {
-          if (!a.apptDate || outOfRange(a.apptDate, from, to)) continue;
-          const meta = medStatusMeta(a.status);
-          out.push({
-            kind: "consultas", code: a.appointmentCode,
-            title: `${a.petName} (${a.ownerName})`,
-            detail: `${MED_SERVICE_LABELS[a.serviceType]}${a.specialtyName ? ` · ${a.specialtyName}` : ""}${a.doctorName ? ` · ${a.doctorName}` : ""}`,
-            dateKey: a.apptDate,
-            timeLabel: `${a.apptDate}${a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""}`,
-            status: a.status, statusLabel: meta.label, statusBadge: meta.badge,
-            sedeLabel: a.branch,
-            timeline: a.timeline,
-          });
+        if (active) {
+          setItems(out);
+          setError(null);
         }
-        for (const o of l.orders) {
-          const dayKey = o.updatedAt.slice(0, 10) <= todayKey ? o.updatedAt.slice(0, 10) : todayKey;
-          const meta = labStatusMeta(o.status);
-          out.push({
-            kind: "laboratorio", code: o.orderCode,
-            title: `${o.petName} (${o.ownerName})`,
-            detail: `${o.examType} · ${o.labName}`,
-            dateKey: dayKey,
-            timeLabel: `Registrada ${o.createdAt.slice(0, 10)}`,
-            status: o.status, statusLabel: meta.label, statusBadge: meta.badge,
-            sedeLabel: `${o.sedeOrigen} → ${o.sedeResponsable}`,
-            timeline: undefined,
-          });
-        }
-        setItems(out);
-        setError(null);
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar el historial");
       } finally {
@@ -150,7 +159,7 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
     return () => {
       active = false;
     };
-  }, [rango, sede, tick]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [tipo, rango, sede, tick]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const grupos = useMemo(() => {
     const q = query.trim().toUpperCase();
@@ -182,7 +191,25 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
         Historial de la clínica
       </h1>
 
-      {/* Filtros */}
+      {/* Tipo: una sección a la vez (solo se consulta esa tabla) */}
+      <div className="no-print mb-3 flex flex-wrap items-center gap-2">
+        {(Object.keys(KIND_META) as HistTarget[]).map((t) => (
+          <button
+            key={t}
+            onClick={() => { setTipo(t); setOpenCode(null); }}
+            aria-pressed={tipo === t}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              tipo === t
+                ? "bg-brand-blue text-white shadow-md shadow-blue-600/20"
+                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-blue"
+            }`}
+          >
+            {KIND_META[t].label}
+          </button>
+        ))}
+      </div>
+
+      {/* Filtros: rango + sede + texto */}
       <div className="no-print mb-5 flex flex-wrap items-center gap-2">
         {RANGOS.map((r) => (
           <button

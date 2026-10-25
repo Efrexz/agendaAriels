@@ -1101,3 +1101,26 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
        COSTOS-Y-LIMITES.md §5, ~½ día) o Vercel Pro $20/mes. Triggers y
        comparación honesta en COSTOS-Y-LIMITES.md §3-4. Mientras: seguir en
        Vercel Hobby SOLO para demo/interno.
+- 2026-10-25 — **PANEL: PESTAÑA "📚 HISTORIAL" (Opción A — pedido del
+  usuario para llevar control de lo ya pasado)**: backend NUEVO ~
+  GET /api/internal/history (grooming por rango, incluir canceladas —
+  listBookingsRange nuevo en SupabaseBookingDb, SIN tocar la interfaz
+  BookingDb para no romper los fakes de tests) + GET /api/medical/
+  history (reusó listApptsRange ya existente + flag includeCancelled).
+  Lab reusó /internal/lab/list con vista NUEVA "history" (30 días,
+  canceladas incluidas) — listOrdersByCreated ganó flag opcional y
+  límite 200. Los 2 handlers validan rango ≤ 31 días (máx un mes, un
+  solo límite para TODO según decisión del usuario). Frontend:
+  HistoryTab.tsx con CHIPS DE TIPO (Grooming/Consultas/Laboratorio —
+  SOLO se consulta la tabla del tipo activo: más rápido y ordenado —
+  cambio final del usuario: separado por sección gana al "todo junto"),
+  rango (Hoy/semana/mes), sede, filtro por texto; lista AGRUPADA POR
+  DÍA ("Hoy/Ayer/long"), cards con pill de tipo + estado color,
+  expandibles con código + timeline (quién/cuándo) + botón "Abrir en
+  pestaña X →" que SALTA a la pestaña correspondiente con el código
+  buscado (jumpSearch props añadidos a Panel/ConsultasTab/LabTab con
+  frontera async — patrón react-hooks correcto, sin setState sync).
+  10 tests NUEVOS (6 grooming/4 medical: rango delegado, all→null,
+  400s, 401). Gates: lint 0, typecheck doble 0, build, 262 tests,
+  e2e 10/10, captura del historial separado por días verificada con
+  mocks de Supabase-auth fake-session. En producción (2 commits).
