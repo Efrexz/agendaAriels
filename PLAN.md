@@ -955,6 +955,70 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   card blanca (sin borde de rectángulo). Captura final verificada con
   mock: paso doctor idéntico ala maqueta. Commit+push (la referencia
   NO se sube — guía local sola).
+- 2026-10-24 — **FASE A DEL PLAN DE SECCIONES: AGENDA CON CALENDARIO
+  COMPLETO (pedido del usuario: el input date nativo se veía simple/no
+  pro)**: nuevo src/medical/CalendarCard.tsx — PORT del calendario del
+  grooming (ScheduleStep) al wizard médico: navegación de mes con
+  chevrons Wilson-arriba redondeados, grid dom+sab con días pasado/
+  >max inhabilitados y DÍAS CERRADOS EN ROJO TACHADO (reutiliza
+  fetchClosuresPublic + closureFor de services/availability — MISMO
+  endpoint del grooming, cero API nueva), seleccionado = pastilla
+  NARANJA de marca + huellita, límite 30 días (todayMinPlus del
+  wizard, no MAX_ADVANCE_DAYS que es 14 del grooming). Paso agenda
+  rediseñado: 2 columnas lg — izquierda kicker con estetoscopio +
+  "Dr(a). X" + título en 2 líneas ("Elige la fecha" navy / "y la hora
+  que te acomoda" naranja) + calendario + hint "Toca un día...";
+  derecha: mascota esperando.webp (la del permit) cuando aún no hay
+  fecha → cuando la hay se reemplaz por las HORAS del doctor en pills
+  redondas con grupos Mañana (<12h)/Tarde con icono reloj, la
+  seleccionada naranja, clic v直接 go(datos) INTACTO. El input
+  <input type=date> nativo ELIMINADO. Nombres de doctores ahora
+  azul #475AAB (no negro) según sugerencia del usuario aprobadА.
+  CERO cambios de lógica/API: fetchSlots igual, validaciones iguales.
+  Gates: lint 0, typecheck doble 0, build OK, 252 tests, e2e 10/10,
+  captura con mocks (doctores/slots availability/closures) de las 3
+  vistas (sin fecha/relincho/horas) sin pageerrors. PENDIENTE: Fase B
+  (datos) y C (exito) del mismo plan; commit+push cuando el usuario
+  confirme visual.
+- 2026-10-24 — **FASES A+/B/C DEL WIZARD MÉDICO COMPLETADAS**: tras la
+  1ª revisión del usuario del calendario ("al elegir la hora le falta
+  algo") se pulió + se ejecutaron B y C: ① horas: card blanca con
+  header "miércoles, 28 de octubre / Con Dr. Andres · Sede..." +
+  grupos Mañana (Sunrise naranja)/Tarde (Sunset azul) separados por
+  línea, pills 15px con font-display bold que al hover se pintan de
+  naranja; ② FASE B datos: 2 columnas lg — campos en grid sm:cols-2
+  (mascota|tipo, nombre|celular tel:, correo), textarea notas con
+  contador 0/400, tipo seleccionado AHORA en naranja de marca (antes
+  blue-600 — lenguaje único naranja=selección); derecha ticket lg:
+  sticky top-24 con Resumen + aviso pago especializada (pago.webp con
+  mix-blend-multiply) + CTA Confirmarcita + hint de campos faltantes;
+  ③ FASE C enviado: agendado.webp (camioneta) con mix-blend-multiply,
+  ¡Cita registrada! 🎉 3xl/4xl verde, código CM-a 3xl con botón
+  "Copiar código" (navigator.clipboard + estado copia 2s →
+  "¡Copiado!" con check) + Resumen de la cita + textos intactos +
+  Agendar otra. CERO lógica: submit/canSubmit/validaciones/administraciónd
+  fullName. Gates: lint 0, typecheck doppia 0, build OK, 252 tests,
+  e2e 10/10, capturas de agenda con horas/datos y enviado con mocks
+  (slots availability, create mock) sin pageerrors. PENDIENTE:
+  revision visual usuario + commit/push; después UX-D (QA final).
+- 2026-10-24 — **PULIDO "CONFIRMA TU CITA" (5ª maqueta del usuario —
+  su vista móvil del paso datos)**: ① progreso reemplaza la barrita
+  "Paso X de 4" por PUNTOS numerados + etiquetas (StepProgress nuevo:
+  los 4 grupos REALES Sede/Servicio/Agenda/Datos — completados verde
+  con check, activo azul ring + "Paso X de 4" en su label, línea
+  conectora verde/gris; en móvil solo puntos sin labels — NO se dividió
+  el formulario en mini-pasos que la maqueta insinuaba: sería lógica
+  nueva + más clics para el cliente); ② datos móvil: el ticket de
+  resumen VA PRIMERO (order-first lg:order-none — el cliente revisa su
+  cita antes de rellenar), CTA + hint visibles de una; ③ tipo de
+  mascota con check ✓ al lado del valor elegido (naranja conservado
+  como lenguaje único de selección en vez del azul de la maqueta);
+  ④ franja naranja "Recuerda traer tu orden médica sellada" con badge !
+  bajo el título (rayos/eco) y la fila duplicada del Resumen
+  ELIMINADA (FileWarning fuera de imports). Gates: lint 0, typecheck
+  doble 0, build OK, 252 tests, e2e 10/10, capturas desktop+móvil con
+  mocks sin pageerrors. PENDIENTE: push (sin referencia (2).png — solo
+  guía local).
 
 ---
 

@@ -2,11 +2,11 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   ArrowRight, CalendarDays, CheckCircle2, Check, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, FileCheck2, FileX2, FileWarning, Heart, Info, Loader2, MapPin, Microscope, Phone,
-  ScanLine, ShieldCheck, Stethoscope, UserRound, type LucideIcon,
+  ClipboardList, Clock, FileCheck2, FileX2, Heart, Info, Loader2, MapPin, Microscope, Phone,
+  ScanLine, ShieldCheck, Stethoscope, Sunrise, Sunset, UserRound, type LucideIcon,
 } from "lucide-react";
-import {
-  createAppointment, fetchDoctors, fetchSlots, fetchSpecialties,
+import { CalendarCard } from "./CalendarCard";
+import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties,
   MED_BRANCH_PHONES, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty,
 } from "./api";
 import { BRANCHES, isBranchOpen } from "../data/branches";
@@ -64,12 +64,6 @@ const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
   especializada: { src: "/images/medical/servicio/especializada.webp", alt: "Consulta especializada veterinaria" },
 };
 
-function limaToday(): string {
-  return new Intl.DateTimeFormat("en-CA", {
-    timeZone: "America/Lima", year: "numeric", month: "2-digit", day: "2-digit",
-  }).format(new Date());
-}
-
 function todayMinPlus(): string {
   const max = new Date();
   max.setDate(max.getDate() + 30);
@@ -114,6 +108,7 @@ export default function App() {
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
+  const [copia, setCopia] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -256,7 +251,6 @@ export default function App() {
 
   const branch = MED_BRANCHES.find((b) => b.value === form.branch) ?? null;
   const groupIndex = PROGRESS_GROUPS.findIndex((g) => g.steps.includes(step));
-  const progress = groupIndex >= 0 ? ((groupIndex + 1) / PROGRESS_GROUPS.length) * 100 : 0;
   const canSubmit =
     form.petName.trim().length >= 2 &&
     form.ownerName.trim().length >= 3 &&
@@ -290,29 +284,8 @@ export default function App() {
             <div className="mt-3 sm:mt-4 h-px w-full bg-[#DCEBFF]" />
           </div>
 
-          {/* Progreso "Paso X de 4" (patrón grooming) */}
-          {groupIndex >= 0 && (
-            <div className="mb-6">
-              <div className="mb-2 flex items-center justify-between text-sm text-[#546A8E]">
-                <span className="flex items-center gap-2 font-medium text-[#1A2238]">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                    {groupIndex + 1}
-                  </span>
-                  <span>Paso {groupIndex + 1} de {PROGRESS_GROUPS.length}</span>
-                </span>
-                <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                  <span className="h-2 w-2 rounded-full bg-orange-400" />
-                  {PROGRESS_GROUPS[groupIndex].label}
-                </span>
-              </div>
-              <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                <div
-                  className="h-full rounded-full bg-gradient-to-r from-blue-600 to-orange-400 transition-all duration-300 ease-out"
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-          )}
+          {/* Progreso con puntos numerados + etiquetas (maqueta "Confirma tu cita") */}
+          {groupIndex >= 0 && <StepProgress groups={PROGRESS_GROUPS} current={groupIndex} />}
 
           {error && (
             <motion.p
@@ -589,7 +562,7 @@ export default function App() {
                         >
                           <DoctorAvatar name={d.name} />
                           <span className="min-w-0 flex-1">
-                            <span className="block font-display text-lg font-bold text-[#1A2238]">{d.name}</span>
+                            <span className="block font-display text-lg font-bold text-[#475AAB]">{d.name}</span>
                             <span className="block text-xs text-[#546A8E]">{d.specialty ?? "Medicina Veterinaria General"}</span>
                           </span>
                           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-[#546A8E] transition-all group-hover:bg-brand-blue group-hover:text-white group-hover:shadow-md">
@@ -612,97 +585,155 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Fecha + hora ── */}
+              {/* ── Fecha + hora (calendario completo estilo grooming) ── */}
               {step === "agenda" && (
-                <section>
-                  <StepHeading kicker={`Dr(a). ${form.doctorName ?? ""}`}>
-                    Elige la <span className="text-orange-500">fecha y hora</span>
-                  </StepHeading>
-                  <label className="mb-3 flex items-center gap-3 rounded-2xl bg-[#F7FBFF] px-4 py-3 shadow-sm ring-1 ring-[#DCEBFF]">
-                    <CalendarDays className="h-5 w-5 text-blue-400" />
-                    <input
-                      type="date"
-                      min={limaToday()}
-                      max={todayMinPlus()}
-                      value={form.date ?? ""}
-                      onChange={(e) => {
-                        update("date", e.target.value);
+                <section className="grid gap-5 lg:grid-cols-[1fr_50%] lg:items-start lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-1.5">
+                      <Stethoscope className="h-4 w-4 text-brand-orange" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-orange">
+                        Dr(a). {form.doctorName ?? ""}
+                      </p>
+                    </div>
+                    <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Elige la fecha</span>
+                      <span className="block">
+                        y la <span className="text-orange-500">hora que te acomoda</span>
+                      </span>
+                    </h2>
+                    <CalendarCard
+                      branch={form.branch ?? ""}
+                      date={form.date ?? null}
+                      maxDate={todayMinPlus()}
+                      onSelect={(d) => {
+                        update("date", d);
                         update("startMinute", null);
-                        if (e.target.value && form.doctorId) void loadSlots(e.target.value, form.doctorId);
+                        if (form.doctorId) void loadSlots(d, form.doctorId);
                       }}
-                      className="w-full bg-transparent text-sm outline-none"
                     />
-                  </label>
-                  {!form.date && (
-                    <div className="rounded-[18px] border border-[#DCEBFF] bg-[#F7FBFF] p-5 text-center">
+                    {!form.date && (
+                      <p className="mt-4 text-sm text-[#546A8E]">
+                        Toca un día del calendario para ver las horas del médico.
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Horas del doctor: aparecen al elegir fecha (antes: mascota con calendario) */}
+                  <div>
+                    {!form.date && (
                       <motion.img
                         src={MASCOT.esperando}
                         alt="Mascota revisando el calendario"
-                        className="mx-auto mb-2 h-auto w-32 object-contain sm:w-36"
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut" }}
+                        className="mx-auto h-auto w-48 object-contain sm:w-56 lg:w-64"
+                        draggable={false}
+                        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 8 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
                       />
-                      <p className="text-sm text-[#546A8E]">
-                        Primero escoge un día (disponible con 30 días de anticipación)
+                    )}
+                    {form.date && slotsLoading && <Loading />}
+                    {form.date && !slotsLoading && slots && slots.length === 0 && (
+                      <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
+                        El doctor no tiene horas libres ese día — prueba otro día.
                       </p>
-                    </div>
-                  )}
-                  {form.date && slotsLoading && <Loading />}
-                  {form.date && !slotsLoading && slots && slots.length === 0 && (
-                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-                      El doctor no tiene horas libres ese día — prueba otro día.
-                    </p>
-                  )}
-                  {form.date && !slotsLoading && slots && slots.length > 0 && (
-                    <div className="grid grid-cols-3 gap-2 sm:grid-cols-4">
-                      {slots.map((s) => (
-                        <button
-                          key={s.startMinute}
-                          onClick={() => { update("startMinute", s.startMinute); go("datos"); }}
-                          className={`rounded-xl py-2.5 text-sm font-semibold transition-all ${
-                            form.startMinute === s.startMinute
-                              ? "bg-brand-orange text-white shadow-md shadow-orange-200"
-                              : "bg-white text-slate-700 ring-1 ring-[#DCEBFF] hover:-translate-y-0.5 hover:ring-blue-300"
-                          }`}
-                        >
-                          {hora(s.startMinute)}
-                        </button>
-                      ))}
-                    </div>
-                  )}
+                    )}
+                    {form.date && !slotsLoading && slots && slots.length > 0 && (
+                      <motion.div layout>
+                        <div className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DCEBFF]">
+                          <p className="font-display text-xl font-bold text-[#475AAB]">
+                            {prettyDate(form.date)}
+                          </p>
+                          <p className="mt-0.5 text-xs text-[#8A97B1]">
+                            Con {form.doctorName} · {branch?.label ?? ""}
+                          </p>
+                          <div className="my-4 h-px bg-[#DCEBFF]" />
+                          <div className="flex flex-col gap-5">
+                            {([
+                              ["Mañana", slots.filter((s) => s.startMinute < 12 * 60)],
+                              ["Tarde", slots.filter((s) => s.startMinute >= 12 * 60)],
+                            ] as Array<[string, typeof slots]>).map(([turno, grupo], gi) =>
+                              grupo.length > 0 ? (
+                                <div key={turno}>
+                                  <p className="mb-2.5 flex items-center gap-2 text-sm font-semibold text-[#546A8E]">
+                                    {gi === 0 ? <Sunrise className="h-4 w-4 text-orange-500" /> : <Sunset className="h-4 w-4 text-blue-500" />}
+                                    {turno}
+                                  </p>
+                                  <div className="flex flex-wrap gap-2">
+                                    {grupo.map((s) => {
+                                      const sel = form.startMinute === s.startMinute;
+                                      return (
+                                        <button
+                                          key={s.startMinute}
+                                          onClick={() => { update("startMinute", s.startMinute); go("datos"); }}
+                                          className={`rounded-full px-5 py-3 text-[15px] font-bold transition-all ${
+                                            sel
+                                              ? "bg-brand-orange text-white shadow-lg shadow-orange-200"
+                                              : "bg-[#F7FBFF] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:-translate-y-0.5 hover:ring-brand-orange hover:text-brand-orange active:translate-y-0"
+                                          }`}>
+                                          {hora(s.startMinute)}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              ) : null,
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </div>
                 </section>
               )}
 
-              {/* ── Datos ── */}
+              {/* ── Datos: campos a la izquierda, ticket de resumen a la derecha ── */}
               {step === "datos" && (
-                <section>
-                  <StepHeading kicker="Casi listo">
-                    Últimos <span className="text-orange-500">datos</span> y confirmamos
-                  </StepHeading>
-                  <Resumen form={form} />
-                  <div className="mt-4 grid gap-3">
-                    <Field label="Nombre de la mascota" value={form.petName} onChange={(v) => update("petName", v)} placeholder="Ej: Manolo" />
-                    <div className="flex flex-col gap-1">
-                      <span className="text-xs font-medium text-[#546A8E]">Tipo</span>
-                      <div className="flex gap-2">
-                        {["Perro", "Gato"].map((t) => (
-                          <button
-                            key={t}
-                            onClick={() => update("petType", t)}
-                            className={`flex-1 rounded-xl py-2 text-sm font-semibold transition-all ${
-                              form.petType === t
-                                ? "bg-blue-600 text-white shadow-sm"
-                                : "bg-white text-[#1A2238] ring-1 ring-[#DCEBFF]"
-                            }`}
-                          >{t === "Perro" ? "🐶 Perro" : "🐱 Gato"}</button>
-                        ))}
-                      </div>
+                <section className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr] lg:items-start lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-brand-orange">Casi listo</p>
                     </div>
-                    <Field label="Tu nombre completo" value={form.ownerName} onChange={(v) => update("ownerName", v)} placeholder="Ej: Juan Pérez" />
-                    <Field label="Tu celular (WhatsApp)" value={form.ownerPhone} onChange={(v) => update("ownerPhone", v)} placeholder="999 111 222" />
-                    <Field label="Correo (opcional)" value={form.ownerEmail} onChange={(v) => update("ownerEmail", v)} placeholder="tucorreo@ejemplo.com" />
-                    <label className="flex flex-col gap-1">
+                    <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Últimos datos</span>
+                      <span className="block">
+                        y <span className="text-orange-500">confirmamos tu cita</span>
+                      </span>
+                    </h2>
+                    {(form.serviceType === "rayos" || form.serviceType === "eco") && (
+                      <div className="mb-4 flex items-center gap-2.5 rounded-2xl bg-[#FFF7EE] p-3 ring-1 ring-orange-200">
+                        <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-brand-orange text-sm font-black text-white">!</span>
+                        <p className="text-xs text-[#7A4E00]">
+                          Recuerda traer tu <b>orden médica sellada</b> el día de la cita
+                        </p>
+                      </div>
+                    )}
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <Field label="Nombre de la mascota" value={form.petName} onChange={(v) => update("petName", v)} placeholder="Ej: Manolo" />
+                      <div className="flex flex-col gap-1">
+                        <span className="text-xs font-medium text-[#546A8E]">Tipo</span>
+                        <div className="flex gap-2">
+                          {["Perro", "Gato"].map((t) => (
+                            <button
+                              key={t}
+                              onClick={() => update("petType", t)}
+                              className={`flex items-center justify-between gap-1 rounded-xl px-3 py-2 text-sm font-semibold transition-all ${
+                                form.petType === t
+                                  ? "bg-brand-orange text-white shadow-md shadow-orange-200"
+                                  : "bg-[#F7FBFF] text-[#1A2238] ring-1 ring-[#DCEBFF] hover:ring-blue-300"
+                              }`}
+                            >
+                              {t === "Perro" ? "🐶 Perro" : "🐱 Gato"}
+                              {form.petType === t && <Check className="h-4 w-4 shrink-0" strokeWidth={3} />}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                      <Field label="Tu nombre completo" value={form.ownerName} onChange={(v) => update("ownerName", v)} placeholder="Ej: Juan Pérez" />
+                      <Field label="Tu celular (WhatsApp)" value={form.ownerPhone} onChange={(v) => update("ownerPhone", v)} placeholder="999 111 222" type="tel" />
+                      <Field label="Correo (opcional)" value={form.ownerEmail} onChange={(v) => update("ownerEmail", v)} placeholder="tucorreo@ejemplo.com" type="email" />
+                    </div>
+                    <label className="mt-3 flex flex-col gap-1">
                       <span className="text-xs font-medium text-[#546A8E]">¿Qué le pasa a tu mascota? (opcional)</span>
                       <textarea
                         value={form.petNotes}
@@ -712,60 +743,83 @@ export default function App() {
                         placeholder="Síntomas, observaciones…"
                         className="rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
                       />
+                      <span className="self-end text-[10px] text-slate-400">{form.petNotes.length}/400</span>
                     </label>
                   </div>
-                  {form.serviceType === "especializada" && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 6 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.1 }}
-                      className="mt-4 flex items-center gap-3 overflow-hidden rounded-2xl border border-orange-100 bg-[#FFF7EE] p-3"
+
+                  {/* Ticket de resumen + CTA (primero en móvil, pegote en desktop) */}
+                  <aside className="order-first lg:order-none lg:sticky lg:top-24">
+                    <Resumen form={form} />
+                    {form.serviceType === "especializada" && (
+                      <motion.div
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.1 }}
+                        className="mt-3 flex items-center gap-3 overflow-hidden rounded-2xl border border-orange-100 bg-[#FFF7EE] p-3"
+                      >
+                        <img
+                          src={MASCOT.pago}
+                          alt="Mascota con cartera"
+                          className="h-16 w-16 shrink-0 object-contain mix-blend-multiply"
+                        />
+                        <p className="text-xs leading-relaxed text-amber-800">
+                          💳 Esta consulta se paga por adelantado: al confirmar recibirás por WhatsApp nuestros
+                          métodos de pago y confirmaremos fecha, hora y doctor cuando verifiquemos tu comprobante.
+                        </p>
+                      </motion.div>
+                    )}
+                    <button
+                      onClick={() => void submit()}
+                      disabled={submitting || !canSubmit}
+                      className={`mt-4 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white transition-all ${
+                        submitting || !canSubmit
+                          ? "cursor-not-allowed bg-blue-300"
+                          : "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
+                      }`}
                     >
-                      <img
-                        src={MASCOT.pago}
-                        alt="Mascota con cartera"
-                        className="h-20 w-20 shrink-0 object-contain"
-                      />
-                      <p className="text-xs leading-relaxed text-amber-800">
-                        💳 Esta consulta se paga por adelantado: al confirmar recibirás por WhatsApp nuestros
-                        métodos de pago y confirmaremos fecha, hora y doctor cuando verifiquemos tu comprobante.
+                      {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
+                      {submitting ? "Registrando…" : "Confirmar cita"}
+                    </button>
+                    {!canSubmit && !submitting && (
+                      <p className="mt-2 text-center text-[11px] text-[#8A97B1]">
+                        Completa el nombre de la mascota, tu nombre y tu celular para confirmar.
                       </p>
-                    </motion.div>
-                  )}
-                  <button
-                    onClick={() => void submit()}
-                    disabled={submitting || !canSubmit}
-                    className={`mt-4 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white transition-all ${
-                      submitting || !canSubmit
-                        ? "cursor-not-allowed bg-blue-300"
-                        : "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
-                    }`}
-                  >
-                    {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
-                    {submitting ? "Registrando…" : "Confirmar cita"}
-                  </button>
+                    )}
+                  </aside>
                 </section>
               )}
 
-              {/* ── Enviado ── */}
+              {/* ── Enviado: éxito con resumen de la cita + código copiable ── */}
               {step === "enviado" && (
-                <section className="flex flex-col items-center gap-4 py-4 text-center">
+                <section className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-4 text-center">
                   <motion.img
                     src={MASCOT.agendado}
                     alt="Mascota celebrando su cita agendada"
-                    className="h-auto w-64 object-contain sm:w-80"
-                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
+                    className="h-auto w-56 object-contain mix-blend-multiply sm:w-72"
+                    draggable={false}
+                    initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: reduceMotion ? 0 : 10 }}
                     animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut" }}
+                    transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
                   />
-                  <h2 className="font-display text-2xl font-bold tracking-tight text-green-700 sm:text-3xl">
-                    ¡Cita registrada!
+                  <h2 className="font-display text-3xl font-bold tracking-tight text-green-700 sm:text-4xl">
+                    ¡Cita registrada! 🎉
                   </h2>
-                  <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4">
-                    <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de cita</p>
-                    <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{code}</p>
-                    <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+                  <div className="rounded-2xl border-2 border-dashed border-green-300 bg-green-50 px-8 py-4">
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-green-600">Código de cita</p>
+                    <p className="mt-1 font-mono text-3xl font-bold tracking-wider text-green-800">{code}</p>
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(code);
+                        setCopia(true);
+                        setTimeout(() => setCopia(false), 2000);
+                      }}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-green-700 ring-1 ring-green-200 transition hover:bg-green-100"
+                    >
+                      {copia ? <Check className="h-3.5 w-3.5" /> : "⧉"}
+                      {copia ? "¡Copiado!" : "Copiar código"}
+                    </button>
                   </div>
+                  <Resumen form={form} />
                   <p className="max-w-md text-sm text-[#546A8E]">
                     {form.serviceType === "especializada" ? (
                       <>Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
@@ -985,6 +1039,47 @@ function SedeStep({ selected, onPick, onContinue }: {
   );
 }
 
+// Progreso con puntos numerados + etiquetas (maqueta "Confirma tu cita").
+// Los 4 puntos = los 4 grupos reales del wizard; nada de lógica nueva.
+function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; current: number }) {
+  return (
+    <div className="mb-7 flex">
+      {groups.map((g, i) => {
+        const done = i < current;
+        const active = i === current;
+        return (
+          <div key={g.label} className="relative flex flex-1 flex-col items-center">
+            {i < groups.length - 1 && (
+              <div
+                aria-hidden
+                className={`absolute left-1/2 top-[13px] h-0.5 w-full ${i < current ? "bg-green-500" : "bg-slate-200"}`}
+              />
+            )}
+            <span
+              className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                done
+                  ? "bg-green-500 text-white"
+                  : active
+                    ? "bg-brand-blue text-white ring-4 ring-blue-600/15"
+                    : "bg-slate-200 text-slate-500"
+              }`}
+            >
+              {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
+            </span>
+            <span
+              className={`mt-1.5 hidden text-[11px] font-semibold sm:block ${
+                active ? "text-[#475AAB]" : done ? "text-green-600" : "text-slate-400"
+              }`}
+            >
+              {active ? `${g.label} · Paso ${i + 1} de ${groups.length}` : g.label}
+            </span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function StepHeading({ kicker, children }: { kicker?: string; children: React.ReactNode }) {
   return (
     <div className="mb-6 text-center">
@@ -1072,13 +1167,6 @@ function Resumen({ form }: { form: FormData }) {
         {form.date && form.startMinute !== null && (
           <SummaryRow icon={CalendarDays}>{prettyDate(form.date)} · {hora(form.startMinute)}</SummaryRow>
         )}
-        {form.serviceType === "rayos" || form.serviceType === "eco" ? (
-          form.hasOrder && (
-            <SummaryRow icon={FileWarning} accent>
-              Preséntate con tu orden médica sellada
-            </SummaryRow>
-          )
-        ) : null}
       </ul>
     </div>
   );
