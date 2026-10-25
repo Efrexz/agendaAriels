@@ -13,11 +13,13 @@ test.describe("Bienvenida - primera vez", () => {
 
     await expect(page.getByRole("heading", { name: "¿Es tu primera vez agendando grooming aquí?" })).toBeVisible();
     await expect(page.getByText(/solo la primera vez te pediremos tus datos/i)).toBeVisible();
-    await expect(page.getByText("Paso 1 de 9")).toBeVisible();
+    // Progreso nuevo: puntos por grupos + chip del mini-paso actual
+    await expect(page.getByTestId("wizard-progress")).toContainText("Sede");
+    await expect(page.getByTestId("wizard-ministep")).toContainText("Bienvenida");
 
     await page.getByRole("button", { name: /Comenzar mi reserva/ }).click();
     await expect(page.getByRole("heading", { name: /Selecciona tu sede/i })).toBeVisible();
-    await expect(page.getByText("Paso 2 de 9")).toBeVisible();
+    await expect(page.getByTestId("wizard-ministep")).toContainText("Sede");
   });
 
   test("intro explica qué se guarda y qué no", async ({ page }) => {

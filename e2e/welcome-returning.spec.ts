@@ -36,12 +36,12 @@ test.describe("Bienvenida - cliente recurrente (datos guardados)", () => {
   test("registrar nueva mascota y volver regresa a la bienvenida (no al resumen)", async ({ page }) => {
     await page.getByRole("button", { name: /Registrar nueva mascota/ }).click();
     // petType es el paso 3 del flujo oficial (sede ya venía elegida de antes)
-    await expect(page.getByText("Paso 3 de 9")).toBeVisible();
+    await expect(page.getByTestId("wizard-ministep")).toContainText("Tipo de mascota");
 
     // Volver: debe regresar a la bienvenida, NO al resumen
     await page.getByRole("button", { name: /Volver atrás/ }).click();
     await expect(page.getByRole("heading", { name: /¡Qué gusto verte, Demo!/ })).toBeVisible();
-    await expect(page.getByText("Paso 1 de 9")).toBeVisible();
+    await expect(page.getByTestId("wizard-ministep")).toContainText("Bienvenida");
     // El formulario abortado no rescató basura: las mascotas siguen siendo 3
     await expect(page.getByRole("button", { name: /Agendar con 3 mascotas/ })).toBeVisible();
   });

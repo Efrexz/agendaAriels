@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { ChevronLeft, PawPrint, Pencil } from "lucide-react";
+import { Check, ChevronLeft, PawPrint, Pencil } from "lucide-react";
 import { BranchSelectionStep } from "./steps/BranchSelectionStep";
 import { ServiceTypeStep } from "./steps/ServiceTypeStep";
 import { PetInfoStep } from "./steps/PetInfoStep";
@@ -25,10 +25,18 @@ import {
 } from "../services/clientProfile";
 export type { ExtraService, PetData, FormData } from "../state/wizardReducer";
 
-/** Steps que muestran la barra de progreso ("Paso X de Y"). */
-const PROGRESS_STEPS: StepId[] = [
-  "welcome", "branch", "petType", "petInfo", "size", "petAdded", "schedule", "owner", "review",
+/** Grupos conceptuales del flujo grooming (los dots del progreso). */
+const PROGRESS_GROUPS: Array<{ label: string; steps: StepId[] }> = [
+  { label: "Sede", steps: ["welcome", "branch"] },
+  { label: "Mascota", steps: ["petType", "petInfo", "size", "petAdded"] },
+  { label: "Agenda", steps: ["schedule"] },
+  { label: "Tus datos", steps: ["owner"] },
+  { label: "Resumen", steps: ["review"] },
 ];
+
+function groupIndexof(step: StepId): number {
+  return PROGRESS_GROUPS.findIndex((g) => g.steps.includes(step));
+}
 
 const STEP_COMPONENTS = {
   branch: BranchSelectionStep,
@@ -62,9 +70,6 @@ export function BookingWizard() {
   }, [state.step]);
 
   const StepComponent = state.step === "welcome" ? null : STEP_COMPONENTS[state.step];
-  const progressIndex = PROGRESS_STEPS.indexOf(state.step);
-  const totalSteps = PROGRESS_STEPS.length;
-  const progress = progressIndex >= 0 ? ((progressIndex + 1) / totalSteps) * 100 : 0;
 
   const update = <K extends keyof FormData>(field: K, value: FormData[K]) => {
     dispatch({ type: "UPDATE_FIELD", field, value });
@@ -122,25 +127,53 @@ export function BookingWizard() {
             <div className="mt-3 sm:mt-4 h-px w-full bg-[#DCEBFF]" />
           </div>
 
-          <div className="mb-6">
-            <div className="mb-2 flex items-center justify-between text-sm text-gray-500">
-              <span className="flex items-center gap-2 font-medium text-gray-700">
-                <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 text-xs font-bold text-white">
-                  {progressIndex + 1}
-                </span>
-                <span>Paso {progressIndex + 1} de {totalSteps}</span>
-              </span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700">
-                <Pencil className="h-3 w-3" />
-                {STEP_LABELS[state.step]}
-              </span>
+          <div className="mb-6 flex items-center gap-4">
+            <div data-testid="wizard-progress" className="flex flex-1">
+              {PROGRESS_GROUPS.map((g, i) => {
+                const current = groupIndexof(state.step);
+                const done = i < current;
+                const active = i === current;
+                return (
+                  <div key={g.label} className="relative flex flex-1 flex-col items-center">
+                    {i < PROGRESS_GROUPS.length - 1 && (
+                      <div
+                        aria-hidden
+                        className={`absolute left-1/2 top-[13px] h-0.5 w-full ${
+                          i < current ? "bg-green-500" : active ? "bg-gradient-to-r from-green-500 to-slate-200" : "bg-slate-200"
+                        }`}
+                      />
+                    )}
+                    <span
+                      aria-current={active ? "step" : undefined}
+                      className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
+                        done
+                          ? "bg-green-500 text-white"
+                          : active
+                            ? "bg-brand-blue text-white ring-4 ring-blue-600/15"
+                            : "bg-slate-200 text-slate-500"
+                      }`}
+                    >
+                      {done ? <Check className="h-3.5 w-3.5" strokeWidth={3} /> : i + 1}
+                    </span>
+                    <span
+                      className={`mt-1.5 hidden text-[11px] font-semibold sm:block ${
+                        active ? "text-[#475AAB]" : done ? "text-green-600" : "text-slate-400"
+                      }`}
+                    >
+                      {g.label}
+                    </span>
+                  </div>
+                );
+              })}
             </div>
-            <div className="h-2 w-full overflow-hidden rounded-full bg-gray-100">
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-blue-600 to-orange-400 transition-all duration-300 ease-out"
-                style={{ width: `${progress}%` }}
-              />
-            </div>
+            {/* Mini-paso actual dentro del grupo (Bienvenida / Tamaño / ...) */}
+            <span
+              data-testid="wizard-ministep"
+              className="hidden shrink-0 items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-medium text-blue-700 sm:inline-flex"
+            >
+              <Pencil className="h-3 w-3" />
+              {STEP_LABELS[state.step]}
+            </span>
           </div>
 
           <div className="relative">

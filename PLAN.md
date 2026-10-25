@@ -1019,6 +1019,20 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   doble 0, build OK, 252 tests, e2e 10/10, capturas desktop+móvil con
   mocks sin pageerrors. PENDIENTE: push (sin referencia (2).png — solo
   guía local).
+- 2026-10-24 — **PROGRESO POR PUNTOS PORTADO AL WIZARD GROOMING
+  (respuesta al hallazgo del QA)**: BookingWizard ahora muestra los
+  mismos puntos con etiquetas que el wizard médico — grupos
+  conceptuales del flujo real grooming (PROGRESS_GROUPS: welcome+branch
+  =Sede; petType/petInfo/size/petAdded=Mascota; schedule=Agenda;
+  owner=Tus datos; review=Resumen — 5 grupos transmission en vez de 9
+  mini-fracciones), conectora con degradé en el activo, check verde en
+  completados; junto a los puntos vuelve el chip discreto
+  (data-testid=wizard-ministep: Bienvenida/Tamaño/…) que indica el
+  MINI-paso dentro del grupo activo y es lo que asertan los specs.
+  Los 2 specs e2e que asertaban "Paso X de 9" actualizados al nuevo
+  indicador (testids). Cero reducer/lógica. Gates: lint 0, typecheck
+  doble 0, build OK, 252 tests, e2e 10/10, QA responsive 3 tamaños de
+  / sin desbordes. Pendiente push; UX-D sigue con el check QZ.
 - 2026-10-24 — **FIX BUG DE NAVEGACIÓN (reportado por el usuario: bucle
   en el wizard de especializada "interconsulta")**: causa — el back del
   paso "datos" usaba el mapa genérico datos→agenda (cierto SOLO para
@@ -1033,6 +1047,23 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   gates: lint 0, typecheck doble 0, build, 252 tests, e2e 10/10.
   El QA de QZ (impresión boleta) queda para UX-D: solo VERIFICAR que
   el botón Imprimir/Salon print-area sigue intacto — SIN tocar código.
+- 2026-10-24 — **UX-D PARCIAL: QA RESPONSIVE PASADO** (usuario pidió
+  verificar todo antes del arte final): script Playwright 4 superficies
+  (/, /cita-medica con 4 pantallas: inicio/servicio/orden/doctor/
+  agenda/datos, /estado con mock, /internal login) × 3 tamaños
+  (390/768/1440) = 24×: CERO desbordes horizontales (scrollWidth vs
+  clientWidth), CERO pageerrors; capturas revisadas: /estado móvil
+  (timeline target+AHORA nítido), orden móvil (ilustración + fundido,
+  WA flotante solapa un poco la mascota — aceptable, es fixed),
+  grooming móvil bienvenida y sede-cards naranjas correctos, agenda
+  móvil puntos=progreso + calendario. SÓLO DIFERENCIA DE ESTILO
+  detectada: el wizard grooming sigue con su progreso viejo "Paso 1 de
+  9" (barraitas + chip label) mientras el médico estrena los puntos con
+  etiquetas — portar los puntos a grooming requiere agrupar sus 9 mini
+  pasos (decisión pendiente del usuario; el grooming era la REFERENCIA
+  aprobada, serviría para uniformar). PENDIENTE: QA de impresión QZ en
+  la PC de recepción (requiere sesión del usuario) + arte final del
+  usuario.
 
 ---
 
