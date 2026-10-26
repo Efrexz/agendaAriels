@@ -1124,3 +1124,21 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   400s, 401). Gates: lint 0, typecheck doble 0, build, 262 tests,
   e2e 10/10, captura del historial separado por días verificada con
   mocks de Supabase-auth fake-session. En producción (2 commits).
+- 2026-10-25 — **IDEA 1 IMPLEMENTADA: RECORDAR DATOS DEL CLIENTE EN LA
+  CITA MÉDICA** (fase aprobada por el usuario del plan de 3 mejoras):
+  nuevo src/medical/clientProfileMed.ts (clave vcm_client_profile_v1,
+  schema Zod, módulo espejo del clientProfile.ts del grooming pero
+  mínimo: SOLO ownerName/ownerPhone/ownerEmail — mascota/examen cambian
+  visita a visita; nada viaja a la red: vive en el browser del cliente,
+  mismo espíritu del grooming). Flujo: ① al registrar la cita con
+  ÉXITO se guarda el perfil (submit OK, antes de paso enviado);
+  ② al ENTRAR al paso "datos" en una visita posterior, si el dueño aún
+  no escribió nada → campos precargados + AVISO 🧠 "Rellenamos tu
+  nombre y celular de tu última visita — solo viven en este navegador"
+  con botón "Olvidar" (borra perfil + limpia campos — consentimiento
+  inverso visible); si el usuario ya escribió algo, NO se toca;
+  4 tests nuevos del módulo (save/load/normalización/vacío-guard/
+  clear/corrupto-autolimpieza). Verificación punta a punta con Playwright:
+  guarda tras cita ✓, precarga en 2ª visita ✓, aviso visible ✓,
+  Olvidar borra ✓. Gates: lint 0, typecheck doble 0, build, 268 tests
+  (+6), e2e 10/10. Pendiente push + revisión usuario.

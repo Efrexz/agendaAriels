@@ -6,6 +6,7 @@ import {
   ScanLine, ShieldCheck, Stethoscope, Sunrise, Sunset, UserRound, type LucideIcon,
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
+import { clearMedProfile, loadMedProfile, saveMedProfile } from "./clientProfileMed";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties,
   MED_BRANCH_PHONES, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty,
 } from "./api";
@@ -109,6 +110,8 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
   const [copia, setCopia] = useState(false);
+  // Idea 1: ¿estamos mostrando datos guardados del navegador del cliente?
+  const [recordados, setRecordados] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
@@ -225,6 +228,41 @@ export default function App() {
     };
   }, [step]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // Idea 1: al ENTRAR a datos, si hay perfil guardado del navegador (una cita
+  // anterior registrada con éxito) y el dueño aún no escribió nada, se
+  // rellenan los campos + un aviso con botón para olvidarlos.
+  useEffect(() => {
+    if (step !== "datos") return;
+    let active = true;
+    (async () => {
+      // Frontera async: los setState ocurren tras await (regla react-hooks).
+      await Promise.resolve();
+      if (!active) return;
+      const profile = loadMedProfile();
+      if (!profile) return;
+      setForm((f) => {
+        if (f.ownerName.trim() || f.ownerPhone.trim()) return f; // ya escribió: no tocar
+        return {
+          ...f,
+          ownerName: f.ownerName || profile.ownerName,
+          ownerPhone: f.ownerPhone || profile.ownerPhone,
+          ownerEmail: f.ownerEmail || profile.ownerEmail,
+        };
+      });
+      if (active) setRecordados(true);
+    })();
+    return () => {
+      active = false;
+    };
+  }, [step]);
+
+  // Olvidar: borra el perfil del navegador y limpia los campos del dueño.
+  function olvidarDatos() {
+    clearMedProfile();
+    setForm((f) => ({ ...f, ownerName: "", ownerPhone: "", ownerEmail: "" }));
+    setRecordados(false);
+  }
+
   async function submit() {
     setSubmitting(true);
     setError(null);
@@ -246,6 +284,13 @@ export default function App() {
         ownerName: form.ownerName.trim(),
         ownerPhone: form.ownerPhone.trim(),
         ownerEmail: form.ownerEmail.trim() || "-",
+      });
+      // Idea 1: el dueño se recuerda en SU navegador al lograr registrar la
+      // cita (mismo espíritu que el grooming — nunca sale del dispositivo).
+      saveMedProfile({
+        ownerName: form.ownerName,
+        ownerPhone: form.ownerPhone,
+        ownerEmail: form.ownerEmail.trim() || "",
       });
       setCode(result.appointmentCode);
       go("enviado");
@@ -713,6 +758,20 @@ export default function App() {
                         <p className="text-xs text-[#7A4E00]">
                           Recuerda traer tu <b>orden médica sellada</b> el día de la cita
                         </p>
+                      </div>
+                    )}
+                    {recordados && (
+                      <div className="mb-4 flex items-center gap-2.5 rounded-2xl bg-[#EFF5FC] px-3.5 py-2.5 ring-1 ring-blue-200">
+                        <span className="text-base leading-none">🧠</span>
+                        <p className="flex-1 text-xs leading-relaxed text-[#3B5178]">
+                          Rellenamos tu nombre y celular de tu <b>última visita</b> — solo viven en este navegador.
+                        </p>
+                        <button
+                          onClick={olvidarDatos}
+                          className="shrink-0 text-[11px] font-semibold text-red-600 underline decoration-dotted transition hover:text-red-500"
+                        >
+                          Olvidar
+                        </button>
                       </div>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
