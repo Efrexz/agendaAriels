@@ -123,6 +123,14 @@ describe("bookingPayloadSchema", () => {
     expect(bookingPayloadSchema.parse(payload({ ownerEmail: "-" })).ownerEmail).toBe("-");
   });
 
+  it("acepta teléfono placeholder '-' (cliente recurrente sin celular nuevo)", () => {
+    expect(bookingPayloadSchema.parse(payload({ ownerPhone: "-" })).ownerPhone).toBe("-");
+  });
+
+  it("rechaza teléfono corto que no sea placeholder", () => {
+    expect(bookingPayloadSchema.safeParse(raw({ ownerPhone: "99" })).success).toBe(false);
+  });
+
   it("rechaza imagen que no viene de Cloudinary", () => {
     const bad = payload();
     bad.pets[0] = { ...bad.pets[0], corteImage: "https://evil.example/imagen" };

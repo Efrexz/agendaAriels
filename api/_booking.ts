@@ -136,7 +136,10 @@ export const bookingPayloadSchema = z.object({
   timeRangeLabel: z.string().min(1).max(40),
   ownerName: z.string().min(1).max(80),
   ownerDni: z.string().max(24).default("-"),
-  ownerPhone: z.string().min(3).max(24),
+  ownerPhone: z
+    .string()
+    .max(24)
+    .refine((v) => v === "-" || v.trim().length >= 3, { message: "Teléfono inválido" }),
   ownerAddress: z.string().min(1).max(200),
   ownerLat: z.number().min(-90).max(90).nullable(),
   ownerLng: z.number().min(-180).max(180).nullable(),

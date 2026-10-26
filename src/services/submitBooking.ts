@@ -68,7 +68,7 @@ export function buildBookingPayload(formData: FormData) {
     timeRangeLabel: labelOr(TIME_LABELS, formData.timeRange),
     ownerName: formData.ownerName || "-",
     ownerDni: formData.ownerDni || "-",
-    ownerPhone: formData.ownerPhone || "-",
+    ownerPhone: formData.ownerPhone || formData.registeredPhone || "-",
     ownerAddress: formData.ownerAddress || "-",
     ownerLat: formData.ownerLat,
     ownerLng: formData.ownerLng,
