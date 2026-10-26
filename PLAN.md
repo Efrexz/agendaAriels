@@ -1142,3 +1142,16 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   guarda tras cita ✓, precarga en 2ª visita ✓, aviso visible ✓,
   Olvidar borra ✓. Gates: lint 0, typecheck doble 0, build, 268 tests
   (+6), e2e 10/10. Pendiente push + revisión usuario.
+- 2026-10-26 — **ARTE /estado (ronda 1): burbujas + secado + laboratorio +
+  resultadoListo**: el usuario soltó burbujas.webp (baño con ducha y
+  patito), secado.webp (secadora azul, gotitas, transparente) y
+  laboratorio.webp (microscopio) — las 3 nombres EXACTOS ya cableados con
+  la cascada de /estado: aparecen sin tocar código. resultadoListo.png
+  (PNG 1.9MB) convertido a WebP 161KB con ffmpeg (alpha preservada) y
+  LAB_MASCOT.resultado_listo ahora usa LA MISMA (sobre azul "Resultados
+  de Laboratorio / La salud de tu mascota en buenas manos" — reemplaza
+  aprobado para el lab; aprobado sigue para grooming listo).
+  El LABORATORIO QUEDA COMPLETO de arte (recibida/en_laboratorio/
+  resultado_listo/entregada). Grooming pendiente: camino/recibido/corte.
+  Mascots.ts verificado; gates: build OK, 268 tests, e2e 10/10 lint/tc.
+  Push incluido.
