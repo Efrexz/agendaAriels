@@ -238,8 +238,8 @@ function StatusCard({
         )}
       </div>
 
-      {/* Mascota sobre círculo suave (backdrop) */}
-      <div className="relative mx-auto mt-4 h-44 w-44 rounded-full bg-blue-50/80 sm:h-48 sm:w-48">
+      {/* Mascota sobre círculo suave (backdrop) — más grande en desktop */}
+      <div className="relative mx-auto mt-4 h-44 w-44 rounded-full bg-blue-50/80 sm:h-48 sm:w-48 lg:h-56 lg:w-56">
         <Mascot key={`${kind}-${status}`} kind={kind} status={status} emoji={emoji} reduceMotion={reduceMotion} className="absolute inset-1" />
         <PawPrint aria-hidden className="absolute -left-6 top-3 h-6 w-6 rotate-[-20deg] text-blue-100" strokeWidth={2.5} />
         <PawPrint aria-hidden className="absolute -right-5 bottom-4 h-5 w-5 rotate-[25deg] text-blue-100" strokeWidth={2.5} />
@@ -250,11 +250,11 @@ function StatusCard({
         <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white/70">
           <StatusIcon className="h-3.5 w-3.5" strokeWidth={2.5} />
         </span>
-        <span className="text-sm font-bold uppercase tracking-wide">{label}</span>
+        <span className="text-sm font-bold uppercase tracking-wide lg:text-base">{label}</span>
       </div>
 
       {/* Detalles */}
-      <div className="mx-auto mt-6 flex max-w-xs flex-col gap-3">
+      <div className="mx-auto mt-6 flex max-w-xs flex-col gap-3 lg:max-w-sm">
         {details.map((d) => (
           <DetailRow key={d.label} icon={d.icon} label={d.label}>
             {d.value}
@@ -358,7 +358,7 @@ export default function App() {
   }, [pollTick, trackedCode]);
 
   return (
-    <div className="relative mx-auto min-h-screen max-w-md px-4 py-8">
+    <div className="relative mx-auto min-h-screen max-w-md px-4 py-8 lg:max-w-5xl lg:px-6">
       {/* Fondo decorativo: imagen pastel con huellitas (public/images/bg/estado-fondo.webp) */}
       <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
         <img src="/images/bg/estado-fondo.webp" alt="" className="h-full w-full object-cover" />
@@ -433,41 +433,43 @@ function BookingView({
   // consulta se hace tras await.
   return (
     <main>
-      {/* Estado actual: chip + mascota sobre círculo + pastilla del estado */}
-      <StatusCard
-        chip={`Viaje de ${petNames}`}
-        kind="va"
-        status={booking.status}
-        label={current.label}
-        badge={current.badge}
-        emoji={current.emoji}
-        polling={polling}
-        reduceMotion={reduceMotion}
-        stateIcon={iconFor("va", booking.status)}
-        details={[
-          { icon: CalendarDays, label: "Fecha y hora", value: `${formatDate(booking.serviceDate)} · ${SLOT_LABELS[booking.timeSlot]}` },
-          { icon: MapPin, label: "Sede", value: booking.branchLabel.replace("Sede ", "") },
-          { icon: ClipboardList, label: "Código", value: booking.bookingCode },
-        ]}
-      />
+      {/* Desktop: estado a la IZQUIERDA + seguimiento a la DERECHA; móvil: apilado */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
+        <StatusCard
+          chip={`Viaje de ${petNames}`}
+          kind="va"
+          status={booking.status}
+          label={current.label}
+          badge={current.badge}
+          emoji={current.emoji}
+          polling={polling}
+          reduceMotion={reduceMotion}
+          stateIcon={iconFor("va", booking.status)}
+          details={[
+            { icon: CalendarDays, label: "Fecha y hora", value: `${formatDate(booking.serviceDate)} · ${SLOT_LABELS[booking.timeSlot]}` },
+            { icon: MapPin, label: "Sede", value: booking.branchLabel.replace("Sede ", "") },
+            { icon: ClipboardList, label: "Código", value: booking.bookingCode },
+          ]}
+        />
 
-      {/* Seguimiento paso a paso */}
-      <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-        <div className="mb-5 flex items-center gap-2.5">
-          <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
-            <Clock className="h-5 w-5" />
+        {/* Seguimiento paso a paso */}
+        <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+          <div className="mb-5 flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
+              <Clock className="h-5 w-5" />
+            </div>
+            <h3 className="font-display text-lg font-semibold text-slate-900">Seguimiento del proceso</h3>
           </div>
-          <h3 className="font-display text-lg font-semibold text-slate-900">Seguimiento del proceso</h3>
-        </div>
-        <ProcessStep status="en_camino_recojo" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="recibido" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="en_bano" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="en_secado" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="en_corte" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="listo" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="en_camino_entrega" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
-        <ProcessStep status="entregado" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} last />
-      </section>
+          <ProcessStep status="en_camino_recojo" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="recibido" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="en_bano" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="en_secado" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="en_corte" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="listo" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="en_camino_entrega" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} />
+          <ProcessStep status="entregado" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} last />
+        </section>
+      </div>
 
       <footer className="mt-8 rounded-2xl bg-blue-50/60 px-4 py-3 text-center text-xs text-slate-500">
         <p className="flex items-center justify-center gap-1.5">
@@ -498,6 +500,8 @@ function LabView({
   const reduceMotion = useReducedMotion() ?? false;
   return (
     <main>
+      {/* Desktop: estado a la IZQUIERDA + seguimiento a la DERECHA; móvil: apilado */}
+      <div className="grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8">
       {/* Estado actual del examen: chip + mascota + pastilla */}
       <StatusCard
         chip={`Examen de ${order.petName}`}
@@ -517,7 +521,7 @@ function LabView({
       />
 
       {/* Seguimiento del examen */}
-      <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
         <div className="mb-5 flex items-center gap-2.5">
           <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
             <Clock className="h-5 w-5" />
@@ -529,8 +533,9 @@ function LabView({
         <LabStep status="resultado_listo" active={order.status} timeline={order.timeline} reduceMotion={reduceMotion} />
         <LabStep status="entregada" active={order.status} timeline={order.timeline} reduceMotion={reduceMotion} last />
       </section>
+      </div>
 
-      {/* Resultado del examen */}
+      {/* Resultado del examen (ancho completo, bajo las 2 columnas) */}
       {order.resultFile && (
         <section className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-2 ring-green-200">
           <p className="text-sm font-semibold text-slate-800">📄 Tu resultado ya está disponible</p>

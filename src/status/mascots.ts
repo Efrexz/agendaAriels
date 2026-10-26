@@ -29,7 +29,7 @@ export const VA_MASCOT: Record<string, string> = {
 export const LAB_MASCOT: Record<string, string> = {
   recibida: `${MASCOT_BASE}recibida.webp`,
   en_laboratorio: `${MASCOT_BASE}laboratorio.webp`,
-  resultado_listo: `${MASCOT_BASE}resultadoListo.webp`,
+  resultado_listo: `${MASCOT_BASE}aprobado.webp`, // TODO: volver a resultadoListo.webp cuando el usuario re-suba el PNG (conversión perdió alpha)
   entregada: `${MASCOT_BASE}DogAndCatFamilia.webp`,
   cancelado: `${MASCOT_BASE}error-dog.webp`,
 };

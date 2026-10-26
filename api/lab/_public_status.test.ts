@@ -10,6 +10,7 @@ vi.mock("./_shared.js", () => ({
   notConfigured: () => undefined,
   staffGuard: vi.fn(async () => null),
   LAB_BRANCH_PHONES: { san_miguel: "+51 954 599 221" },
+  LAB_BRANCH_LABELS: { san_miguel: "Sede San Miguel" },
 }));
 
 const { default: handler, buildLabStatusResponse } = await import("./_public_status.js");
@@ -18,6 +19,8 @@ const order = {
   id: "9eb9cf5e-9e46-4a2c-8a7b-000000000021",
   orderCode: "LAB-ZK9W4",
   status: "en_laboratorio",
+  sedeResponsable: "san_miguel",
+  createdAt: "2026-10-22T09:00:00Z",
   // Campos sensibleis que NUNCA deben salir al público:
   ownerPhone: "917-104-426",
   ownerName: "Juan Prueba",
@@ -53,6 +56,9 @@ describe("GET /api/lab-status (estatus público del examen)", () => {
     expect(o.orderCode).toBe(order.orderCode);
     expect(o.petName).toBe(order.petName);
     expect(o.status).toBe(order.status);
+    // La sede sale con label humano, NO con su ID crudo ("san_miguel"):
+    expect(o.sedeLabel).toBe("Sede San Miguel");
+    expect(JSON.stringify(body)).not.toContain("san_miguel");
     expect(JSON.stringify(body)).not.toContain(ownerPhonePattern());
     expect(JSON.stringify(body)).not.toContain("Juan Prueba");
     expect(JSON.stringify(body)).not.toContain("Dra. Katherin");

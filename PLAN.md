@@ -1155,3 +1155,20 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   resultado_listo/entregada). Grooming pendiente: camino/recibido/corte.
   Mascots.ts verificado; gates: build OK, 268 tests, e2e 10/10 lint/tc.
   Push incluido.
+- 2026-10-25 — **/ESTADO DESKTOP: 2 COLUMNAS + BUG DE SEDE (visible en
+  captura del usuario: "Entrega: san_martin")**: ① FIX API pública
+  api/lab/_public_status: sedeLabel usa LAB_BRANCH_LABELS (ya existía en
+  _shared) — sale "San Martín", jamás el ID crudo; test actualizado con
+  sedeResponsable en el order de prueba + aserto not.toContain(id);
+  vi.mock del _shared completado. ② LAYOUT: contenedor /estado
+  max-w-md → lg:max-w-5xl; BookingView y LabView en grid lg:2col —
+  IZQ StatusCard (mascota lg:h-56, pastilla lg:text-base, detalles
+  lg:max-w-sm) / DER card "Seguimiento del proceso" espaciosa; el card
+  del resultado (descarga/expirado) queda ANCHO COMPLETO bajo el grid;
+  móvil sin cambios (fue QA). Capturas desktop VA (en_corte) y LAB
+  (resultado_listo + descarga) verificadas sin pageerrors. ③ PIFIA MÍA
+  al convertir resultadoListo.png→webp: ffmpeg perdió el canal alpha
+  (y el PNG se borró) → se ve un ajedrez gris horneado: REVERTIDO a
+  aprobado web mientras el usuario RE-SUBE el PNG (reconversión con
+  -pix_fmt yuva420p). Gates (ją zux): lint 0, tc doble 0, build,
+  268 tests, e2e 10/10. Push: cap🏷 caption

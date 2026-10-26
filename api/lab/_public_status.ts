@@ -1,6 +1,6 @@
 import { z } from "zod/v4";
 import { createClient } from "@supabase/supabase-js";
-import { getLabDb, notConfigured, LAB_BRANCH_PHONES } from "./_shared.js";
+import { getLabDb, notConfigured, LAB_BRANCH_LABELS, LAB_BRANCH_PHONES } from "./_shared.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/lab-status?code=LAB-XXXXX
@@ -67,7 +67,8 @@ export async function buildLabStatusResponse(
     examType: order.examType,
     // Teléfono de la sede (no del dueño): para el botón WhatsApp cuando el
     // resultado ya expiró. Es el número público de veterinaria.
-    sedeLabel: order.sedeResponsable,
+    // El label humano de la sede (nunca el ID crudo de la BD).
+    sedeLabel: LAB_BRANCH_LABELS[order.sedeResponsable] ?? order.sedeResponsable,
     sedePhone: LAB_BRANCH_PHONES[order.sedeResponsable] ?? "",
     createdAt: order.createdAt,
     timeline: timeline[order.id] ?? [],
