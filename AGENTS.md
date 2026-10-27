@@ -11,7 +11,7 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 - Gates obligatorios antes de commit: `npm run lint` · `typecheck` (doble: root + api/) · `test` (268 tests) · `build` · `test:e2e` (Playwright 10). QA visual: scripts ad-hoc playwright en /tmp/opencode con APIs interceptadas por `ctx.route`.
 
 ## Módulo 1 — Grooming (VA-XXXXX, el original)
-- Wizard `/` (src/components/BookingWizard + steps/) → `POST /api/booking`: INSERT en Supabase ANTES de WhatsApp (si falla BD, igual sale por WhatsApp), dedupe por UNIQUE booking_code. Recordatorio automático día-antes: cron 23:00 UTC ya en vercel.json (2° crons gratis de Hobby queda para grooming si se activa).
+- Wizard `/` (src/components/BookingWizard + steps/) → `POST /api/booking`: INSERT en Supabase ANTES de WhatsApp (si falla BD, igual sale por WhatsApp), dedupe por UNIQUE booking_code. SIFALLA el WhatsApp con BD-OK → responde 200 `whatsappDelivered:false` y el wizard muestra "¡Reserva registrada!" ámbar (sin "Reintentar" → cero duplicados; el panel marca ⚠️ WhatsApp con reenvío). Recordatorio automático día-antes: cron 23:00 UTC ya en vercel.json (2° crons gratis de Hobby queda para grooming si se activa).
 - Estados: pendiente→en_camino_recojo→recibido→en_bano→en_secado→en_corte→listo→en_camino_entrega→entregado (+cancelado). Cada cambio registra quién/cuándo (`status_updates`).
 - WhatsApp al cliente en `en_camino_recojo`/`listo`/`en_camino_entrega` (Evolution API). Panel imprime boleta 80mm (Epson TM-T20II) vía QZ Tray (`src/internal/qz.ts`, builder ESC/POS) con fallback window.print; auto-impresión OFF por defecto (solo reservas nuevas post-apertura).
 - Panel marca "Auto", días cerrados por sede/franja (`day_closures`), búsqueda por código/teléfono/nombre.

@@ -49,7 +49,7 @@ export interface BookingEnv {
 
 export interface BookingResult {
   status: number;
-  body: { ok: boolean; error?: string; bookingCode?: string };
+  body: { ok: boolean; error?: string; bookingCode?: string; whatsappDelivered?: boolean };
 }
 
 // ── Tiempo Lima ──────────────────────────────────────────────
@@ -604,6 +604,9 @@ export async function handleBooking(options: {
   };
 
   // ── Persistencia: la reserva queda registrada aunque falle el envío ──
+  // dbOk = la reserva YA vive en la BD: si el WhatsApp falla, respondemos
+  // 200 con whatsappDelivered=false (el cliente NO reintenta → cero duplicados).
+  let dbOk = false;
   if (db) {
     try {
       const closed = await db.isClosed(payload.branch, payload.date, payload.timeRange);
@@ -617,6 +620,7 @@ export async function handleBooking(options: {
         };
       }
       const inserted = await db.insertBooking(payloadToRow(payload, normalized.mapsUrl ?? null));
+      dbOk = true;
       if (inserted.code === "23505") {
         // Código ya registrado (reintentos de la web). Si el aviso a la
         // veterinaria nunca llegó, el flujo de abajo lo reenvía; si ya se
@@ -686,6 +690,15 @@ export async function handleBooking(options: {
   await sendToBackupWebhook(normalized, delivered, env, fetcher);
 
   if (!delivered) {
+    // La reserva vive en la BD pero el aviso no salió: 200 suave para que el
+    // dueño NO reenvie (evita duplicados). El panel marca ⚠️ WhatsApp para
+    // reenviar. Solo si la capa de datos no guardó nada se mantiene el 502.
+    if (dbOk) {
+      return {
+        status: 200,
+        body: { ok: true, bookingCode: payload.bookingCode, whatsappDelivered: false },
+      };
+    }
     return {
       status: 502,
       body: { ok: false, error: error ?? "No se pudo entregar la reserva. Intenta de nuevo." },

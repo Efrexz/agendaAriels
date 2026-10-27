@@ -17,6 +17,8 @@ export interface SubmitResult {
   ok: boolean;
   error?: string;
   bookingCode?: string;
+  /** false → la reserva se registró pero el aviso por WhatsApp no salió. */
+  whatsappDelivered?: boolean;
 }
 
 function formatDate(dateStr: string): string {
@@ -104,7 +106,15 @@ export async function submitBooking(formData: FormData): Promise<SubmitResult> {
       return { ok: false, error: data?.error ?? `Error del servidor (${response.status})` };
     }
 
-    return { ok: true, bookingCode: payload.bookingCode };
+    const data = (await response.json().catch(() => null)) as
+      | { bookingCode?: string; whatsappDelivered?: boolean }
+      | null;
+    return {
+      ok: true,
+      bookingCode: payload.bookingCode,
+      // El endpoint antiguo (webhook de desarrollo) no manda la bandera: tratamos como entregado.
+      whatsappDelivered: data?.whatsappDelivered !== false,
+    };
   } catch (err) {
     return { ok: false, error: err instanceof Error ? err.message : "Error de conexión" };
   }

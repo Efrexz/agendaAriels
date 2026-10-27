@@ -351,7 +351,7 @@ describe("handleBooking", () => {
     expect(calls).toHaveLength(1);
   });
 
-  it("retorna 502 si Evolution falla todos los reintentos", async () => {
+  it("retorna 502 si Evolution falla todos los reintentos (sin BD: no hay dónde guardar)", async () => {
     const fn = vi.fn(async () => new Response("{}", { status: 503 }));
     const result = await handleBooking({
       body: payload({
@@ -365,6 +365,58 @@ describe("handleBooking", () => {
     });
     expect(result.status).toBe(502);
     expect(result.body.ok).toBe(false);
+  });
+
+  it("BD-OK + Evolution caído → 200 suave con whatsappDelivered:false (sin duplicados)", async () => {
+    const db: BookingDb = {
+      isClosed: vi.fn(async () => false),
+      insertBooking: vi.fn(async () => ({ code: "00000" })),
+      findByCode: vi.fn(async () => null),
+      recordStatus: vi.fn(),
+      setWhatsappDelivered: vi.fn(),
+    } as unknown as BookingDb;
+    void db.recordStatus; void db.setWhatsappDelivered;
+    const fn = vi.fn(async () => new Response("{}", { status: 503 }));
+    const result = await handleBooking({
+      body: payload({
+        ...base,
+        ownerLat: -12.0206,
+        ownerLng: -77.0865,
+      }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    expect(result.status).toBe(200);
+    expect(result.body.ok).toBe(true);
+    expect(result.body.whatsappDelivered).toBe(false);
+    expect(result.body.bookingCode).toBe("VA-TEST1");
+  });
+
+  it("23505 (duplicado web) + WhatsApp caído + BD-OK → también 200 suave", async () => {
+    const db: BookingDb = {
+      isClosed: vi.fn(async () => false),
+      insertBooking: vi.fn(async () => ({ code: "23505" })),
+      findByCode: vi.fn(async () => ({ id: "x", whatsappDelivered: false }) as unknown as BookingRecord),
+      recordStatus: vi.fn(),
+      setWhatsappDelivered: vi.fn(),
+    } as unknown as BookingDb;
+    void db.recordStatus; void db.setWhatsappDelivered;
+    const fn = vi.fn(async () => new Response("{}", { status: 503 }));
+    const result = await handleBooking({
+      body: payload({
+        ...base,
+        ownerLat: -12.0206,
+        ownerLng: -77.0865,
+      }),
+      env: ENV_FULL,
+      now: NOW,
+      fetcher: fn,
+      db,
+    });
+    expect(result.status).toBe(200);
+    expect(result.body.whatsappDelivered).toBe(false);
   });
 
   it("respaldó en BACKUP_WEBHOOK_URL cuando Evolution falló", async () => {

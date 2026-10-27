@@ -237,6 +237,9 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   const [submitState, setSubmitState] = useState<SubmitState>("idle");
   const [submitError, setSubmitError] = useState<string>("");
   const [bookingCode, setBookingCode] = useState<string>("");
+  // WhatsApp falló pero la reserva quedó registrada: aviso ámbar suave
+  // (sin rojo ni "Reintentar" → el dueño no genera reservas duplicadas).
+  const [waNotDelivered, setWaNotDelivered] = useState(false);
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
@@ -283,6 +286,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
       saveClientProfileMerged(formData);
       setSubmitState("success");
       setBookingCode(result.bookingCode ?? "");
+      setWaNotDelivered(result.whatsappDelivered === false);
     } else {
       setSubmitState("error");
       setSubmitError(result.error ?? "Ocurrió un error inesperado");
@@ -302,9 +306,18 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
           animate={{ opacity: 1, scale: 1, y: 0 }}
           transition={{ duration: 0.4, ease: "easeOut" }}
         />
-        <h2 className="text-center text-step-title font-display font-bold tracking-tight text-green-700">
-          ¡Solicitud enviada con éxito!
+        <h2 className={`text-center text-step-title font-display font-bold tracking-tight ${waNotDelivered ? "text-amber-700" : "text-green-700"}`}>
+          {waNotDelivered ? "¡Reserva registrada!" : "¡Solicitud enviada con éxito!"}
         </h2>
+
+        {waNotDelivered && (
+          <div className="max-w-md rounded-2xl bg-amber-50 px-5 py-3 text-center ring-1 ring-amber-200">
+            <p className="text-xs leading-relaxed text-amber-800">
+              ⚠️ No pudimos entregar el aviso por WhatsApp a la veterinaria en este momento, pero{" "}
+              <b>tu reserva ya quedó registrada en su panel</b> — te confirmamos por WhatsApp o llamada en breve.
+            </p>
+          </div>
+        )}
 
         {bookingCode && (
           <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4 text-center">
