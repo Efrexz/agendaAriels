@@ -1,0 +1,16 @@
+import { chromium } from "playwright";
+const browser = await chromium.launch();
+const page = await (await browser.newContext({ viewport: { width: 390, height: 1100 } })).newPage();
+const errs = [];
+page.on("pageerror", e => errs.push(e.message.slice(0, 120)));
+await page.goto("http://localhost:5173/medical.html", { waitUntil: "domcontentloaded" });
+await page.waitForTimeout(1300);
+await page.locator("button", { hasText: "Seleccionar sede" }).first().click();
+await page.locator("button", { hasText: "Ver servicios disponibles" }).click();
+await page.waitForTimeout(1300);
+await page.screenshot({ path: "/tmp/opencode/screens/serv-v2-mv.png", fullPage: true });
+await page.locator("button", { hasText: "Consulta General" }).click();
+await page.waitForTimeout(1300);
+const ok = await page.locator("button", { hasText: "Dra. Karla" }).count();
+console.log("flujo OK:", ok === 1, "pageerrors:", errs.length);
+await browser.close();

@@ -1255,3 +1255,16 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   eco con el día naranja seleccionado del calendario. ③ CERO lógica: mismo chooseService,
   mismo SERVICES. QA pw mv390/dk1280: paso servicio + doctor tras click + agenda, 0 pageerrors.
   Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10. Pendiente: revisión usuario/jefe + push.
+- 2026-10-27 — **WIZARD MEDICO — CARDS SERVICIO V2: fidelidad al mockup (halo + ola + rayitas
+  ancladas)** (iteración visual sobre 7503dac tras comparación lado-a-lado del usuario):
+  ① HALO doble círculo: foto ya no flota sola — círculo pastel del TINTE (escala 200) MÁS
+  GRANDE que la foto desplazado arriba-izquierda (-left-5/-top-5 mv, -left-6/-top-6 sm,
+  h-7.5rem→h-40) asoma como colchón de color alrededor; el foto+margen m-2 da aire. ② OLA:
+  el círculo chico esquina se sustituye por elipse GRANDE (-bottom-16/-left-12 h-44 w-72
+  rounded-[100%]) + SEGUNDA ola más profunda y más tenue detrás (opacity-50) — llena el
+ 的下 left como en el mockup. ③ RAYITAS "¡" ahora ancladas al contenedor de la FOTO (no a la
+  card): rotadas 55°/75° abrazan el arco superior-izquierdo del halo — en móvil y desktop
+  siempre en el mismo lugar relativo a la imagen, jamás flotando en el pastel. QA pw dk/mv
+  contra referencia.jpeg: zoom a card "Consulta General" = halo+rayitas+ola fieles; flujo
+  general→doctor OK en ambos viewports; 0 pageerrors. Gates: lint 0, tc doble 0, build,
+  268 tests, e2e 10/10. Push incluido.

@@ -122,15 +122,16 @@ function especialidadIcon(name: string): LucideIcon {
 // resultado bueno"). Clases neveras 100-200 suaves: texto navy/slate legible.
 const SERVICE_TINT: Record<ServiceType, {
   card: string;    // pastel de fondo de toda la card
-  blob: string;    // círculo profundo tras la foto (onda del mockup)
+  halo: string;    // círculo pastel DESPLAZADO detrás de la foto (doble círculo del mockup)
+  blob: string;    // ola grande inferior
   iconText: string; // color del icono sobre tile blanco
   arrow: string;   // círculo flecha
-  deco: string;    // rayitas decorativas
+  deco: string;    // rayitas decorativas pegadas a la foto
 }> = {
-  general: { card: "bg-blue-100/50", blob: "bg-blue-200/60", iconText: "text-brand-blue", arrow: "bg-brand-blue", deco: "bg-orange-300" },
-  rayos: { card: "bg-cyan-100/50", blob: "bg-cyan-200/60", iconText: "text-cyan-700", arrow: "bg-cyan-500", deco: "bg-cyan-300" },
-  eco: { card: "bg-orange-100/60", blob: "bg-orange-200/70", iconText: "text-brand-orange", arrow: "bg-brand-orange", deco: "bg-orange-300" },
-  especializada: { card: "bg-green-100/50", blob: "bg-green-200/60", iconText: "text-green-600", arrow: "bg-green-500", deco: "bg-green-300" },
+  general: { card: "bg-blue-100/50", halo: "bg-blue-200", blob: "bg-blue-200/70", iconText: "text-brand-blue", arrow: "bg-brand-blue", deco: "bg-orange-300" },
+  rayos: { card: "bg-cyan-100/50", halo: "bg-cyan-200", blob: "bg-cyan-200/70", iconText: "text-cyan-700", arrow: "bg-cyan-500", deco: "bg-cyan-300" },
+  eco: { card: "bg-orange-100/60", halo: "bg-orange-200", blob: "bg-orange-200/80", iconText: "text-brand-orange", arrow: "bg-brand-orange", deco: "bg-orange-400" },
+  especializada: { card: "bg-green-100/50", halo: "bg-green-200", blob: "bg-green-200/70", iconText: "text-green-600", arrow: "bg-green-500", deco: "bg-green-300" },
 };
 
 export default function App() {
@@ -448,18 +449,23 @@ export default function App() {
                           transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 + i * 0.08 }}
                           className={`group relative flex items-center gap-4 overflow-hidden rounded-3xl p-4 pl-5 pr-4 text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/50 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] ${t.card}`}
                         >
-                          {/* Onda profunda tras la foto + rayitas decorativas */}
-                          <span aria-hidden className={`pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full ${t.blob}`} />
-                          <span aria-hidden className={`pointer-events-none absolute right-5 top-4 h-1.5 w-5 -rotate-[20deg] rounded-full ${t.deco}`} />
-                          <span aria-hidden className={`pointer-events-none absolute right-10 top-7 h-1.5 w-2.5 rotate-[30deg] rounded-full ${t.deco}`} />
+                          {/* Ola grande que sube desde la izquierda + segunda ola tenue detrás */}
+                          <span aria-hidden className={`pointer-events-none absolute -bottom-16 -left-12 h-44 w-72 rounded-[100%] ${t.blob}`} />
+                          <span aria-hidden className={`pointer-events-none absolute -bottom-24 -left-20 h-48 w-80 rounded-[100%] opacity-50 ${t.blob}`} />
 
-                          {/* Foto circular con aro blanco (el blob queda detrás) */}
-                          <span className="relative z-10 h-24 w-24 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg sm:h-32 sm:w-32">
-                            <LazyImage
-                              src={img.src}
-                              alt={img.alt}
-                              className="transition-transform duration-500 ease-out group-hover:scale-105"
-                            />
+                          {/* Foto circular con doble círculo (halo pastel DESPLAZADO más grande detrás)
+                              y rayitas "¡" abrazando el arco superior-izquierdo del halo */}
+                          <span className="relative z-10 shrink-0 m-2 sm:m-2.5">
+                            <span aria-hidden className={`pointer-events-none absolute -left-5 -top-5 h-[7.5rem] w-[7.5rem] rounded-full ${t.halo} sm:-left-6 sm:-top-6 sm:h-40 sm:w-40`} />
+                            <span aria-hidden className={`pointer-events-none absolute -left-6 -top-3 h-5 w-1.5 -rotate-[55deg] rounded-full ${t.deco}`} />
+                            <span aria-hidden className={`pointer-events-none absolute -left-9 top-1 h-3.5 w-1.5 -rotate-[75deg] rounded-full ${t.deco}`} />
+                            <span className="relative block h-24 w-24 overflow-hidden rounded-full ring-4 ring-white shadow-lg sm:h-32 sm:w-32">
+                              <LazyImage
+                                src={img.src}
+                                alt={img.alt}
+                                className="transition-transform duration-500 ease-out group-hover:scale-105"
+                              />
+                            </span>
                           </span>
 
                           {/* Contenido: tile de icono + título, descripción, flecha abajo-derecha */}
