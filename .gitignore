@@ -32,3 +32,4 @@ blob-report
 playwright/.cache
 .vercel
 .env*
+referencia.*
