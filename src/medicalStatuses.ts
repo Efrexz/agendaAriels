@@ -20,7 +20,7 @@ export const MED_STATUS_META: Record<string, MedStatusMeta> = {
     id: "pagado",
     label: "Pago verificado",
     emoji: "💰",
-    badge: "bg-yellow-100 text-yellow-800",
+    badge: "bg-amber-100 text-amber-800",
   },
   asignada: {
     id: "asignada",

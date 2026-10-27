@@ -6,7 +6,7 @@ import { BRANCH_LABELS, SLOT_LABELS } from "../statuses";
 const BRANCH_OPTIONS = Object.entries(BRANCH_LABELS);
 
 export function ClosuresPanel({
-  closures,
+  closures: list,
   onChanged,
   hidden,
 }: {
@@ -15,6 +15,7 @@ export function ClosuresPanel({
   hidden: boolean;
 }) {
   const [open, setOpen] = useState(false);
+  const closures = list ?? [];
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [warn, setWarn] = useState<string | null>(null);

@@ -89,11 +89,11 @@ function SuggestField({ kind, value, onSelect, placeholder }: {
             >{n}</button>
           ))}
           {showAdd && (
-            <button
-              onMouseDown={(e) => e.preventDefault()}
-              onClick={() => void agregar()}
-              className="rounded-full bg-green-600 px-2.5 py-0.5 text-[11px] font-bold text-white transition hover:bg-green-700"
-            >
+              <button
+                onMouseDown={(e) => e.preventDefault()}
+                onClick={() => void agregar()}
+                className="rounded-full bg-brand-blue px-2.5 py-0.5 text-[11px] font-bold text-white transition hover:bg-blue-700"
+              >
               {adding ? "Agregando…" : `➕ Agregar "${value.trim()}"`}
             </button>
           )}
@@ -143,9 +143,9 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
       setQuery(term);
       try {
         const { orders: results } = await fetchLabList("active", branch, term);
-        if (active) setSearchResults(results);
-      } catch {
-        /* silencioso */
+        if (active) setSearchResults(results ?? []);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "No se pudo abrir el código del historial");
       }
     })();
     return () => {
@@ -162,7 +162,7 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
       try {
         const { orders: list } = await fetchLabList(vista, branch, "");
         if (active) {
-          setOrders(list);
+          setOrders(list ?? []);
           setError(null);
         }
       } catch (err) {
@@ -213,10 +213,14 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
     searchTimerRef.current = setTimeout(() => {
       void (async () => {
         try {
-          const { orders: results } = await fetchLabList("active", branch, raw.trim());
-          if (searchSeqRef.current === mySeq) setSearchResults(results);
-        } catch {
-          /* conserva lo anterior */
+          // Busca dentro de la vista ACTIVA (hoy/semana incluyen entregadas;
+          // solo "active" se limitaría a lo en curso).
+          const { orders: results } = await fetchLabList(vista, branch, raw.trim());
+          if (searchSeqRef.current === mySeq) setSearchResults(results ?? []);
+        } catch (err) {
+          if (searchSeqRef.current === mySeq) {
+            setError(err instanceof Error ? err.message : "Error al buscar");
+          }
         }
       })();
     }, 300);
@@ -226,6 +230,17 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
 
   return (
     <div>
+      {/* Encabezado (aún no existía: Historial sí lo tiene) */}
+      <header className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-brand-orange">
+          <span className="text-lg">🧪</span>
+        </div>
+        <div>
+          <h2 className="font-display text-lg font-bold leading-tight text-slate-900">Laboratorio</h2>
+          <p className="text-xs text-slate-500"> Cuaderno digital de exámenes externos, resultados y seguimiento</p>
+        </div>
+      </header>
+
       {/* Controles */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {([["active", "En curso"], ["today", "Hoy"], ["week", "Última semana"]] as Array<[LabView, string]>).map(([v, label]) => (
@@ -251,7 +266,7 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
         />
         <button
           onClick={() => setNewOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           <PlusCircle className="h-4 w-4" /> ＋ Nueva orden
         </button>
@@ -366,7 +381,16 @@ function LabCard({ o, onStatus, onChanged }: {
 
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ${LAB_BORDER[o.status] ?? "border-l-slate-300"} ${o.overdue ? "ring-2 ring-amber-400" : "ring-slate-200"}`}>
-      <div className="flex cursor-pointer items-center justify-between gap-3 p-4" onClick={() => setOpen((v) => !v)}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
+        }}
+        className="flex cursor-pointer items-center justify-between gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
+        onClick={() => setOpen((v) => !v)}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-800">
@@ -618,7 +642,7 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
               <button
                 onClick={() => void guardar()}
                 disabled={busy || !canSave}
-                className="rounded-xl bg-green-600 py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="rounded-xl bg-brand-blue py-2.5 text-sm font-semibold text-white disabled:opacity-50"
               >
                 {busy ? "Registrando…" : "Registrar orden"}
               </button>

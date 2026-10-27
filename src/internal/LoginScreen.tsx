@@ -41,7 +41,7 @@ export function LoginScreen() {
           )}
           <h1 className="font-display text-xl font-bold text-slate-900">Panel Interno</h1>
           <p className="font-hand text-lg leading-none text-brand-orange">Ariels Clinic</p>
-          <p className="text-sm text-slate-500">Veterinaria Ariel · Grooming</p>
+          <p className="text-sm text-slate-500">Veterinaria Ariel · Panel del personal</p>
         </div>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <label className="flex flex-col gap-1.5">

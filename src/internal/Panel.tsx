@@ -76,13 +76,14 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
           fetchDay(date, branch),
           fetchClosures(),
         ]);
+        const dayList = day ?? [];
         if (!active) return;
-        setBookings(day);
-        setClosures(closed);
+        setBookings(dayList);
+        setClosures(closed ?? []);
         setError(null);
         // Solo reservas nuevas (creadas tras abrir el panel) y aún no vistas:
         // el corte por createdAt elimina la cascada al cambiar fecha/sede.
-        const incoming = day.filter(
+        const incoming = dayList.filter(
           (b) =>
             b.status === "pendiente" &&
             new Date(b.createdAt).getTime() > (sessionStartRef.current ?? Number.MAX_SAFE_INTEGER) &&
@@ -91,7 +92,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
         if (autoPrintRef.current && incoming.length > 0) {
           for (const b of incoming) void printViaQz(b);
         }
-        for (const b of day) seenIdsRef.current.add(b.id);
+        for (const b of dayList) seenIdsRef.current.add(b.id);
       } catch (err) {
         if (!active) return;
         setError(err instanceof Error ? err.message : "Error al cargar");

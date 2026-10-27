@@ -295,7 +295,13 @@ function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boole
   return (
     <article className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
       <div
-        className="flex cursor-pointer items-center gap-3 p-3.5"
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onToggle(); }
+        }}
+        className="flex cursor-pointer items-center gap-3 p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
         onClick={onToggle}
       >
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${kind.chip}`}>{kind.label}</span>
@@ -306,7 +312,7 @@ function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boole
         <div className="hidden min-w-0 shrink-0 sm:block">
           <p className="truncate text-xs text-slate-400">{it.timeLabel}</p>
         </div>
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${it.statusBadge}`}>{it.statusLabel}</span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${it.statusBadge}`}>{it.statusLabel}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
       </div>
 

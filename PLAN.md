@@ -1172,3 +1172,31 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   aprobado web mientras el usuario RE-SUBE el PNG (reconversión con
   -pix_fmt yuva420p). Gates (ją zux): lint 0, tc doble 0, build,
   268 tests, e2e 10/10. Push: cap🏷 caption
+- 2026-10-27 — **FASES 1-3 DEL PLAN UX: resultadoListo + HORARIOS EN CONFIG +
+  CONSISTENCIA DEL PANEL**: ① el usuario re-subió resultadoListo.webp con
+  alpha real (PIL: 47.7% transparente, sujeto en ~254); mascots.ts instancia
+  LAB_MASCOT.resultado_listo al archivo final de nuevo ((sin TODO); QA visual
+  en 3 fondos del card sin ajedrez. ② Pestaña "Horarios médicos" ELIMINADA del
+  TABS de App.tsx: pasa a sección desplegable 📅 en ConfigTab
+  (HorariosSection: subtítulo "el horario semanal que ve el cliente al
+  agendar", colapsada por defecto) + editor pulido: guía de 3 pasos, leyenda
+  fija (sin hover), celdas h-6 w-11 con hover rojo para quitar bloque,
+  aria-label por celda y flash "✓ Guardado — ya se ve en la web" tras toggle
+  (timer con cleanup). HistTarget nunca apuntó a horarios: saltos intactos.
+  ③ CONSISTENCIA: ConsultasTab/LabTab header propio (Historial ya lo tenía),
+  empty state de búsqueda en consultas, búsqueda de lab respeta la vista
+  activa y con error visible, saltos desde Historial con feedback (sin catch
+  silencioso), dead button hidden de ApptCard eliminado (prop onChanged
+  retirada de ApptCard), pagado yellow→amber (badge+borde), CTAs de creación
+  green-600→brand-blue (cita manual, asignar, nueva orden, registrar, ➕ del
+  catálogo), badge de historial text-[10px]→text-xs, login copy "Grooming"→
+  "Panel del personal", accordeones con a11y (role=button/tabIndex/
+  aria-expanded/Enter-Espacio en ApptCard/LabCard/BookingCard/HistoryCard),
+  TAB_ACTIVE por dominio (grooming azul/consultas sky/lab naranja). ④ DEFENSA
+  hallada POR EL QA (fake-session vía parche de getSession en el dep de
+  supabase): bodies malformados de API en dev ya no crashean el panel —
+  guards ?? [] en Panel/ConsultasTab/LabTab/ConfigTab/HorariosTab/
+  ClosuresPanel (closures/propprenom). Gates: lint 0, typecheck doble 0,
+  build, 268 tests; capturas playwright del panel (grooming/consultas/lab/
+  config-horarios/estado) LIMPIAS: 0 pageerrors. Pendiente: revisión usuario
+  + push.

@@ -162,7 +162,13 @@ export function BookingCard({
       {printing && <PrintableTicket booking={booking} />}
 
       <div
-        className={`no-print flex cursor-pointer items-center gap-3 p-4 ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
+        }}
+        className={`no-print flex cursor-pointer items-center gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset ${open ? "rounded-t-2xl" : "rounded-2xl"}`}
         onClick={() => setOpen((v) => !v)}
       >
         {/* Avatar de la mascota (icono por especie) */}

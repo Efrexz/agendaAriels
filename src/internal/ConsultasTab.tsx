@@ -60,9 +60,9 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
       setQuery(term);
       try {
         const { results } = await searchMedAppts(term);
-        if (active) setSearchResults(results);
-      } catch {
-        /* silencioso */
+        if (active) setSearchResults(results ?? []);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "No se pudo abrir el código del historial");
       }
     })();
     return () => {
@@ -79,18 +79,18 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
         if (vista === "semana") {
           const parts = await Promise.all([0, 1, 2, 3, 4, 5, 6].map((i) => fetchMedDay(isoPlus(i), branch)));
           if (active) {
-            setAppts(parts.flatMap((p) => p.appointments));
+            setAppts(parts.flatMap((p) => p.appointments ?? []));
             setError(null);
           }
         } else {
           const day = await fetchMedDay(vista === "hoy" ? limaISO() : isoPlus(1), branch);
           if (active) {
-            setAppts(day.appointments);
+            setAppts(day.appointments ?? []);
             setError(null);
           }
         }
         const pending = await fetchMedPending(branch);
-        if (active) setPendings(pending.appointments);
+        if (active) setPendings(pending.appointments ?? []);
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");
       } finally {
@@ -136,6 +136,17 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
 
   return (
     <div>
+      {/* Encabezado (aún no existía: Historial sí lo tiene) */}
+      <header className="mb-4 flex items-center gap-3">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-brand-blue">
+          <span className="text-lg">🩺</span>
+        </div>
+        <div>
+          <h2 className="font-display text-lg font-bold leading-tight text-slate-900">Citas médicas</h2>
+          <p className="text-xs text-slate-500"> Agenda del día/semana, búsquedas y pendientes</p>
+        </div>
+      </header>
+
       {/* Por asignar (especializadas) — siempre visible arriba */}
       <PendientesBox pendings={pendings} onChanged={() => setTick((t) => t + 1)} />
 
@@ -173,7 +184,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
               void (async () => {
                 try {
                   const { results } = await searchMedAppts(raw.trim());
-                  if (searchSeqRef.current === mySeq) setSearchResults(results);
+                  if (searchSeqRef.current === mySeq) setSearchResults(results ?? []);
                 } catch {
                   /* conserva lo anterior */
                 }
@@ -185,7 +196,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
         />
         <button
           onClick={() => setManualOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-green-600 px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-green-700"
+          className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
         >
           <PlusCircle className="h-4 w-4" /> ＋ Cita manual
         </button>
@@ -194,9 +205,14 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
       {error && <p className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
       {searchResults && (
-        <div className="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
+        <div className="no-print mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
           <p className="mb-2 text-xs text-slate-500">Resultados de búsqueda ({searchResults.length})</p>
-          {searchResults.map((a) => <ApptCard key={a.id} a={a} onChanged={() => { setSearchResults(null); setQuery(""); setTick((t) => t + 1); }} onStatus={setApptStatus} />)}
+          {searchResults.length === 0 && (
+            <p className="px-2 py-4 text-center text-sm text-slate-400">
+              Sin resultados para "{query}".
+            </p>
+          )}
+          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} />)}
         </div>
       )}
 
@@ -216,7 +232,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
                 <span className="text-slate-400">({list.length})</span>
               </h3>
               <div className="flex flex-col gap-2">
-                {list.map((a) => <ApptCard key={a.id} a={a} onChanged={() => setTick((t) => t + 1)} onStatus={setApptStatus} />)}
+                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} />)}
               </div>
             </section>
           ))}
@@ -360,7 +376,7 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
             <span className="text-xs text-slate-400">(ej. 9:15, respetando el horario del doctor)</span>
           </div>
           {startMin !== null && (
-            <button onClick={() => void asignar()} disabled={busy} className="mt-3 w-full rounded-lg bg-green-600 py-2 text-sm font-semibold text-white disabled:opacity-50">
+            <button onClick={() => void asignar()} disabled={busy} className="mt-3 w-full rounded-lg bg-brand-blue py-2 text-sm font-semibold text-white disabled:opacity-50">
               Asignar y pasar a 'asignada'
             </button>
           )}
@@ -377,7 +393,7 @@ interface MedDoctorLite { id: string; name: string; kind: string; specialty: str
 // Borde de color por estado (mismo semáforo que las cards de grooming).
 const MED_BORDER: Record<string, string> = {
   solicitud: "border-l-amber-400",
-  pagado: "border-l-yellow-400",
+  pagado: "border-l-amber-400",
   asignada: "border-l-blue-500",
   confirmada: "border-l-green-500",
   en_consulta: "border-l-sky-500",
@@ -386,9 +402,8 @@ const MED_BORDER: Record<string, string> = {
   cancelado: "border-l-red-500",
 };
 
-function ApptCard({ a, onChanged, onStatus }: {
+function ApptCard({ a, onStatus }: {
   a: MedAppt;
-  onChanged: () => void;
   onStatus: (a: MedAppt, status: string) => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -401,7 +416,16 @@ function ApptCard({ a, onChanged, onStatus }: {
 
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${MED_BORDER[a.status] ?? "border-l-slate-300"}`}>
-      <div className="flex cursor-pointer items-center justify-between gap-3 p-4" onClick={() => setOpen((v) => !v)}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={open}
+        onKeyDown={(e) => {
+          if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
+        }}
+        className="flex cursor-pointer items-center justify-between gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
+        onClick={() => setOpen((v) => !v)}
+      >
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
             <p className="truncate text-sm font-semibold text-slate-800">
@@ -447,7 +471,6 @@ function ApptCard({ a, onChanged, onStatus }: {
               </ul>
             </details>
           )}
-          <button onClick={onChanged} className="hidden" />
         </div>
       )}
     </article>
