@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Copy, Loader2 } from "lucide-react";
 import { createSchedule, deleteSchedule, fetchSchedules, fetchCatalog, type ScheduleWithDoctor } from "./apiMedical";
 
-// Editor visual de horarios semanal: 7 días, bloques por doctor.
+// Editor visual de horarios semanal: 7 días, bloques por doctor de media hora.
 // El counter pinta/limpia con clicks; "Duplicar" copia todos los bloques
-// de un doctor a otro (para cuando la semantics es la misma). Sin campos de texto.
+// de un doctor a otro (para cuando la semántica es la misma). Sin campos de texto.
+// Vive como sección desplegable dentro de ⚙ Config (tarea de baja frecuencia).
 
 const DIAS_LARGO = ["Dom", "Lun", "Mar", "Mié", "Jue", "Vie", "Sáb"];
 
@@ -30,6 +31,8 @@ export function HorariosTab() {
   const [doctors, setDoct] = useState<DoctorLite[] | null>(null);
   const [selected, setSelected] = useState<string>("");
   const [busy, setBusy] = useState(false);
+  const [savedFlash, setSavedFlash] = useState(false);
+  const flashTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   // Carga: setState tras await (IIFE)
@@ -43,9 +46,10 @@ export function HorariosTab() {
           fetchCatalog(),
         ]);
         if (active) {
-          setSchedules(s);
-          setDoct(ds);
-          if (!selected && ds[0]) setSelected(ds.find((d) => d.active)?.id ?? "");
+          setSchedules(s ?? []);
+          setDoct(ds ?? []);
+          const actives = (ds ?? []).filter((d) => d.active);
+          if (!selected && actives[0]) setSelected(actives[0].id);
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");
@@ -97,6 +101,10 @@ export function HorariosTab() {
       }
       const { schedules: s } = await fetchSchedules();
       setSchedules(s);
+      // Confirmación instantánea de que el cambio ven los clientes en la web.
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+      setSavedFlash(true);
+      flashTimerRef.current = setTimeout(() => setSavedFlash(false), 1800);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error al guardar el horario");
     } finally {
@@ -104,16 +112,25 @@ export function HorariosTab() {
     }
   }
 
+  // Limpieza del timer de confirmación al desmontar
+  useEffect(
+    () => () => {
+      if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
+    },
+    [],
+  );
+
   return (
     <div>
-      <p className="mb-4 rounded-2xl bg-blue-50 p-3 text-xs text-blue-800 ring-1 ring-blue-200">
-        🗓 Este horario semanal es el que ven los clientes al agendar. La mayoría de las semanas
-        no cambia nada: solo edita cuando el doctor muda su hora. Marca/Desmarca los bloques de
-        media hora. Para otro doctor con el MISMO horario usa "Duplicar desde".
+      <p className="mb-4 rounded-2xl bg-blue-50 p-3 text-xs leading-relaxed text-blue-800 ring-1 ring-blue-200">
+        🗓 <b>Este horario semanal es el que ve el cliente al agendar una cita en la web.</b> En 3 pasos:
+        ① elige al doctor, ② pinta sus bloques de media hora con clic, ③ si otro doctor repite el MISMO horario,
+        usa "Duplicar desde…" y no lo pintes otra vez.
       </p>
 
       {/* Selector de doctor */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
+        <span className="text-xs font-semibold text-slate-600">Paso 1 · Doctor:</span>
         <select
           value={selected}
           onChange={(e) => setSelected(e.target.value)}
@@ -132,9 +149,23 @@ export function HorariosTab() {
           finally { setBusy(false); }
         }} />
         {busy && <Loader2 className="h-4 w-4 animate-spin text-slate-400" />}
+        {!busy && savedFlash && <span className="flex items-center gap-1 text-xs font-semibold text-green-700">✓ Guardado — ya se ve en la web</span>}
       </div>
 
       {error && <p className="mb-3 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
+
+      <p className="mb-2 text-xs font-semibold text-slate-600">Paso 2 · Pinta el horario de la semana:</p>
+      {/* Leyenda sin hover: regla fija, no tooltips */}
+      <div className="no-print mb-2 flex flex-wrap items-center gap-x-4 gap-y-1.5 rounded-xl bg-slate-50 px-3 py-2 text-[11px] text-slate-600">
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3.5 w-6 rounded bg-brand-blue" aria-hidden />
+          El doctor <b>atiende</b> (clic lo QUITA completo)
+        </span>
+        <span className="flex items-center gap-1.5">
+          <span className="inline-block h-3.5 w-6 rounded border border-slate-200 bg-white" aria-hidden />
+          Celda vacía: clic <b>AGREGA</b> media hora
+        </span>
+      </div>
 
       {/* Cuadrícula: Día × bloques de 30min (8:00-21:30) */}
       <div className="overflow-x-auto rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200">
@@ -156,10 +187,11 @@ export function HorariosTab() {
                       <button
                         onClick={() => void toggle(wd, m)}
                         disabled={busy}
+                        aria-label={`${DIAS_LARGO[wd]} ${horaLbl(m)}: ${block ? `bloque ${horaLbl(block.startMinute)}–${horaLbl(block.endMinute)} — clic para QUITAR` : "clic para AGREGAR media hora"}`}
                         title={block ? `${horaLbl(block.startMinute)}–${horaLbl(block.endMinute)} — clic para QUITAR el bloque completo` : "Clic para MARCAR media hora aquí"}
-                        className={`h-5 w-10 rounded border ${block
-                          ? "border-brand-blue bg-brand-blue"
-                          : coveredStarts.has(m) ? "border-transparent bg-transparent" : "border-slate-100 bg-slate-50 hover:bg-blue-100"}`}
+                        className={`h-6 w-11 rounded border align-middle ${block
+                          ? "border-brand-blue bg-brand-blue hover:bg-red-500 hover:border-red-500"
+                          : coveredStarts.has(m) ? "border-transparent bg-transparent" : "border-slate-200 bg-slate-50 hover:bg-blue-100 hover:border-blue-300"}`}
                       />
                     </td>
                   );
@@ -168,9 +200,6 @@ export function HorariosTab() {
             ))}
           </tbody>
         </table>
-        <p className="mt-2 text-[11px] text-slate-400">
-          Clic en un celda vacía marca media hora (el bloque azul completo se quita con un clic en él).
-        </p>
       </div>
     </div>
   );

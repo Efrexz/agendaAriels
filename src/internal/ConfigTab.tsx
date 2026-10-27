@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { Plus } from "lucide-react";
+import { ChevronDown, Plus } from "lucide-react";
 import { createDoctor, createSpecialty, fetchCatalog, fetchMedConfig, putMedConfig, updateCatalog, type MedDoctorPanel, type MedSpecialtyPanel } from "./apiMedical";
 import { MED_BRANCHES } from "../medical/api";
+import { HorariosTab } from "./HorariosTab";
 
-// Pestaña Config: duración de cita, texto de métodos de pago, doctores y especialidades.
+// Pestaña Config: duración de cita, texto de métodos de pago, doctores,
+// especialidades y horarios médicos (tareas de baja frecuencia del counter).
 
 export function ConfigTab() {
   const [config, setConfigState] = useState<Record<string, string> | null>(null);
@@ -24,7 +26,7 @@ export function ConfigTab() {
           fetchMedConfig(),
           fetchCatalog(),
         ]);
-        if (active) { setConfigState(c); setDocs(d); setSpecialties(s); }
+        if (active) { setConfigState(c ?? {}); setDocs(d ?? []); setSpecialties(s ?? []); }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");
       } finally {
@@ -205,7 +207,31 @@ export function ConfigTab() {
           </button>
         </div>
       </section>
+
+      {/* Horarios médicos: sección desplegable (tarea de baja frecuencia, no
+          debería ocupar una pestaña propia ni robar atención en el día a día) */}
+      <HorariosSection />
     </div>
+  );
+}
+
+function HorariosSection() {
+  const [open, setOpen] = useState(false);
+  return (
+    <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+      <button
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        className="flex w-full items-center gap-3 text-left"
+      >
+        <span className="min-w-0 flex-1">
+          <h3 className="text-sm font-bold text-slate-800 block">📅 Horarios médicos de la web</h3>
+          <p className="text-xs text-slate-500">El horario semanal que ve un cliente al agendar una cita en la web. Se toca solo cuando un doctor muda su horario.</p>
+        </span>
+        <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />
+      </button>
+      {open && <div className="mt-4 border-t border-slate-100 pt-4"><HorariosTab /></div>}
+    </section>
   );
 }
 

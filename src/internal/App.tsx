@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
-  CalendarDays,
   FlaskConical,
   History,
   LogOut,
@@ -13,12 +12,11 @@ import { getSupabaseClient } from "./supabaseClient";
 import { LoginScreen } from "./LoginScreen";
 import { Panel } from "./Panel";
 import { ConsultasTab } from "./ConsultasTab";
-import { HorariosTab } from "./HorariosTab";
 import { ConfigTab } from "./ConfigTab";
 import { LabTab } from "./LabTab";
 import { HistoryTab, type HistTarget } from "./HistoryTab";
 
-type Tab = "grooming" | "consultas" | "horarios" | "laboratorio" | "historial" | "config";
+type Tab = "grooming" | "consultas" | "laboratorio" | "historial" | "config";
 
 // Navbar estilo maqueta: brand + pestañas con iconos en línea + chip de
 // usuario. Sin campana/menú fake: lo que existe es visible.
@@ -26,10 +24,20 @@ const TABS: Array<[Tab, string, typeof PawPrint]> = [
   ["grooming", "Grooming", PawPrint],
   ["consultas", "Consultas", Stethoscope],
   ["laboratorio", "Laboratorio", FlaskConical],
-  ["horarios", "Horarios médicos", CalendarDays],
   ["historial", "Historial", History],
   ["config", "Config", Settings],
 ];
+
+// Acento del dominio en la pestaña activa: grooming=azul de marca,
+// consultas=celeste, laboratorio=naranja. Orientación instantánea de dónde
+// estás sin leer el label (el azul/celeste comparten familia fría a propósito).
+const TAB_ACTIVE: Record<Tab, string> = {
+  grooming: "border-brand-blue bg-blue-50/60 text-brand-blue",
+  consultas: "border-sky-500 bg-sky-50 text-sky-700",
+  laboratorio: "border-orange-400 bg-orange-50 text-brand-orange",
+  historial: "border-brand-blue bg-blue-50/60 text-brand-blue",
+  config: "border-brand-blue bg-blue-50/60 text-brand-blue",
+};
 
 function TabButton({
   tab,
@@ -53,11 +61,7 @@ function TabButton({
       aria-pressed={active}
       className={`flex shrink-0 items-center gap-1.5 rounded-lg border-b-2 px-3 py-2 text-sm font-semibold transition ${
         compact ? "gap-1.5 px-2.5" : "gap-2"
-      } ${
-        active
-          ? "border-brand-blue bg-blue-50/60 text-brand-blue"
-          : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-brand-blue"
-      }`}
+      } ${active ? TAB_ACTIVE[value] : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-brand-blue"}`}
     >
       <Icon className="h-4 w-4" />
       {label}
@@ -159,7 +163,6 @@ export default function App() {
         {tab === "grooming" && <Panel email={session.user.email ?? ""} onSignOut={signOut} embedded jumpSearch={jump?.tab === "grooming" ? jump.q : null} />}
         {tab === "consultas" && <ConsultasTab jumpSearch={jump?.tab === "consultas" ? jump.q : null} />}
         {tab === "laboratorio" && <LabTab jumpSearch={jump?.tab === "laboratorio" ? jump.q : null} />}
-        {tab === "horarios" && <HorariosTab />}
         {tab === "historial" && <HistoryTab onJump={jumpTo} />}
         {tab === "config" && (
           <div>
