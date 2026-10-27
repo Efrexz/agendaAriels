@@ -1220,3 +1220,23 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   "Listo · Veterinaria Ariel". Sin dependencias nuevas; polling de 30s intacto (dep pollTick
   con comentario eslint). Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10. Pendiente:
   revisión usuario + push.
+- 2026-10-27 — **MED WIZARD: FIX INTERCONSULTA EN RESUMEN + PASO ESPECIALIDAD REDISEÑADO**
+  (ambos solo presentación, sin APIs): ① el usuario reportó que al retrazar la ruta
+  general→doctora→día y REGRESAR a servicio y elegir Consulta Especializada, el Resumen mostraba
+  una doctora GENERAL y la fecha elegida como si fuera consulta normal — CAUSA: form stante
+  doctorName/date/startMinute quedaban sucios al cambiar de tipo + el Resumen las filas sin
+  guard por servicio. FIX doble: chooseService limpia el rastro del otro flujo (especializada
+  → nulls de specialtyId/Name/Cost; general/rayos/eco → nulls de doctorId/Name/date/startMinute/
+  hasOrder) y el Resumen ahora: doctor/fecha SOLO si !especializada, especialidad+costo SOLO si
+  especializada, + FILA ACCENT nueva "La especialista confirma fecha y hora después de verificar
+  tu pago" (explica el porqué al dueño). QA pw: flujo general→Karla→agenda→atrás×3→especializada
+  →datos INTERR: sin Dra: Karla, sin hora, Derm+S/120, nota visible — mv+dk 0 pageerrors. ②
+  paso "Elige la especialidad" (antes filas planas 🎓+precio, la más simple del wizard) → mismo
+  lenguaje del paso doctor: layout 2col con DoctorMascot a la derecha, kicker+título 2 líneas
+  izq, cards sm:grid-cols-2 con tile de icono (mapa por PALABRA-clave normalizada: nutri→Apple,
+  odont/denta→Smile, trauma/orto→Bone, derma→Sparkles, cardi→HeartPulse; fallback GraduationCap
+  — especialidades dinámicas de Config), nombre display bold + precio naranja debajo (sin
+  chevron: en 2col el nombre se aplastaba; gamehover enciende tile scale-110), entrada
+  escalonada framer-motion delay 0.2+i*0.08 (reduce-motion), estado vacío conservado; flows QA:
+  especialidad→datos prefill S/140 OK. Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10.
+  Pendiente: revisión usuario + push.

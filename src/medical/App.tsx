@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
-  ArrowRight, CalendarDays, CheckCircle2, Check, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, FileCheck2, FileX2, Heart, Info, Loader2, MapPin, Microscope, Phone,
-  ScanLine, ShieldCheck, Stethoscope, Sunrise, Sunset, UserRound, type LucideIcon,
+  Apple, ArrowRight, Bone, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight,
+  ClipboardList, Clock, FileCheck2, FileX2, GraduationCap, Heart, HeartPulse, Info, Loader2,
+  MapPin, Microscope, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
+  Sunset, UserRound, type LucideIcon,
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
 import { clearMedProfile, loadMedProfile, saveMedProfile } from "./clientProfileMed";
@@ -100,6 +101,21 @@ const PROGRESS_GROUPS: Array<{ label: string; steps: Step[] }> = [
   { label: "Datos", steps: ["datos"] },
 ];
 
+// Icono por especialidad: palabra clave (normalizada sin acentos) → icono.
+// Las especialidades son dinámicas (Config las crea), el fallback es el birrete.
+const ESPECIALIDAD_REGEX_ICONS: Array<[RegExp, LucideIcon]> = [
+  [/nutri|aliment|dieta/, Apple],
+  [/odont|denta/, Smile],
+  [/trauma|orto/, Bone],
+  [/derma|piel/, Sparkles],
+  [/cardi|coraz/, HeartPulse],
+];
+function especialidadIcon(name: string): LucideIcon {
+  const n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const [re, icon] of ESPECIALIDAD_REGEX_ICONS) if (re.test(n)) return icon;
+  return GraduationCap;
+}
+
 export default function App() {
   const [step, setStep] = useState<Step>("sede");
   const [form, setForm] = useState<FormData>(INITIAL);
@@ -150,17 +166,30 @@ export default function App() {
     }
   };
 
-  // Paso servicio → carga: doctores (general/rayos/eco) o especialidades
+  // Paso servicio → carga: doctores (general/rayos/eco) o especialidades.
+  // Al cambiar de TIPO de servicio se limpian los campos del flujo anterior:
+  // una especializada jamás muestra doctor/fecha de una general elegida antes
+  // (los fija el counter tras verificar el pago), y viceversa con la especialidad.
   async function chooseService(t: ServiceType) {
     setError(null);
     update("serviceType", t);
     if (t === "general" || t === "rayos" || t === "eco") {
+      // Limpia rastro de una especializada previa (paso especialidad).
+      setForm((f) => ({
+        ...f,
+        specialtyId: null, specialtyName: null, specialtyCost: null,
+      }));
       if (t !== "general") {
         go("orden");
         return;
       }
       go("doctor");
     } else {
+      // Limpia rastro de una general/rayos/eco previa (pasos doctor/agenda/orden).
+      setForm((f) => ({
+        ...f,
+        doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null,
+      }));
       go("especialidad");
     }
   }
@@ -541,40 +570,68 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Especialidad (especializada) ── */}
+              {/* ── Especialidad (especializada): 2 columnas + mascota, mismo
+                      lenguaje del paso doctor ── */}
               {step === "especialidad" && (
-                <section>
-                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
-                    Elige la <span className="text-orange-500">especialidad</span>
-                  </StepHeading>
-                  {!specialties && <Loading />}
-                  {specialties && specialties.length === 0 && (
-                    <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-                      Esta sede no tiene especialidades activas por ahora — elige otra sede o comunícate con nosotros.
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">
+                        Sede {branch?.short ?? ""}
+                      </p>
+                    </div>
+                    <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Elige la especialidad</span>
+                      <span className="block">
+                        que tu mascota <span className="text-orange-500">necesita</span>
+                      </span>
+                    </h2>
+                    {!specialties && <Loading />}
+                    {specialties && specialties.length === 0 && (
+                      <p className="rounded-2xl bg-amber-50 p-4 text-left text-sm text-amber-800">
+                        Esta sede no tiene especialidades activas por ahora — elige otra sede o comunícate con nosotros.
+                      </p>
+                    )}
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                      {specialties?.map((s, i) => {
+                        const Icon = especialidadIcon(s.name);
+                        return (
+                          <motion.button
+                            key={s.id}
+                            onClick={() => {
+                              update("specialtyId", s.id);
+                              update("specialtyName", s.name);
+                              update("specialtyCost", s.cost);
+                              go("datos");
+                            }}
+                            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 + i * 0.08 }}
+                            className="group flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 hover:ring-blue-300 active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                          >
+                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF] text-blue-600 shadow-sm transition-all duration-300 group-hover:bg-blue-600/10 group-hover:shadow-md">
+                              <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-display text-base font-bold leading-tight text-[#475AAB] sm:text-lg">
+                                {s.name}
+                              </span>
+                              <span className="mt-0.5 block text-xs font-bold text-brand-orange">
+                                S/ {s.cost.toFixed(0)}
+                              </span>
+                            </span>
+                          </motion.button>
+                        );
+                      })}
+                    </div>
+                    <p className="mt-3 text-[11px] text-[#8A97B1]">
+                      La consulta se paga por adelantado; después confirmamos fecha, hora y doctor.
                     </p>
-                  )}
-                  <div className="grid gap-3">
-                    {specialties?.map((s) => (
-                      <button
-                        key={s.id}
-                        onClick={() => {
-                          update("specialtyId", s.id);
-                          update("specialtyName", s.name);
-                          update("specialtyCost", s.cost);
-                          go("datos");
-                        }}
-                        className="flex items-center justify-between rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-md hover:ring-blue-300 active:scale-[0.98]"
-                      >
-                        <span className="font-semibold text-[#1A2238]">🎓 {s.name}</span>
-                        <span className="rounded-full bg-brand-orange/10 px-3 py-1 text-sm font-bold text-brand-orange">
-                          S/ {s.cost.toFixed(0)}
-                        </span>
-                      </button>
-                    ))}
                   </div>
-                  <p className="mt-3 text-center text-[11px] text-[#8A97B1]">
-                    La consulta se paga por adelantado; después confirmamos fecha, hora y doctor.
-                  </p>
+
+                  {/* Mascota del equipo médico (la misma del paso doctor; se esconde si falta el asset) */}
+                  <DoctorMascot />
                 </section>
               )}
 
@@ -1220,18 +1277,26 @@ function DoctorAvatar({ name }: { name: string }) {
 function Resumen({ form }: { form: FormData }) {
   const b = MED_BRANCHES.find((x) => x.value === form.branch);
   const serviceLabel = SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
+  const esEspecializada = form.serviceType === "especializada";
   return (
     <div className="rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] p-4 shadow-sm sm:p-5">
       <ul className="grid gap-2">
         {b && <SummaryRow icon={MapPin}>{b.label}</SummaryRow>}
-        <SummaryRow icon={form.serviceType === "especializada" ? Microscope : Stethoscope}>
+        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope}>
           {serviceLabel}
-          {form.specialtyName ? ` · ${form.specialtyName}` : ""}
-          {form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
+          {esEspecializada && form.specialtyName ? ` · ${form.specialtyName}` : ""}
+          {esEspecializada && form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
         </SummaryRow>
-        {form.doctorName && <SummaryRow icon={UserRound}>{form.doctorName}</SummaryRow>}
-        {form.date && form.startMinute !== null && (
+        {/* Doctor y fecha/hora SOLO existen en general/rayos/eco: la especializada
+            no pide ni doctor ni fecha — los confirma la especialista tras el pago. */}
+        {!esEspecializada && form.doctorName && <SummaryRow icon={UserRound}>{form.doctorName}</SummaryRow>}
+        {!esEspecializada && form.date && form.startMinute !== null && (
           <SummaryRow icon={CalendarDays}>{prettyDate(form.date)} · {hora(form.startMinute)}</SummaryRow>
+        )}
+        {esEspecializada && (
+          <SummaryRow icon={CalendarDays} accent>
+            La especialista confirma fecha y hora después de verificar tu pago
+          </SummaryRow>
         )}
       </ul>
     </div>
