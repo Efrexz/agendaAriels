@@ -116,6 +116,23 @@ function especialidadIcon(name: string): LucideIcon {
   return GraduationCap;
 }
 
+// Tinte pastel por servicio (cards del paso servicio, estilo mockup):
+// azules de marca para general/rayos, naranja de marca para eco, y verde para
+// especializada (en este sistema el verde ya significa "ruta distinta /
+// resultado bueno"). Clases neveras 100-200 suaves: texto navy/slate legible.
+const SERVICE_TINT: Record<ServiceType, {
+  card: string;    // pastel de fondo de toda la card
+  blob: string;    // círculo profundo tras la foto (onda del mockup)
+  iconText: string; // color del icono sobre tile blanco
+  arrow: string;   // círculo flecha
+  deco: string;    // rayitas decorativas
+}> = {
+  general: { card: "bg-blue-100/50", blob: "bg-blue-200/60", iconText: "text-brand-blue", arrow: "bg-brand-blue", deco: "bg-orange-300" },
+  rayos: { card: "bg-cyan-100/50", blob: "bg-cyan-200/60", iconText: "text-cyan-700", arrow: "bg-cyan-500", deco: "bg-cyan-300" },
+  eco: { card: "bg-orange-100/60", blob: "bg-orange-200/70", iconText: "text-brand-orange", arrow: "bg-brand-orange", deco: "bg-orange-300" },
+  especializada: { card: "bg-green-100/50", blob: "bg-green-200/60", iconText: "text-green-600", arrow: "bg-green-500", deco: "bg-green-300" },
+};
+
 export default function App() {
   const [step, setStep] = useState<Step>("sede");
   const [form, setForm] = useState<FormData>(INITIAL);
@@ -396,41 +413,76 @@ export default function App() {
             />
           )}
 
-              {/* ── Paso: servicio ── */}
+              {/* ── Paso: servicio (estilo mockup: cards horizontales pastel,
+                      foto circular con doble aro y flecha del color del servicio) ── */}
               {step === "servicio" && (
                 <section>
-                  <StepHeading kicker={`Sede ${branch?.short ?? ""}`}>
-                    ¿Qué <span className="text-orange-500">necesita tu mascota</span>?
-                  </StepHeading>
+                  {/* Header de este paso: kicker flanqueado + subtítulo + raya */}
+                  <div className="mb-7 text-center">
+                    <div className="mb-1.5 flex items-center justify-center gap-2.5">
+                      <span aria-hidden className="h-0.5 w-8 rounded-full bg-orange-300" />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.22em] text-orange-600">
+                        Sede {branch?.short ?? ""}
+                      </p>
+                      <span aria-hidden className="h-0.5 w-8 rounded-full bg-orange-300" />
+                    </div>
+                    <h2 className="font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      ¿Qué <span className="text-orange-500">necesita tu mascota</span>?
+                    </h2>
+                    <p className="mt-2 text-sm text-[#546A8E]">
+                      Selecciona el servicio que más se adapte a lo que él necesita.
+                    </p>
+                    <div aria-hidden className="mx-auto mt-3 h-1 w-10 rounded-full bg-brand-orange" />
+                  </div>
+
                   <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 sm:gap-5">
-                    {SERVICES.map((s) => {
+                    {SERVICES.map((s, i) => {
                       const img = SERVICE_IMAGE[s.id];
+                      const t = SERVICE_TINT[s.id];
                       return (
-                        <button
+                        <motion.button
                           key={s.id}
                           onClick={() => void chooseService(s.id)}
-                          className="group flex flex-col overflow-hidden rounded-3xl bg-white text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98]"
+                          initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 + i * 0.08 }}
+                          className={`group relative flex items-center gap-4 overflow-hidden rounded-3xl p-4 pl-5 pr-4 text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/50 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] ${t.card}`}
                         >
-                          <div className="relative aspect-[16/10] w-full overflow-hidden">
+                          {/* Onda profunda tras la foto + rayitas decorativas */}
+                          <span aria-hidden className={`pointer-events-none absolute -bottom-10 -left-6 h-28 w-28 rounded-full ${t.blob}`} />
+                          <span aria-hidden className={`pointer-events-none absolute right-5 top-4 h-1.5 w-5 -rotate-[20deg] rounded-full ${t.deco}`} />
+                          <span aria-hidden className={`pointer-events-none absolute right-10 top-7 h-1.5 w-2.5 rotate-[30deg] rounded-full ${t.deco}`} />
+
+                          {/* Foto circular con aro blanco (el blob queda detrás) */}
+                          <span className="relative z-10 h-24 w-24 shrink-0 overflow-hidden rounded-full ring-4 ring-white shadow-lg sm:h-32 sm:w-32">
                             <LazyImage
                               src={img.src}
                               alt={img.alt}
                               className="transition-transform duration-500 ease-out group-hover:scale-105"
                             />
-                            <span className="absolute left-4 top-4 flex h-10 w-10 items-center justify-center rounded-full bg-white text-blue-600 shadow-lg">
-                              <s.icon className="h-5 w-5" />
+                          </span>
+
+                          {/* Contenido: tile de icono + título, descripción, flecha abajo-derecha */}
+                          <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2 self-stretch pt-2">
+                            <span className="flex items-center gap-2.5">
+                              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
+                                <s.icon className={`h-5 w-5 ${t.iconText}`} />
+                              </span>
+                              <span className="font-display text-lg font-bold leading-tight tracking-tight text-[#475AAB]">
+                                {s.label}
+                              </span>
                             </span>
-                          </div>
-                          <div className="flex items-center gap-3 bg-[#EAF2FB] px-5 py-4">
-                            <div className="flex flex-1 flex-col gap-0.5">
-                              <span className="text-[15px] font-semibold tracking-tight text-[#1A2238]">{s.label}</span>
-                              <span className="text-xs leading-snug text-[#546A8E]">{s.desc}</span>
-                            </div>
-                            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white text-gray-400 transition-all duration-300 group-hover:bg-blue-600 group-hover:text-white">
-                              <ChevronRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-0.5" />
+                            <span className="pr-12 text-xs leading-relaxed text-[#546A8E] sm:text-[13px]">
+                              {s.desc}
                             </span>
-                          </div>
-                        </button>
+                          </span>
+                          <span
+                            aria-hidden
+                            className={`absolute bottom-4 right-4 flex h-10 w-10 items-center justify-center rounded-full text-white shadow-md transition-all duration-300 group-hover:scale-110 group-hover:shadow-lg ${t.arrow}`}
+                          >
+                            <ArrowRight className="h-5 w-5 transition-transform duration-300 group-hover:translate-x-0.5" />
+                          </span>
+                        </motion.button>
                       );
                     })}
                   </div>
@@ -1163,7 +1215,9 @@ function SedeStep({ selected, onPick, onContinue }: {
 }
 
 // Progreso con puntos numerados + etiquetas (maqueta "Confirma tu cita").
-// Los 4 puntos = los 4 grupos reales del wizard; nada de lógica nueva.
+// Recolor de marca: pasos completados en azul sólido, el activo en NARANJA
+// ("naranja = aquí estás", como los CTAs) con su halo; el azul→naranja
+// cuenta el mismo degradado del borde superior de la card.
 function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; current: number }) {
   return (
     <div className="mb-7 flex">
@@ -1175,15 +1229,15 @@ function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; cur
             {i < groups.length - 1 && (
               <div
                 aria-hidden
-                className={`absolute left-1/2 top-[13px] h-0.5 w-full ${i < current ? "bg-green-500" : "bg-slate-200"}`}
+                className={`absolute left-1/2 top-[13px] h-0.5 w-full ${i < current ? "bg-brand-blue" : "bg-slate-200"}`}
               />
             )}
             <span
               className={`relative z-10 flex h-7 w-7 items-center justify-center rounded-full text-xs font-bold ${
                 done
-                  ? "bg-green-500 text-white"
+                  ? "bg-brand-blue text-white"
                   : active
-                    ? "bg-brand-blue text-white ring-4 ring-blue-600/15"
+                    ? "bg-brand-orange text-white ring-4 ring-orange-500/20"
                     : "bg-slate-200 text-slate-500"
               }`}
             >
@@ -1191,7 +1245,7 @@ function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; cur
             </span>
             <span
               className={`mt-1.5 hidden text-[11px] font-semibold sm:block ${
-                active ? "text-[#475AAB]" : done ? "text-green-600" : "text-slate-400"
+                active ? "text-brand-orange" : done ? "text-brand-blue" : "text-slate-400"
               }`}
             >
               {active ? `${g.label} · Paso ${i + 1} de ${groups.length}` : g.label}

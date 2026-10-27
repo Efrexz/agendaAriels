@@ -1240,3 +1240,18 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   escalonada framer-motion delay 0.2+i*0.08 (reduce-motion), estado vacío conservado; flows QA:
   especialidad→datos prefill S/140 OK. Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10.
   Pendiente: revisión usuario + push.
+- 2026-10-27 — **WIZARD MEDICO: PASO SERVICIO ESTILO MOCKUP + PROGRESO AZUL/NARANJA**
+  (referencia.jpeg del usuario — solo presentación): ① CARDS HORIZONTALES con tinte pastel
+  por servicio (SERVICE_TINT: general=blue-100 de marca, rayos=cyan-100, eco=orange-100 de
+  marca, especializada=green-100 semántica "ruta distinta/resultado bueno"), foto CIRCULAR con
+  doble aro blanco (object-cover reuso las 4 fotos de /images/medical/servicio — crop verificado
+  en QA sin cortar sujetos), onda pastel tras la foto, rayitas decorativas por tinte, tile de
+  icono blanco + título display, descripción con pr para no chocar con la flecha, círculo-flecha
+  DEL color del servicio, entrada escalonada framer (delay .15+i*.08, reduce-motion). Header del
+  paso con kicker flanqueado por rayitas + subtítulo nuevo + raya naranja (solo este paso: los
+  demás ya tienen layouts aprobados). ② PROGRESO DE MARCA: pasos completados AZUL sólido con
+  conector azul, paso ACTIVO NARANJA con halo orange/20 y label "Paso X de 4" naranja (verde
+  queda reservado a estados de éxito reales); verificado en agenda/datos sin regresiones y hace
+  eco con el día naranja seleccionado del calendario. ③ CERO lógica: mismo chooseService,
+  mismo SERVICES. QA pw mv390/dk1280: paso servicio + doctor tras click + agenda, 0 pageerrors.
+  Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10. Pendiente: revisión usuario/jefe + push.
