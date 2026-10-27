@@ -7,6 +7,8 @@ import {
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
+import { MiniWhatsApp } from "./MiniWhatsApp";
+import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
 
 // Pestaña 🧪 Laboratorio: reemplazo digital del cuaderno de exámenes externos.
@@ -128,6 +130,11 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
   const [searchResults, setSearchResults] = useState<LabOrder[] | null>(null);
   const [newOpen, setNewOpen] = useState(false);
   const [tick, setTick] = useState(0);
+  // Toast de llegadas nuevas (órdenes creadas tras abrir el panel)
+  const [novelCount, setNovelCount] = useState(0);
+  const sessionStartRef = useRef<number | null>(null);
+  const seenRef = useRef<Set<string>>(new Set());
+  const firstLoadRef = useRef(true);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -160,10 +167,19 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
     (async () => {
       setBusy(true);
       try {
+        sessionStartRef.current ??= Date.now();
+        const sessionStart = sessionStartRef.current ?? Date.now();
         const { orders: list } = await fetchLabList(vista, branch, "");
         if (active) {
           setOrders(list ?? []);
           setError(null);
+          // Llegadas nuevas: órdenes creadas tras abrir el panel y no vistas.
+          const fresh = (list ?? []).filter(
+            (o) => new Date(o.createdAt).getTime() > sessionStart && !seenRef.current.has(o.id),
+          );
+          for (const o of list ?? []) seenRef.current.add(o.id);
+          if (fresh.length > 0 && !firstLoadRef.current) setNovelCount((c) => c + fresh.length);
+          firstLoadRef.current = false;
         }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");
@@ -297,6 +313,13 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
       )}
 
       {newOpen && <NewLabOrderModal onClose={(reload) => { setNewOpen(false); if (reload) setTick((t) => t + 1); }} />}
+
+      {/* Llegadas nuevas con el panel abierto */}
+      <NewArrivalsToast
+        count={novelCount}
+        label="orden de laboratorio nueva"
+        onView={() => { setNovelCount(0); setTick((t) => t + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+      />
     </div>
   );
 }
@@ -412,7 +435,7 @@ function LabCard({ o, onStatus, onChanged }: {
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          <p className="text-sm text-slate-600">👤 {o.ownerName} · 📞 {o.ownerPhone}</p>
+          <p className="text-sm text-slate-600">👤 {o.ownerName} · 📞 {o.ownerPhone} <MiniWhatsApp phone={o.ownerPhone} message={`Hola ${o.ownerName} 🐾 le escribimos de Ariel's Clinic sobre el examen de ${o.petName} (${o.examType}, código ${o.orderCode}).`} /></p>
           <p className="text-sm text-slate-600">🏠 Historia: {o.historyCode}{o.doctorName !== "-" ? ` · 🩺 Solicitó: ${o.doctorName}` : ""}</p>
           <p className="text-sm text-slate-500">🧪 {o.labName}</p>
           {o.paidNotes !== "-" && <p className="text-xs text-slate-500">💳 {o.paidNotes}</p>}

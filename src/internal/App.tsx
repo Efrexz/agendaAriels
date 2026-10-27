@@ -12,6 +12,7 @@ import { getSupabaseClient } from "./supabaseClient";
 import { LoginScreen } from "./LoginScreen";
 import { Panel } from "./Panel";
 import { ConsultasTab } from "./ConsultasTab";
+import { HelpGuide } from "./HelpGuide";
 import { ConfigTab } from "./ConfigTab";
 import { LabTab } from "./LabTab";
 import { HistoryTab, type HistTarget } from "./HistoryTab";
@@ -158,6 +159,9 @@ export default function App() {
           ))}
         </nav>
       </header>
+
+      {/* Guía "?" del panel (onboarding de recepcionista nueva) */}
+      <HelpGuide tab={tab} />
 
       <main className="relative z-10 mx-auto max-w-6xl p-4 pb-24 lg:p-8">
         {tab === "grooming" && <Panel email={session.user.email ?? ""} onSignOut={signOut} embedded jumpSearch={jump?.tab === "grooming" ? jump.q : null} />}

@@ -33,6 +33,11 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 - Historial (HistoryTab) separa por tipo, rango ≤1 mes, agrupado por día y SALTA a la pestaña destino con el código buscado (prop `jumpSearch`; Consultas/Lab auto-buscan al montar).
 - Cards acordeón accesibles (role=button, aria-expanded, Enter/Espacio). Creación CTAs = `bg-brand-blue`; verde reservado a semántica de éxito. Acento de pestaña activa: grooming azul / consultas sky / laboratorio naranja. Guardas defensivas `?? []` en todos los fetch (una API malformada no debe tumbar el panel).
 - ⚙ Config médica: duración cita, texto métodos de pago, doctores (activate/baja) y especialidades (precio + sedes por botón SPA/LO/SM).
+- MINI WHATSAPP (2026-10-27): botón verde junto al teléfono en cards de Consultas/Lab → `wa.me` normalizado `src/internal/waLink.ts` (helper con test) + `MiniWhatsApp.tsx` (mensaje pre-armado con código).
+- TOAST de llegadas (`NewArrivalsToast.tsx`): si el panel está abierto y entra reserva/cita/orden creada después (sessionStart/seen por pestaña; en consultas solo Hoy/Mañana), toast azul abajo-derecha "clic para ver" → refresca y oculta 8s. Patrón anti-dismissed (visible = count ∉ dismissed).
+- REAGENDAR 1 clic: en cards de Consultas con `no_llego/cancelado` → botón "🔁 Reagendar como nueva cita" abre el modal manual con prefill (dueño/mascota/tipo/sede/notas); el guard dirty compara contra el prefill (no pregunta si no se tocó nada).
+- GUÍA "?" (`HelpGuide.tsx`): botón flotante abajo-izquierda → modal con pasos por pestaña en lenguaje de mostrador (onboarding del staff).
+- Login pulido al nivel del wizard (pastel + huellitas + botón degradado de marca).
 
 ## Sistema visual del wizard médico (≈ 2026-10-26/27, estilo mockup del usuario)
 - Card top con degradado azul→naranja. Progreso: completado=azul, ACTIVO=naranja con halo, label "Paso X de 4" naranja.

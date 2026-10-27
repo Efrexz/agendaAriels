@@ -6,6 +6,8 @@ import {
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
+import { MiniWhatsApp } from "./MiniWhatsApp";
+import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
 
 // Pestaña Consultas: vista del counter para citas médicas.
@@ -44,7 +46,16 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   const [query, setQuery] = useState("");
   const [searchResults, setSearchResults] = useState<MedAppt[] | null>(null);
   const [manualOpen, setManualOpen] = useState(false);
+  // Prefijo para "🔁 Reagendar": datos del dueño/mascota listos, el counter
+  // solo elige fecha/hora (o especialidad). El guard de "¿descartar?" compara
+  // contra este base, no pide confirmación si el usuario no tocó nada.
+  const [manualPrefill, setManualPrefill] = useState<ManApptPrefill | null>(null);
   const [tick, setTick] = useState(0);
+  // Toast de llegadas nuevas (citas creadas tras abrir el panel y aún no vistas)
+  const [novelCount, setNovelCount] = useState(0);
+  const sessionStartRef = useRef<number | null>(null);
+  const seenRef = useRef<Set<string>>(new Set());
+  const firstLoadRef = useRef(true);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -76,21 +87,28 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
     (async () => {
       setBusy(true);
       try {
-        if (vista === "semana") {
-          const parts = await Promise.all([0, 1, 2, 3, 4, 5, 6].map((i) => fetchMedDay(isoPlus(i), branch)));
-          if (active) {
-            setAppts(parts.flatMap((p) => p.appointments ?? []));
-            setError(null);
-          }
-        } else {
-          const day = await fetchMedDay(vista === "hoy" ? limaISO() : isoPlus(1), branch);
-          if (active) {
-            setAppts(day.appointments ?? []);
-            setError(null);
-          }
+        sessionStartRef.current ??= Date.now();
+        const sessionStart = sessionStartRef.current ?? Date.now();
+        const deVista: MedAppt[] = vista === "semana"
+          ? (await Promise.all([0, 1, 2, 3, 4, 5, 6].map((i) => fetchMedDay(isoPlus(i), branch)))).flatMap((p) => p.appointments ?? [])
+          : (await fetchMedDay(vista === "hoy" ? limaISO() : isoPlus(1), branch)).appointments ?? [];
+        if (active) {
+          setAppts(deVista);
+          setError(null);
         }
         const pending = await fetchMedPending(branch);
-        if (active) setPendings(pending.appointments ?? []);
+        if (active) {
+          setPendings(pending.appointments ?? []);
+          // Llegadas nuevas (citas creadas tras abrir el panel y aún no vistas).
+          // En "semana" no se pescan históricos: solo se marcan como vistos.
+          const universo: MedAppt[] = [...(pending.appointments ?? []), ...deVista];
+          const fresh = universo.filter(
+            (x) => vista !== "semana" && new Date(x.createdAt).getTime() > sessionStart && !seenRef.current.has(x.id),
+          );
+          for (const x of universo) seenRef.current.add(x.id);
+          if (!firstLoadRef.current && fresh.length > 0) setNovelCount((c) => c + fresh.length);
+          firstLoadRef.current = false;
+        }
       } catch (err) {
         if (active) setError(err instanceof Error ? err.message : "Error al cargar");
       } finally {
@@ -121,6 +139,22 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
     } finally {
       setBusy(false);
     }
+  }
+
+  // Reagendar: abre el modal manual con identidad prefijada (dueño/mascota);
+  // el counter solo completa fecha/hora o especialidad.
+  function openReagendar(a: MedAppt) {
+    setManualPrefill({
+      branch: a.branch as MedBranch,
+      serviceType: a.serviceType,
+      specialtyId: a.specialtyId ?? "",
+      petName: a.petName,
+      petType: a.petType,
+      ownerName: a.ownerName,
+      ownerPhone: a.ownerPhone,
+      petNotes: a.petNotes === "-" ? "" : a.petNotes,
+    });
+    setManualOpen(true);
   }
 
   const grouped = useMemo(() => {
@@ -212,7 +246,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
               Sin resultados para "{query}".
             </p>
           )}
-          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} />)}
+          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} />)}
         </div>
       )}
 
@@ -232,14 +266,21 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
                 <span className="text-slate-400">({list.length})</span>
               </h3>
               <div className="flex flex-col gap-2">
-                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} />)}
+                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} />)}
               </div>
             </section>
           ))}
         </div>
       )}
 
-      {manualOpen && <ManualApptModal onClose={(reload) => { setManualOpen(false); if (reload) setTick((t) => t + 1); }} />}
+      {manualOpen && <ManualApptModal prefill={manualPrefill} onClose={(reload) => { setManualOpen(false); setManualPrefill(null); if (reload) setTick((t) => t + 1); }} />}
+
+      {/* Llegadas nuevas con el panel abierto */}
+      <NewArrivalsToast
+        count={novelCount}
+        label="cita médica nueva"
+        onView={() => { setNovelCount(0); setTick((t) => t + 1); window.scrollTo({ top: 0, behavior: "smooth" }); }}
+      />
     </div>
   );
 }
@@ -402,9 +443,10 @@ const MED_BORDER: Record<string, string> = {
   cancelado: "border-l-red-500",
 };
 
-function ApptCard({ a, onStatus }: {
+function ApptCard({ a, onStatus, onReagendar }: {
   a: MedAppt;
   onStatus: (a: MedAppt, status: string) => void;
+  onReagendar: (a: MedAppt) => void;
 }) {
   const [open, setOpen] = useState(false);
   const meta = medStatusMeta(a.status);
@@ -443,7 +485,7 @@ function ApptCard({ a, onStatus }: {
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          <p className="text-sm text-slate-600">👤 {a.ownerName} · 📞 {a.ownerPhone}{a.ownerEmail !== "-" ? ` · ✉ ${a.ownerEmail}` : ""}</p>
+          <p className="text-sm text-slate-600">👤 {a.ownerName} · 📞 {a.ownerPhone}{a.ownerEmail !== "-" ? ` · ✉ ${a.ownerEmail}` : ""} <MiniWhatsApp phone={a.ownerPhone} message={`Hola ${a.ownerName} 🐾 le escribimos de Ariel's Clinic sobre la cita de ${a.petName} (código ${a.appointmentCode}).`} /></p>
           {a.petNotes && a.petNotes !== "-" && <p className="text-sm text-slate-500">📝 {a.petNotes}</p>}
           {a.doctorName && <p className="text-sm text-slate-600">🩺 {a.doctorName}</p>}
           {a.needsOrder && (
@@ -461,6 +503,14 @@ function ApptCard({ a, onStatus }: {
               ))}
             </div>
           )}
+          {(a.status === "no_llego" || a.status === "cancelado") && (
+            <button
+              onClick={() => onReagendar(a)}
+              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40"
+            >
+              🔁 Reagendar como nueva cita
+            </button>
+          )}
           {a.timeline && a.timeline.length > 0 && (
             <details className="mt-2">
               <summary className="cursor-pointer text-xs font-semibold text-slate-500">Historial ({a.timeline.length})</summary>
@@ -477,17 +527,36 @@ function ApptCard({ a, onStatus }: {
   );
 }
 
-function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
-  const [branch, setBranch] = useState<MedBranch>("san_miguel");
-  const [serviceType, setService] = useState<"general" | "rayos" | "eco" | "especializada">("general");
+// Prefill de "Reagendar": identidad desde una cita existente; el counter
+// completa fecha/hora (o especialidad para las especializadas).
+interface ManApptPrefill {
+  branch: MedBranch;
+  serviceType: MedAppt["serviceType"];
+  specialtyId: string;
+  petName: string;
+  petType: string;
+  ownerName: string;
+  ownerPhone: string;
+  petNotes: string;
+}
+
+function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolean) => void; prefill: ManApptPrefill | null }) {
+  const [branch, setBranch] = useState<MedBranch>(prefill?.branch ?? "san_miguel");
+  const [serviceType, setService] = useState<"general" | "rayos" | "eco" | "especializada">(prefill?.serviceType ?? "general");
   const [doctors, setDocList] = useState<MedDoctor[] | null>(null);
   const [doctorId, setDoctor] = useState("");
   const [specialties, setSpecList] = useState<MedSpecialty[] | null>(null);
-  const [specialtyId, setSpecialty] = useState("");
+  const [specialtyId, setSpecialty] = useState(prefill?.specialtyId ?? "");
   const [date, setDate] = useState("");
   const [slots, setSlotsList] = useState<MedSlot[]>([]);
   const [startMinute, setStart] = useState<number | null>(null);
-  const [name, setName] = useState({ petName: "", ownerName: "", ownerPhone: "", petNotes: "", petType: "Perro" });
+  const [name, setName] = useState({
+    petName: prefill?.petName ?? "",
+    ownerName: prefill?.ownerName ?? "",
+    ownerPhone: prefill?.ownerPhone ?? "",
+    petNotes: prefill?.petNotes ?? "",
+    petType: prefill?.petType ?? "Perro",
+  });
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -518,12 +587,17 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
     try { setSlotsList(await fetchSlots(doctorId, d)); } catch { setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha."); }
   }
 
-  // dirty (para la confirmación de salida): solo campos tocados por el USUARIO.
-  // doctorId/specialtyId quedan fuera: los setea la carga automática.
+  // dirty (para la confirmación de salida): solo lo que el USUARIO cambió
+  // respecto al base (prefill de reagendar o valores vacíos de una nueva).
+  const clean = prefill ?? {
+    petName: "", ownerName: "", ownerPhone: "", petNotes: "", petType: "Perro",
+    date: "", startMinute: null, serviceType: "general", branch: "san_miguel",
+  } as const;
   const dirty =
-    name.petName !== "" || name.ownerName !== "" || name.ownerPhone !== "" ||
-    name.petNotes !== "" || name.petType !== "Perro" || date !== "" ||
-    startMinute !== null || serviceType !== "general" || branch !== "san_miguel";
+    name.petName !== clean.petName || name.ownerName !== clean.ownerName ||
+    name.ownerPhone !== clean.ownerPhone || name.petNotes !== clean.petNotes ||
+    name.petType !== clean.petType || date !== "" || startMinute !== null ||
+    serviceType !== clean.serviceType || branch !== clean.branch;
 
   async function guardar() {
     setError(null);
@@ -544,7 +618,7 @@ function ManualApptModal({ onClose }: { onClose: (reload: boolean) => void }) {
   }
 
   return (
-    <ModalShell title="＋ Cita manual (teléfono / mostrador)" dirty={dirty} onClose={onClose}>
+    <ModalShell title={prefill ? `🔁 Reagendar cita de ${prefill.petName}` : "＋ Cita manual (teléfono / mostrador)"} dirty={dirty} onClose={onClose}>
       {(maybeClose) => (
       <>
         {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}

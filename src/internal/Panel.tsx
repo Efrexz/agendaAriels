@@ -4,6 +4,7 @@ import { fetchClosures, fetchDay, searchBookings, type PanelBooking, type PanelC
 import { printViaQz } from "./qz";
 import { BookingCard } from "./BookingCard";
 import { ClosuresPanel } from "./ClosuresPanel";
+import { NewArrivalsToast } from "./NewArrivalsToast";
 import { BRANCH_LABELS, SLOT_LABELS } from "../statuses";
 
 function limaToday(): string {
@@ -47,6 +48,8 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
   const [searchResults, setQueryResults] = useState<PanelBooking[] | null>(null);
   const [printingId, setPrintingId] = useState<string | null>(null);
   const [tick, setTick] = useState(0);
+  // Toast de llegadas nuevas (no por auto-impresión: ese aviso lo da el papel)
+  const [novelCount, setNovelCount] = useState(0);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const lastSearchedRef = useRef("");
@@ -91,6 +94,9 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
         );
         if (autoPrintRef.current && incoming.length > 0) {
           for (const b of incoming) void printViaQz(b);
+        } else if (incoming.length > 0) {
+          // Auto-impresión apagada: avisamos con el toast (clic = Actualizar)
+          setNovelCount((c) => c + incoming.length);
         }
         for (const b of dayList) seenIdsRef.current.add(b.id);
       } catch (err) {
@@ -350,6 +356,18 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
 
       {/* Gestión de días cerrados */}
       <ClosuresPanel closures={closures} onChanged={() => setTick((t) => t + 1)} hidden={searchResults !== null} />
+
+      {/* Llegadas nuevas con el panel abierto (auto-impresión apagada) */}
+      <NewArrivalsToast
+        count={novelCount}
+        label="reserva nueva"
+        onView={() => {
+          setNovelCount(0);
+          setLoading(true);
+          setTick((t) => t + 1);
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        }}
+      />
     </div>
   );
 }
