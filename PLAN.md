@@ -1268,3 +1268,16 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   contra referencia.jpeg: zoom a card "Consulta General" = halo+rayitas+ola fieles; flujo
   general→doctor OK en ambos viewports; 0 pageerrors. Gates: lint 0, tc doble 0, build,
   268 tests, e2e 10/10. Push incluido.
+- 2026-10-27 — **CARDS SERVICIO V3: copy con valor + tamaño +1 + pill de orden + badge**
+  (solicitud directa del usuario): ① DESCRIPCIONES nuevas por card (beneficio+requisito,
+  cada servicio dice algo distinto): general "Evaluación completa, diagnóstico y plan de
+  salud en una sola visita", rayos/eco "estudio digital/ultrasonido en sede + necesitas
+  orden sellada" (ya no comparten la misma línea), especializada "especialistas por cita…".
+  SERVICES gana needsOrder/popular. ② TAMAÑO +1: foto h-28 mv / h-40 sm (halo reescalado
+  ~1.25× con offsets recalculados, ola igual), card p-5 pl-6, título text-xl. ③ PILL de
+  requisito bajo la desc: "📄 Requiere orden" ámbar vs "✓ Sin orden" verde (mr-14 anti-
+  choque con la flecha en mv) — Mata la duda #1 de los dueños. ④ BADGE "El más solicitado"
+  (Sparkles, brand-orange) en la esquina sup-derecha de la general (popular flag; quitar
+  = 1 línea si el counter lo desmiente). QA pw mv/dk: flujo general→doctor OK, 0
+  pageerrors, pills 1 línea. Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10.
+  Pendiente: revisión usuario/jefe + push.

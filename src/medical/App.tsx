@@ -86,11 +86,36 @@ function hora(min: number): string {
   return `${hh}:${String(m).padStart(2, "0")} ${h < 12 ? "am" : "pm"}`;
 }
 
-const SERVICES: Array<{ id: ServiceType; label: string; desc: string; icon: typeof Stethoscope }> = [
-  { id: "general", label: "Consulta General", desc: "Revisión y diagnóstico general", icon: Stethoscope },
-  { id: "rayos", label: "Radiografía", desc: "Requiere orden médica con sello", icon: ScanLine },
-  { id: "eco", label: "Ecografía", desc: "Requiere orden médica con sello", icon: ClipboardList },
-  { id: "especializada", label: "Consulta Especializada", desc: "Cardiología, dermatología y más", icon: Microscope },
+const SERVICES: Array<{
+  id: ServiceType;
+  label: string;
+  desc: string;
+  icon: typeof Stethoscope;
+  /** Las de imagen piden orden sellada — se comunica en la pill de la card. */
+  needsOrder: boolean;
+  /** Solo la general: badge "El más solicitado" (confirmar con counter). */
+  popular?: boolean;
+}> = [
+  {
+    id: "general", label: "Consulta General",
+    desc: "Evaluación completa, diagnóstico y plan de salud de tu mascota en una sola visita.",
+    icon: Stethoscope, needsOrder: false, popular: true,
+  },
+  {
+    id: "rayos", label: "Radiografía",
+    desc: "Estudio de imagen digital en clínica. Necesitas una orden médica sellada.",
+    icon: ScanLine, needsOrder: true,
+  },
+  {
+    id: "eco", label: "Ecografía",
+    desc: "Ultrasonido en detalle, en nuestra sede. Necesitas una orden médica sellada.",
+    icon: ClipboardList, needsOrder: true,
+  },
+  {
+    id: "especializada", label: "Consulta Especializada",
+    desc: "Especialistas por cita: dermatología, cardiología, traumatología y más.",
+    icon: Microscope, needsOrder: false,
+  },
 ];
 
 // Grupos del progreso (4): sede / servicio / agenda / datos
@@ -447,19 +472,27 @@ export default function App() {
                           initial={{ opacity: 0, y: reduceMotion ? 0 : 12 }}
                           animate={{ opacity: 1, y: 0 }}
                           transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 + i * 0.08 }}
-                          className={`group relative flex items-center gap-4 overflow-hidden rounded-3xl p-4 pl-5 pr-4 text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/50 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] ${t.card}`}
+                          className={`group relative flex items-center gap-4 overflow-hidden rounded-3xl p-5 pl-6 text-left shadow-md ring-1 ring-[#DCEBFF] transition-all duration-300 hover:-translate-y-1 hover:shadow-xl hover:shadow-blue-100/50 hover:ring-blue-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.99] ${t.card}`}
                         >
                           {/* Ola grande que sube desde la izquierda + segunda ola tenue detrás */}
                           <span aria-hidden className={`pointer-events-none absolute -bottom-16 -left-12 h-44 w-72 rounded-[100%] ${t.blob}`} />
                           <span aria-hidden className={`pointer-events-none absolute -bottom-24 -left-20 h-48 w-80 rounded-[100%] opacity-50 ${t.blob}`} />
 
+                          {/* Badge "El más solicitado" (solo general; esquina superior derecha, libre) */}
+                          {s.popular && (
+                            <span className="absolute right-3.5 top-3 z-20 inline-flex items-center gap-1 rounded-full bg-brand-orange px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-white shadow-md">
+                              <Sparkles className="h-3 w-3" />
+                              El más solicitado
+                            </span>
+                          )}
+
                           {/* Foto circular con doble círculo (halo pastel DESPLAZADO más grande detrás)
                               y rayitas "¡" abrazando el arco superior-izquierdo del halo */}
                           <span className="relative z-10 shrink-0 m-2 sm:m-2.5">
-                            <span aria-hidden className={`pointer-events-none absolute -left-5 -top-5 h-[7.5rem] w-[7.5rem] rounded-full ${t.halo} sm:-left-6 sm:-top-6 sm:h-40 sm:w-40`} />
+                            <span aria-hidden className={`pointer-events-none absolute -left-5 -top-5 h-[8.75rem] w-[8.75rem] rounded-full ${t.halo} sm:-left-6 sm:-top-6 sm:h-48 sm:w-48`} />
                             <span aria-hidden className={`pointer-events-none absolute -left-6 -top-3 h-5 w-1.5 -rotate-[55deg] rounded-full ${t.deco}`} />
                             <span aria-hidden className={`pointer-events-none absolute -left-9 top-1 h-3.5 w-1.5 -rotate-[75deg] rounded-full ${t.deco}`} />
-                            <span className="relative block h-24 w-24 overflow-hidden rounded-full ring-4 ring-white shadow-lg sm:h-32 sm:w-32">
+                            <span className="relative block h-28 w-28 overflow-hidden rounded-full ring-4 ring-white shadow-lg sm:h-40 sm:w-40">
                               <LazyImage
                                 src={img.src}
                                 alt={img.alt}
@@ -468,18 +501,27 @@ export default function App() {
                             </span>
                           </span>
 
-                          {/* Contenido: tile de icono + título, descripción, flecha abajo-derecha */}
+                          {/* Contenido: tile de icono + título, descripción, pill de orden, flecha abajo-derecha */}
                           <span className="relative z-10 flex min-w-0 flex-1 flex-col gap-2 self-stretch pt-2">
                             <span className="flex items-center gap-2.5">
                               <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white shadow-sm ring-1 ring-black/5">
                                 <s.icon className={`h-5 w-5 ${t.iconText}`} />
                               </span>
-                              <span className="font-display text-lg font-bold leading-tight tracking-tight text-[#475AAB]">
+                              <span className="font-display text-xl font-bold leading-tight tracking-tight text-[#475AAB]">
                                 {s.label}
                               </span>
                             </span>
                             <span className="pr-12 text-xs leading-relaxed text-[#546A8E] sm:text-[13px]">
                               {s.desc}
+                            </span>
+                            <span
+                              className={`mt-auto mr-14 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold sm:mr-10 ${
+                                s.needsOrder
+                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
+                                  : "bg-green-50 text-green-700 ring-1 ring-green-200"
+                              }`}
+                            >
+                              {s.needsOrder ? "📄 Requiere orden" : "✓ Sin orden"}
                             </span>
                           </span>
                           <span
