@@ -514,15 +514,12 @@ export default function App() {
                             <span className="pr-12 text-xs leading-relaxed text-[#546A8E] sm:text-[13px]">
                               {s.desc}
                             </span>
-                            <span
-                              className={`mt-auto mr-14 inline-flex w-fit items-center gap-1 rounded-full px-2.5 py-0.5 text-[10px] font-bold sm:mr-10 ${
-                                s.needsOrder
-                                  ? "bg-amber-50 text-amber-700 ring-1 ring-amber-200"
-                                  : "bg-green-50 text-green-700 ring-1 ring-green-200"
-                              }`}
-                            >
-                              {s.needsOrder ? "📄 Requiere orden" : "✓ Sin orden"}
-                            </span>
+                            {/* Pill solo donde SÍ exige orden: en las demás es un dato que sobra */}
+                            {s.needsOrder && (
+                              <span className="mt-auto mr-14 inline-flex w-fit items-center gap-1 rounded-full bg-amber-50 px-2.5 py-0.5 text-[10px] font-bold text-amber-700 ring-1 ring-amber-200 sm:mr-10">
+                                📄 Requiere orden
+                              </span>
+                            )}
                           </span>
                           <span
                             aria-hidden
