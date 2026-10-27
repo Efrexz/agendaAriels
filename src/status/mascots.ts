@@ -39,6 +39,45 @@ export function mascotFor(kind: "va" | "lab", status: string): string {
   return map[status] ?? MASCOT_PLACEHOLDER;
 }
 
+// Tinte por estado: familia de color del catálogo aplicada al backdrop de la
+// mascota y al chip de contexto del /estado (el pastilla del estado sigue
+// viniendo del catálogo badges). Fallback neutro azul como hoy.
+interface Tint {
+  /** Backdrop redondo detrás de la mascota. */
+  soft: string;
+  /** Fondo del chip de contexto dentro del card (sobre fondo blanco). */
+  chipBg: string;
+  /** Texto del chip de contexto. */
+  chipText: string;
+}
+
+const BLUE_TINT: Tint = { soft: "bg-blue-50", chipBg: "bg-blue-100", chipText: "text-brand-blue" };
+
+export const STATUS_TINT: Record<string, Tint> = {
+  // Grooming
+  pendiente: { soft: "bg-amber-50", chipBg: "bg-amber-100", chipText: "text-amber-700" },
+  en_camino_recojo: { soft: "bg-sky-50", chipBg: "bg-sky-100", chipText: "text-sky-700" },
+  recibido: BLUE_TINT,
+  en_bano: { soft: "bg-cyan-50", chipBg: "bg-cyan-100", chipText: "text-cyan-700" },
+  en_secado: { soft: "bg-indigo-50", chipBg: "bg-indigo-100", chipText: "text-indigo-700" },
+  en_corte: { soft: "bg-violet-50", chipBg: "bg-violet-100", chipText: "text-violet-700" },
+  listo: { soft: "bg-green-50", chipBg: "bg-green-100", chipText: "text-green-700" },
+  en_camino_entrega: { soft: "bg-sky-50", chipBg: "bg-sky-100", chipText: "text-sky-700" },
+  entregado: { soft: "bg-slate-100", chipBg: "bg-slate-200", chipText: "text-slate-600" },
+  cancelado: { soft: "bg-red-50", chipBg: "bg-red-100", chipText: "text-red-700" },
+  // Laboratorio
+  recibida: BLUE_TINT,
+  en_laboratorio: { soft: "bg-amber-50", chipBg: "bg-amber-100", chipText: "text-amber-700" },
+  resultado_listo: { soft: "bg-green-50", chipBg: "bg-green-100", chipText: "text-green-700" },
+  entregada: { soft: "bg-slate-100", chipBg: "bg-slate-200", chipText: "text-slate-600" },
+};
+
+export const TINT_PLACEHOLDER = BLUE_TINT;
+
+export function tintFor(status: string): Tint {
+  return STATUS_TINT[status] ?? TINT_PLACEHOLDER;
+}
+
 // Iconos line-art de la timeline (estilo referencia). Presentación pura —
 // el catálogo de estados con color/label vive en statuses.ts / labStatuses.ts.
 import type { LucideIcon } from "lucide-react";

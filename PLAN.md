@@ -1200,3 +1200,23 @@ Doctores (3 por sede), especialidades con precios arriba. Todo editable desde el
   build, 268 tests; capturas playwright del panel (grooming/consultas/lab/
   config-horarios/estado) LIMPIAS: 0 pageerrors. Pendiente: revisión usuario
   + push.
+- 2026-10-27 — **/ESTADO PULIDO V3 (mockup de referencia + ideas propias), TODOS EN src/status
+  (sin tocar APIs)**: el usuario trajo un mockup de otra IA que ya plasmaba el layout 2col actual —
+  se adoptaron solo 3 detalles y se agregó lo que el mockup NO tenía: ① MÉTRICAS EN FILA
+  (estilo mockup): DetailRow→DetailMetric y el bloque de detalles pasa de lista apilada a grid
+  3 columnas con divisor vertical (divide-x) en sm+, apilado en móvil — Examen/Entrega/Código.
+  ② TINTE POR ESTADO (idea propia): mascots.ts exporta STATUS_TINT/tintFor — familia del color
+  del catálogo aplicada al chip de contexto y al backdrop circular de la mascota (violeta en corte,
+  verde listo, ámbar pendiente, rojo cancelado…; fallback azul). ③ ERROR CON MASCOTA: "código no
+  encontrado" ya no es texto rojo plano: card con error-dog.webp, hint VA-/LAB- en bold y CTA
+  WhatsApp de la clínica (BRANCHES[0], mensaje genérico sin datos del cliente). ④ SKELETON
+  (misma silueta del grid: chip/círculo/pastilla/barras + timeline) mientras carga, carpetas
+  reduce-motion. ⑤ FOOTER compartido EstadoFooter: botón-copy del enlace con feedback "¡Copiado!"
+  2s (patrón código de cita) — BookingView/LabView reusan; lookup se retira de sus props. ⑥
+  EXTRAS: línea de acento naranja sobre el H1 y document.title dinámico
+  "{Estado} · Veterinaria Ariel" (default al limpiar). QA playwright con APIs interceptadas:
+  VA en_corte (violeta)/listo, LAB resultado_listo (verde + descarga), VA-QASLOW→skeleton,
+  VA-00000→error card; mv 390/dk 1280 ambos 0 pageerrors; copiar link feedback OK; pestaña
+  "Listo · Veterinaria Ariel". Sin dependencias nuevas; polling de 30s intacto (dep pollTick
+  con comentario eslint). Gates: lint 0, tc doble 0, build, 268 tests, e2e 10/10. Pendiente:
+  revisión usuario + push.

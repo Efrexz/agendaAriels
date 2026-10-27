@@ -5,6 +5,7 @@ import {
   Check,
   ClipboardList,
   Clock,
+  Copy,
   FlaskConical,
   HeartHandshake,
   Info,
@@ -16,7 +17,8 @@ import { fetchTracking, isLabTracking } from "./api";
 import type { TrackingBooking, TrackingLab, TrackingResult } from "./types";
 import { SLOT_LABELS, STATUS_META, STATUS_ORDER, statusMeta } from "../statuses";
 import { LAB_STATUS_ORDER, labStatusMeta } from "../labStatuses";
-import { MASCOT_PLACEHOLDER, iconFor, mascotFor } from "./mascots";
+import { BRANCHES } from "../data/branches";
+import { MASCOT_PLACEHOLDER, iconFor, mascotFor, tintFor } from "./mascots";
 import type { LucideIcon } from "lucide-react";
 
 // ─────────────────────────────────────────────────────────────
@@ -182,16 +184,17 @@ function TimelineRow({
   );
 }
 
-// Fila de detalle del card de estado (estilo referencia: icono en cuadro
-// de color + label pequeño + valor bold).
-function DetailRow({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
+// Métrica del card de estado (estilo mockup: icono en cuadro + label pequeño
+// + valor bold). En pantallas anchas las 3 métricas comparten fila con
+// divisor vertical (grid del StatusCard); en móvil se apilan.
+function DetailMetric({ icon: Icon, label, children }: { icon: LucideIcon; label: string; children: React.ReactNode }) {
   return (
-    <div className="flex items-center gap-3 text-left">
+    <div className="flex items-center gap-2.5 sm:px-3.5 sm:first:pl-1.5">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
         <Icon className="h-4.5 w-4.5" />
       </div>
       <div className="min-w-0">
-        <p className="text-xs text-slate-400">{label}</p>
+        <p className="text-[11px] text-slate-400">{label}</p>
         <p className="text-sm font-bold leading-snug text-slate-800">{children}</p>
       </div>
     </div>
@@ -224,11 +227,12 @@ function StatusCard({
   stateIcon: LucideIcon;
   details: Array<{ icon: LucideIcon; label: string; value: React.ReactNode }>;
 }) {
+  const tint = tintFor(status);
   return (
     <section className="relative rounded-3xl bg-white p-6 pt-7 text-center shadow-lg shadow-slate-900/5 ring-1 ring-slate-100">
-      {/* Chip de contexto + indicador de actualización */}
+      {/* Chip de contexto (con tinte del estado) + indicador de actualización */}
       <div className="absolute inset-x-5 top-5 flex items-center justify-between gap-2">
-        <span className="truncate rounded-full bg-blue-50 px-3 py-1 text-[11px] font-bold uppercase tracking-wide text-brand-blue">
+        <span className={`truncate rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${tint.chipBg} ${tint.chipText}`}>
           {chip}
         </span>
         {polling && (
@@ -238,11 +242,9 @@ function StatusCard({
         )}
       </div>
 
-      {/* Mascota sobre círculo suave (backdrop) — más grande en desktop */}
-      <div className="relative mx-auto mt-4 h-44 w-44 rounded-full bg-blue-50/80 sm:h-48 sm:w-48 lg:h-56 lg:w-56">
+      {/* Mascota sobre círculo del tinte del estado — más grande en desktop */}
+      <div className={`relative mx-auto mt-4 h-44 w-44 rounded-full ${tint.soft} sm:h-48 sm:w-48 lg:h-56 lg:w-56`}>
         <Mascot key={`${kind}-${status}`} kind={kind} status={status} emoji={emoji} reduceMotion={reduceMotion} className="absolute inset-1" />
-        <PawPrint aria-hidden className="absolute -left-6 top-3 h-6 w-6 rotate-[-20deg] text-blue-100" strokeWidth={2.5} />
-        <PawPrint aria-hidden className="absolute -right-5 bottom-4 h-5 w-5 rotate-[25deg] text-blue-100" strokeWidth={2.5} />
       </div>
 
       {/* Estado actual como pastilla de color */}
@@ -253,12 +255,12 @@ function StatusCard({
         <span className="text-sm font-bold uppercase tracking-wide lg:text-base">{label}</span>
       </div>
 
-      {/* Detalles */}
-      <div className="mx-auto mt-6 flex max-w-xs flex-col gap-3 lg:max-w-sm">
+      {/* Detalles: apilados en móvil, 3 métricas con divisor en pantallas anchas */}
+      <div className="mx-auto mt-6 grid max-w-xs grid-cols-1 gap-3 text-left sm:max-w-none sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-slate-100">
         {details.map((d) => (
-          <DetailRow key={d.label} icon={d.icon} label={d.label}>
+          <DetailMetric key={d.label} icon={d.icon} label={d.label}>
             {d.value}
-          </DetailRow>
+          </DetailMetric>
         ))}
       </div>
     </section>
@@ -355,7 +357,23 @@ export default function App() {
     return () => {
       active = false;
     };
-  }, [pollTick, trackedCode]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pollTick]);
+
+  const reduceMotion = useReducedMotion() ?? false;
+
+  // Título de la pestaña con el estado actual (profesional al guardar/multi-tab):
+  // "Entregada · Veterinaria Ariel" y el default cuando no hay consulta activa.
+  const estadoLabel = result
+    ? isLabTracking(result)
+      ? labStatusMeta(result.status).label
+      : statusMeta(result.status).label
+    : null;
+  useEffect(() => {
+    document.title = estadoLabel
+      ? `${estadoLabel} · Veterinaria Ariel`
+      : "Estado de tu mascota · Veterinaria Ariel";
+  }, [estadoLabel]);
 
   return (
     <div className="relative mx-auto min-h-screen max-w-md px-4 py-8 lg:max-w-5xl lg:px-6">
@@ -372,6 +390,8 @@ export default function App() {
           </div>
           <span className="font-hand text-2xl leading-none text-brand-orange">Ariel&apos;s Clinic</span>
         </header>
+        {/* Línea de acento de marca sobre el título */}
+        <div aria-hidden className="mb-2 h-1 w-8 rounded-full bg-brand-orange" />
         <h1 className="font-display text-3xl font-bold leading-tight text-slate-900">¿Cómo va tu mascota? 🐾</h1>
         <p className="mt-2 text-sm text-slate-500">
           Consulta el estado de su baño, corte o examen de laboratorio. Ingresa tu código: <b>VA-</b> grooming ·{" "}
@@ -404,24 +424,125 @@ export default function App() {
               {loading ? "…" : "Ver"}
             </button>
           </div>
-          {error && <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>}
         </form>
 
+        {/* Resultado / error / carga: nunca faltan (sin "salto" del contenido) */}
         {result && (isLabTracking(result)
-          ? <LabView order={result} lookup={lookup} polling={polling} />
-          : <BookingView booking={result} lookup={lookup} polling={polling} />)}
+          ? <LabView order={result} polling={polling} />
+          : <BookingView booking={result} polling={polling} />)}
+        {!result && loading && <SkeletonView reduceMotion={reduceMotion} />}
+        {!result && !loading && error && <ErrorView message={error} />}
       </div>
     </div>
   );
 }
 
+// Estado "código no encontrado / sin conexión": card con la mascota de error
+// del catálogo visual + CTA WhatsApp de la clínica (en vez del texto rojo plano).
+function ErrorView({ message }: { message: string }) {
+  return (
+    <section className="mt-2 rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200">
+      <img
+        src="/images/vetMascot/error-dog.webp"
+        alt="Mascota confundida — código no encontrado"
+        className="mx-auto h-40 w-auto select-none object-contain sm:h-48"
+        draggable={false}
+      />
+      <h2 className="font-display text-xl font-bold text-slate-900">No encontramos ese código 🐾</h2>
+      <p className="mx-auto mt-1.5 max-w-xs text-sm leading-relaxed text-slate-500">{message}</p>
+      <p className="mx-auto mt-1 max-w-xs text-xs text-slate-400">
+        Revisa que empiece con <b className="text-slate-600">VA-</b> (grooming) o{" "}
+        <b className="text-slate-600">LAB-</b> (laboratorio) y que el resto sean letras y/o números.
+      </p>
+      <a
+        href={`https://wa.me/${BRANCHES[0]!.phone.replace(/\D/g, "")}?text=${encodeURIComponent(
+          "Hola 🐾 tengo una consulta sobre el estado de mi mascota (página /estado).",
+        )}`}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="mt-4 inline-flex items-center gap-1.5 rounded-full bg-[#25D366] px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-[#1EBE5A]"
+      >
+        👋 Preguntar por WhatsApp
+      </a>
+    </section>
+  );
+}
+
+// Skeleton de carga (misma silueta del resultado: card de estado + timeline):
+// evita el "salto" visual entre presionar Ver y la respuesta.
+function SkeletonView({ reduceMotion }: { reduceMotion: boolean }) {
+  const bar = `rounded-full bg-slate-100 ${reduceMotion ? "" : "animate-pulse"}`;
+  return (
+    <main className="mt-2 grid gap-6 lg:grid-cols-2 lg:items-start lg:gap-8" aria-hidden>
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-100">
+        <div className="flex items-center justify-between">
+          <div className={`h-6 w-24 rounded-full bg-blue-100 ${reduceMotion ? "" : "animate-pulse"}`} />
+          <div className={`h-3 w-12 rounded-full ${bar}`} />
+        </div>
+        <div className="mx-auto mt-6 h-44 w-44 rounded-full bg-blue-50 sm:h-48 sm:w-48 lg:h-56 lg:w-56" />
+        <div className={`mx-auto mt-4 h-9 w-40 rounded-full ${bar}`} />
+        <div className="mx-auto mt-6 flex max-w-xs flex-col gap-3">
+          {[64, 72, 40].map((w, i) => (
+            <div key={i} className="flex items-center gap-3">
+              <div className={`h-9 w-9 shrink-0 rounded-xl ${bar}`} />
+              <div className={`h-2.5 rounded-full ${bar}`} style={{ width: `${w}%` }} />
+            </div>
+          ))}
+        </div>
+      </section>
+      <section className="rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-5 flex items-center gap-2.5">
+          <div className={`flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 ${reduceMotion ? "" : "animate-pulse"}`} />
+          <div className={`h-4 w-44 rounded-full ${bar}`} />
+        </div>
+        <div className="flex flex-col gap-5">
+          {[0, 1, 2].map((i) => (
+            <div key={i} className="flex items-start gap-4">
+              <div className={`h-9 w-9 shrink-0 rounded-full ${bar}`} />
+              <div className="flex flex-1 flex-col gap-1.5 pt-1">
+                <div className={`h-3 w-32 rounded-full ${bar}`} />
+                <div className={`h-2 w-20 rounded-full ${bar}`} />
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+    </main>
+  );
+}
+
+// Pie compartido por las dos vistas: línea de info + enlace recuperable con
+// botón de copiar (feedback "¡Copiado!" 2 s, mismo patrón del código de cita).
+function EstadoFooter({ code, children }: { code: string; children: React.ReactNode }) {
+  const [copiado, setCopiado] = useState(false);
+  const link = `${window.location.origin}/estado?code=${code}`;
+  return (
+    <footer className="mt-8 rounded-2xl bg-blue-50/60 px-4 py-3 text-center text-xs text-slate-500">
+      <p className="flex items-center justify-center gap-1.5">{children}</p>
+      <div className="mt-1.5 flex flex-wrap items-center justify-center gap-1.5">
+        <button
+          onClick={() => {
+            void navigator.clipboard?.writeText(link);
+            setCopiado(true);
+            setTimeout(() => setCopiado(false), 2000);
+          }}
+          className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 font-mono text-[11px] ring-1 transition ${
+            copiado ? "bg-green-50 text-green-700 ring-green-200" : "bg-white/80 text-slate-500 ring-slate-200 hover:text-brand-blue hover:ring-blue-200"
+          }`}
+        >
+          {copiado ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
+          {copiado ? "¡Copiado!" : link}
+        </button>
+      </div>
+    </footer>
+  );
+}
+
 function BookingView({
   booking,
-  lookup,
   polling,
 }: {
   booking: TrackingBooking;
-  lookup: (raw: string) => Promise<void>;
   polling: boolean;
 }) {
   const petNames = booking.pets.map((p) => p.name).join(", ");
@@ -471,29 +592,19 @@ function BookingView({
         </section>
       </div>
 
-      <footer className="mt-8 rounded-2xl bg-blue-50/60 px-4 py-3 text-center text-xs text-slate-500">
-        <p className="flex items-center justify-center gap-1.5">
-          <HeartHandshake className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
-          Esta página se actualiza sola. Para volver, abre este link:
-        </p>
-        <button
-          onClick={() => void lookup(booking.bookingCode)}
-          className="mt-1 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-slate-500 ring-1 ring-slate-200"
-        >
-          {window.location.origin}/estado?code={booking.bookingCode}
-        </button>
-      </footer>
+      <EstadoFooter code={booking.bookingCode}>
+        <HeartHandshake className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+        Esta página se actualiza sola. Guarda o comparte este enlace para volver:
+      </EstadoFooter>
     </main>
   );
 }
 
 function LabView({
   order,
-  lookup,
   polling,
 }: {
   order: TrackingLab;
-  lookup: (raw: string) => Promise<void>;
   polling: boolean;
 }) {
   const current = labStatusMeta(order.status);
@@ -573,18 +684,10 @@ function LabView({
         </section>
       )}
 
-      <footer className="mt-8 rounded-2xl bg-blue-50/60 px-4 py-3 text-center text-xs text-slate-500">
-        <p className="flex items-center justify-center gap-1.5">
-          <Info className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
-          Esta página se actualiza sola. El resultado se entrega impreso en la sede.
-        </p>
-        <button
-          onClick={() => void lookup(order.orderCode)}
-          className="mt-1 rounded bg-white/80 px-2 py-1 font-mono text-[11px] text-slate-500 ring-1 ring-slate-200"
-        >
-          {window.location.origin}/estado?code={order.orderCode}
-        </button>
-      </footer>
+      <EstadoFooter code={order.orderCode}>
+        <Info className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
+        Esta página se actualiza sola. El resultado se entrega impreso en la sede.
+      </EstadoFooter>
     </main>
   );
 }
