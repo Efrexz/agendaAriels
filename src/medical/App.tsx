@@ -727,8 +727,10 @@ export default function App() {
                     </p>
                   </div>
 
-                  {/* Mascota del equipo médico (la misma del paso doctor; se esconde si falta el asset) */}
-                  <DoctorMascot />
+                  {/* Collage de especialidades (especializada.webp: 4 cuadros
+                      Cardiología/Nutrición/Neurología/Traumatología) — si el
+                      asset falta, la columna se esconde (sin icono roto) */}
+                  <EspecialidadCollage />
                 </section>
               )}
 
@@ -1315,6 +1317,33 @@ function StepHeading({ kicker, children }: { kicker?: string; children: React.Re
 
 // Mascota del paso doctor con fundido blanco; si el webp falta, la
 // columna desaparece (patrón de cascada de /estado, sin icono roto).
+// Collage "4 especialidades" del paso especialidad (especializada.webp,
+// RGB con su propio fondo pastel: se usa enmarcado, no flotante). Se esconde
+// si el asset falta; reduce-motion respeta la entrada.
+function EspecialidadCollage() {
+  const reduceMotion = useReducedMotion() ?? false;
+  const [hidden, setHidden] = useState(false);
+  if (hidden) return null;
+  return (
+    <div className="relative mx-auto w-full max-w-xs justify-center lg:max-w-none">
+      <motion.img
+        src="/images/vetMascot/especializada.webp"
+        alt="Especialidades disponibles: cardiología, nutrición, neurología y traumatología"
+        className="w-full select-none rounded-[28px] object-cover shadow-lg shadow-blue-100/50 ring-1 ring-slate-100"
+        draggable={false}
+        onError={() => setHidden(true)}
+        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.92 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 rounded-[28px] ring-4 ring-inset ring-white/60"
+      />
+    </div>
+  );
+}
+
 function DoctorMascot() {
   const reduceMotion = useReducedMotion() ?? false;
   const [hidden, setHidden] = useState(false);

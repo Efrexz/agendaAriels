@@ -19,9 +19,9 @@ export const VA_MASCOT: Record<string, string> = {
   en_bano: `${MASCOT_BASE}burbujas.webp`,
   en_secado: `${MASCOT_BASE}secado.webp`,
   en_corte: `${MASCOT_BASE}corte.webp`,
-  listo: `${MASCOT_BASE}aprobado.webp`,
+  listo: `${MASCOT_BASE}spaListo.webp`,
   en_camino_entrega: `${MASCOT_BASE}camino.webp`,
-  entregado: `${MASCOT_BASE}DogAndCatFamilia.webp`,
+  entregado: `${MASCOT_BASE}entregado.webp`,
   cancelado: `${MASCOT_BASE}error-dog.webp`,
 };
 
