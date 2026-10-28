@@ -63,7 +63,11 @@ const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
   general: { src: "/images/medical/servicio/general.webp", alt: "Consulta general veterinaria" },
   rayos: { src: "/images/medical/servicio/rayos.webp", alt: "Radiografía veterinaria" },
   eco: { src: "/images/medical/servicio/eco.webp", alt: "Ecografía veterinaria" },
-  especializada: { src: "/images/medical/servicio/especializada.webp", alt: "Consulta especializada veterinaria" },
+  especializada: {
+    // Arte circular del bulldog especialista con el golden y el gato (mint):
+    // el recorte object-cover de la card lo respeta tal cual.
+    src: "/images/vetMascot/especializadas.webp", alt: "Consulta especializada veterinaria",
+  },
 };
 
 function todayMinPlus(): string {

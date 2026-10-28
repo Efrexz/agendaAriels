@@ -22,7 +22,7 @@ export const VA_MASCOT: Record<string, string> = {
   listo: `${MASCOT_BASE}spaListo.webp`,
   en_camino_entrega: `${MASCOT_BASE}camino.webp`,
   entregado: `${MASCOT_BASE}entregado.webp`,
-  cancelado: `${MASCOT_BASE}error-dog.webp`,
+  cancelado: `${MASCOT_BASE}cancelado.webp`,
 };
 
 /** Laboratorio (LAB-): estado → archivo final. */
@@ -30,8 +30,8 @@ export const LAB_MASCOT: Record<string, string> = {
   recibida: `${MASCOT_BASE}recibida.webp`,
   en_laboratorio: `${MASCOT_BASE}laboratorio.webp`,
   resultado_listo: `${MASCOT_BASE}resultadoListo.webp`,
-  entregada: `${MASCOT_BASE}DogAndCatFamilia.webp`,
-  cancelado: `${MASCOT_BASE}error-dog.webp`,
+  entregada: `${MASCOT_BASE}resultadoListo.webp`,
+  cancelado: `${MASCOT_BASE}cancelado.webp`,
 };
 
 export function mascotFor(kind: "va" | "lab", status: string): string {
