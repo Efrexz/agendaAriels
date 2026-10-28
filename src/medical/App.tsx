@@ -2,8 +2,8 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Apple, ArrowRight, Bone, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, FileCheck2, FileX2, GraduationCap, Heart, HeartPulse, Info, Loader2,
-  MapPin, Microscope, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
+  ClipboardList, Clock, Copy, FileCheck2, FileX2, GraduationCap, Heart, HeartPulse, Info, Loader2,
+  MapPin, MessageCircle, Microscope, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
   Sunset, UserRound, type LucideIcon,
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
@@ -56,6 +56,7 @@ const MASCOT = {
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
   agendado: "/images/vetMascot/agendado.webp",
+  citaRegistrada: "/images/vetMascot/citaRegistrada.webp",
   errorAgenda: "/images/vetMascot/errorAgenda.webp",
 };
 
@@ -1015,52 +1016,106 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Enviado: éxito con resumen de la cita + código copiable ── */}
+              {/* ── Enviado: éxito con mascota (arte con título integrado) +
+                  código copiable + resumen en card + banner WhatsApp ── */}
               {step === "enviado" && (
-                <section className="mx-auto flex max-w-2xl flex-col items-center gap-4 py-4 text-center">
-                  <motion.img
-                    src={MASCOT.agendado}
-                    alt="Mascota celebrando su cita agendada"
-                    className="h-auto w-56 object-contain mix-blend-multiply sm:w-72"
-                    draggable={false}
-                    initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: reduceMotion ? 0 : 10 }}
-                    animate={{ opacity: 1, scale: 1, y: 0 }}
-                    transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
-                  />
-                  <h2 className="font-display text-3xl font-bold tracking-tight text-green-700 sm:text-4xl">
-                    ¡Cita registrada! 🎉
-                  </h2>
-                  <div className="rounded-2xl border-2 border-dashed border-green-300 bg-green-50 px-8 py-4">
-                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-green-600">Código de cita</p>
-                    <p className="mt-1 font-mono text-3xl font-bold tracking-wider text-green-800">{code}</p>
+                <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-4 text-center">
+                  {form.serviceType === "especializada" ? (
+                    <>
+                      <motion.img
+                        src={MASCOT.agendado}
+                        alt="Mascota celebrando su cita agendada"
+                        className="h-auto w-56 object-contain mix-blend-multiply sm:w-72"
+                        draggable={false}
+                        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, scale: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
+                      />
+                      <h2 className="font-display text-3xl font-bold tracking-tight text-green-700 sm:text-4xl">
+                        ¡Cita registrada! 🎉
+                      </h2>
+                    </>
+                  ) : (
+                    // El arte trae integrado "¡Cita registrada!" + subtítulo,
+                    // igual que en el mockup; no conviene duplicar el h2.
+                    <motion.img
+                      src={MASCOT.citaRegistrada}
+                      alt="¡Cita registrada! Hemos agendado tu cita con éxito"
+                      className="h-auto w-80 object-contain mix-blend-multiply sm:w-[28rem]"
+                      draggable={false}
+                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
+                    />
+                  )}
+                  <div className="w-full max-w-sm rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-8 py-5">
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
+                    <div className="mt-1 flex items-center justify-center gap-2">
+                      <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                      <button
+                        title="Copiar código"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(code);
+                          setCopia(true);
+                          setTimeout(() => setCopia(false), 2000);
+                        }}
+                        className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                      >
+                        {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                      </button>
+                    </div>
                     <button
                       onClick={() => {
                         void navigator.clipboard?.writeText(code);
                         setCopia(true);
                         setTimeout(() => setCopia(false), 2000);
                       }}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-green-700 ring-1 ring-green-200 transition hover:bg-green-100"
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
                     >
-                      {copia ? <Check className="h-3.5 w-3.5" /> : "⧉"}
+                      {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
                       {copia ? "¡Copiado!" : "Copiar código"}
                     </button>
                   </div>
                   <Resumen form={form} />
-                  <p className="max-w-md text-sm text-[#546A8E]">
-                    {form.serviceType === "especializada" ? (
-                      <>Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
-                      WhatsApp de la sede y te confirmamos fecha, hora y doctor.</>
-                    ) : (
-                      <>Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
-                      tolerancia de 10 minutos, luego atendemos al siguiente 🐾.</>
+                  {form.serviceType === "especializada" ? (
+                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                      <img
+                        src={MASCOT.pago}
+                        alt=""
+                        aria-hidden="true"
+                        className="h-12 w-12 shrink-0 object-contain mix-blend-multiply"
+                      />
+                      <p className="text-xs leading-relaxed text-amber-800">
+                        Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
+                        WhatsApp de la sede y te confirmamos fecha, hora y doctor.
+                      </p>
+                    </div>
+                  ) : (
+                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+                        <MessageCircle className="h-5 w-5" />
+                      </span>
+                      <p className="text-xs leading-relaxed text-green-900">
+                        Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
+                        tolerancia de 10 minutos, luego atendemos al siguiente 🐾.
+                      </p>
+                    </div>
                   )}
-                  </p>
                   <button
                     onClick={() => { setForm(INITIAL); go("sede"); }}
-                    className="inline-flex items-center gap-1.5 rounded-full border border-[#DCEBFF] bg-white px-5 py-2.5 text-sm font-semibold text-[#546A8E] shadow-sm transition-all hover:-translate-y-0.5 hover:border-blue-200 hover:text-[#475AAB] hover:shadow-md"
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
                   >
+                    <CalendarDays className="h-5 w-5" />
                     Agendar otra cita
+                    <ChevronRight className="h-4 w-4" />
                   </button>
+                  <a
+                    href="/"
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Volver al inicio
+                  </a>
                 </section>
               )}
             </motion.div>
@@ -1411,22 +1466,26 @@ function Resumen({ form }: { form: FormData }) {
   const serviceLabel = SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
   const esEspecializada = form.serviceType === "especializada";
   return (
-    <div className="rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] p-4 shadow-sm sm:p-5">
-      <ul className="grid gap-2">
-        {b && <SummaryRow icon={MapPin}>{b.label}</SummaryRow>}
-        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope}>
+    <div className="w-full max-w-sm rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] px-4 py-3 text-left shadow-sm sm:px-5">
+      <ul className="grid">
+        {b && <SummaryRow icon={MapPin} tint="blue" label="Sede">{b.label}</SummaryRow>}
+        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope} tint="orange" label="Servicio">
           {serviceLabel}
           {esEspecializada && form.specialtyName ? ` · ${form.specialtyName}` : ""}
           {esEspecializada && form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
         </SummaryRow>
         {/* Doctor y fecha/hora SOLO existen en general/rayos/eco: la especializada
             no pide ni doctor ni fecha — los confirma la especialista tras el pago. */}
-        {!esEspecializada && form.doctorName && <SummaryRow icon={UserRound}>{form.doctorName}</SummaryRow>}
+        {!esEspecializada && form.doctorName && (
+          <SummaryRow icon={UserRound} tint="blue" label="Médico veterinario">{form.doctorName}</SummaryRow>
+        )}
         {!esEspecializada && form.date && form.startMinute !== null && (
-          <SummaryRow icon={CalendarDays}>{prettyDate(form.date)} · {hora(form.startMinute)}</SummaryRow>
+          <SummaryRow icon={CalendarDays} tint="orange" label="Fecha y hora">
+            {prettyDate(form.date)} · {hora(form.startMinute)}
+          </SummaryRow>
         )}
         {esEspecializada && (
-          <SummaryRow icon={CalendarDays} accent>
+          <SummaryRow icon={CalendarDays} tint="amber" label="Fecha y hora" accent>
             La especialista confirma fecha y hora después de verificar tu pago
           </SummaryRow>
         )}
@@ -1435,19 +1494,30 @@ function Resumen({ form }: { form: FormData }) {
   );
 }
 
-function SummaryRow({ icon: Icon, children, accent = false }: { icon: LucideIcon; children: React.ReactNode; accent?: boolean }) {
+// Fila del resumen estilo mockup: icono pastel grande + label pequeña + valor neto.
+const TINTS: Record<"blue" | "orange" | "amber", { box: string }> = {
+  blue: { box: "bg-[#EFF6FF] text-blue-600" },
+  orange: { box: "bg-[#FFF1E6] text-orange-500" },
+  amber: { box: "bg-[#FFF7EE] text-amber-600" },
+};
+
+function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false }: {
+  icon: LucideIcon;
+  children: React.ReactNode;
+  label: string;
+  tint?: "blue" | "orange" | "amber";
+  accent?: boolean;
+}) {
+  const box = accent ? TINTS.amber : TINTS[tint];
   return (
-    <li className={`flex items-center gap-2.5 rounded-[12px] border px-3 py-2 text-sm ${
-      accent
-        ? "border-orange-100 bg-[#FFF7EE] text-[#1A2238]"
-        : "border-[#DCEBFF] bg-[#F7FBFF] text-[#546A8E]"
-    }`}>
-      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full ${
-        accent ? "bg-orange-500 text-white" : "bg-[#EFF6FF] text-blue-600"
-      }`}>
-        <Icon className="h-3.5 w-3.5" />
+    <li className="flex items-center gap-3 border-b border-[#EDF4FD] py-2.5 last:border-b-0">
+      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${box}`}>
+        <Icon className="h-5 w-5" />
       </span>
-      <span className="leading-snug">{children}</span>
+      <span className="flex min-w-0 flex-col">
+        <span className="text-[11px] font-medium text-[#8A97B1]">{label}</span>
+        <span className="leading-snug text-sm font-bold text-[#1A2238]">{children}</span>
+      </span>
     </li>
   );
 }
