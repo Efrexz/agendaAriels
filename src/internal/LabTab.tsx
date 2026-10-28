@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, PlusCircle } from "lucide-react";
+import { Check, ChevronDown, Copy, PlusCircle, TriangleAlert } from "lucide-react";
 import {
   addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
   getLabResultUrl, patchLabStatus, publishLabResult, uploadLabResultFile,
@@ -583,21 +583,11 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
     sedeOrigen !== "san_miguel" || sedeResponsable !== "san_miguel";
 
   return (
-    <ModalShell title="🧪 Nueva orden de laboratorio" dirty={dirty && !created} onClose={onClose}>
+    <ModalShell title={created ? "" : "🧪 Nueva orden de laboratorio"} dirty={dirty && !created} onClose={onClose}>
       {(maybeClose) =>
       created ? (
-          <div className="flex flex-col items-center gap-3 py-4 text-center">
-            <p className="text-3xl">✅</p>
-            <p className="text-sm text-slate-600">Orden registrada y el cliente ya tiene su código:</p>
-            <p className="rounded-xl bg-blue-50 px-4 py-2 font-mono text-lg font-bold tracking-wider text-brand-blue">{created.code}</p>
-            {!created.notified && (
-              <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                La orden quedó registrada, pero el WhatsApp al cliente NO se envió (servidor de WhatsApp no disponible ahora).
-              </p>
-            )}
-            <button onClick={() => onClose(true)} className="rounded-lg bg-brand-blue py-2 text-sm font-semibold text-white">Listo</button>
-          </div>
-        ) : (
+        <LabOrderSuccess code={created.code} notified={created.notified} onDone={() => maybeClose(true)} />
+      ) : (
           <>
             {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
             <div className="grid gap-3">
@@ -675,6 +665,57 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
           )
       }
     </ModalShell>
+  );
+}
+
+// Estado de ÉXITO del modal de nueva orden (ref estilo mockup del usuario:
+// mascota asomando + título con acento + pill de código copiable + banner
+// advertencia + botón pill "Listo"). El arte ya integra blob/huellitas/rayos,
+// así que no compone nada extra — solo se asoma sobre el borde del card
+// (fondo blanco del webp ≈ blanco del modal, integra sin alpha).
+function LabOrderSuccess({ code, notified, onDone }: { code: string; notified: boolean; onDone: () => void }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <div className="flex flex-col items-center gap-3 pb-1 text-center">
+      <img
+        src="/images/vetMascot/ordenRegistrada.webp"
+        alt=""
+        aria-hidden="true"
+        className="-mt-12 w-80 max-w-full"
+        draggable={false}
+      />
+      <p className="font-display text-2xl font-bold leading-tight text-slate-900">
+        ¡Orden de laboratorio <span className="text-brand-blue">registrada!</span>
+      </p>
+      <p className="-mt-1 text-sm text-slate-500">El cliente ya tiene su código:</p>
+      <button
+        onClick={() => {
+          void navigator.clipboard?.writeText(code);
+          setCopied(true);
+          setTimeout(() => setCopied(false), 2000);
+        }}
+        title="Copiar código"
+        className="flex w-full items-center justify-center gap-2.5 rounded-2xl bg-sky-100 px-4 py-3.5 font-mono text-2xl font-bold tracking-wider text-brand-blue ring-1 ring-sky-200 transition hover:bg-sky-200/70"
+      >
+        {code}
+        {copied
+          ? <Check className="h-5 w-5 shrink-0" aria-hidden="true" />
+          : <Copy className="h-5 w-5 shrink-0" aria-hidden="true" />}
+      </button>
+      {!notified && (
+        <div className="flex items-start gap-2.5 rounded-xl bg-amber-100 px-3.5 py-3 text-left text-xs font-medium text-amber-800">
+          <TriangleAlert className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
+          <span>La orden quedó registrada, pero el WhatsApp al cliente NO se envió (servidor de WhatsApp no disponible ahora).</span>
+        </div>
+      )}
+      <button
+        onClick={onDone}
+        className="mt-1 flex items-center gap-2 rounded-full bg-brand-blue px-9 py-3 text-sm font-semibold text-white shadow-lg shadow-sky-200 transition hover:brightness-110"
+      >
+        <Check className="h-4.5 w-4.5" aria-hidden="true" />
+        Listo
+      </button>
+    </div>
   );
 }
 

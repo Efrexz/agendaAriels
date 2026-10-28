@@ -57,7 +57,9 @@ export function ModalShell({ title, dirty, onClose, children }: {
         >
           <X className="h-5 w-5" />
         </button>
-        <h3 className="mb-3 pr-8 font-display text-lg font-bold text-slate-900">{title}</h3>
+        {title
+          ? <h3 className="mb-3 pr-8 font-display text-lg font-bold text-slate-900">{title}</h3>
+          : null}
         {children(maybeClose)}
 
         {confirming && (
