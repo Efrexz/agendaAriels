@@ -583,7 +583,7 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
     sedeOrigen !== "san_miguel" || sedeResponsable !== "san_miguel";
 
   return (
-    <ModalShell title={created ? "" : "🧪 Nueva orden de laboratorio"} dirty={dirty && !created} onClose={onClose}>
+    <ModalShell title={created ? "" : "🧪 Nueva orden de laboratorio"} dirty={dirty && !created} onClose={onClose} center={!!created}>
       {(maybeClose) =>
       created ? (
         <LabOrderSuccess code={created.code} notified={created.notified} onDone={() => maybeClose(true)} />
@@ -681,7 +681,7 @@ function LabOrderSuccess({ code, notified, onDone }: { code: string; notified: b
         src="/images/vetMascot/ordenRegistrada.webp"
         alt=""
         aria-hidden="true"
-        className="-mt-12 w-80 max-w-full"
+        className="w-80 max-w-full"
         draggable={false}
       />
       <p className="font-display text-2xl font-bold leading-tight text-slate-900">

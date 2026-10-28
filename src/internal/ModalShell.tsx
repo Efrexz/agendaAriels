@@ -20,11 +20,14 @@ import { X } from "lucide-react";
 // Todos los modales nuevos del panel DEBEN usarlo.
 // ─────────────────────────────────────────────────────────────
 
-export function ModalShell({ title, dirty, onClose, children }: {
+export function ModalShell({ title, dirty, onClose, children, center = false }: {
   title: string;
   dirty: boolean;
   onClose: (reload: boolean) => void;
   children: (maybeClose: (reload?: boolean) => void) => React.ReactNode;
+  // center: vista de ÉXITO (estados que ya no son formulario) se muestra
+  // centrada verticalmente en pantalla en vez de colgada del borde superior.
+  center?: boolean;
 }) {
   const [confirming, setConfirming] = useState(false);
 
@@ -48,8 +51,8 @@ export function ModalShell({ title, dirty, onClose, children }: {
   }, [maybeClose]);
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm">
-      <div className="relative mt-10 w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+    <div className={`fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm ${center ? "items-center" : "items-start"}`}>
+      <div className={`relative w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ${center ? "" : "mt-10"}`} onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => maybeClose(false)}
           aria-label="Cerrar"
