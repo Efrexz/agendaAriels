@@ -170,7 +170,7 @@ export default function App() {
         {tab === "historial" && <HistoryTab onJump={jumpTo} />}
         {tab === "config" && (
           <div>
-            <h1 className="mb-4 font-display text-xl font-bold text-slate-900">⚙ Configuración del sistema médico</h1>
+            <h1 className="mb-4 font-display text-xl font-bold text-[#475AAB]">⚙ Configuración del sistema médico</h1>
             <ConfigTab />
           </div>
         )}

@@ -9,6 +9,7 @@ import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
+import { ConfirmModal } from "./ConfirmModal";
 
 // Pestaña 🧪 Laboratorio: reemplazo digital del cuaderno de exámenes externos.
 // Vista por defecto "En curso" + Hoy/Semana/Búsqueda. Cross-sede: cada orden
@@ -199,7 +200,6 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
   );
 
   async function setOrderStatus(o: LabOrder, status: string) {
-    if (status === "cancelado" && !window.confirm(`¿Cancelar la orden ${o.orderCode} de ${o.petName}?`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -379,6 +379,9 @@ function LabCard({ o, onStatus, onChanged }: {
   const [resultBusy, setResultBusy] = useState(false);
   const [resultMsg, setResultMsg] = useState<string | null>(null);
   const resultFileRef = useRef<HTMLInputElement | null>(null);
+  // Confirmaciones con modal propio (cancelar orden / borrar resultado)
+  const [confirmCancel, setConfirmCancel] = useState(false);
+  const [confirmBorrar, setConfirmBorrar] = useState(false);
   const meta = labStatusMeta(o.status);
 
   async function publicarResultado(file: File | null) {
@@ -418,7 +421,6 @@ function LabCard({ o, onStatus, onChanged }: {
   }
 
   async function borrarResultado() {
-    if (!window.confirm(`¿Borrar el resultado publicado de ${o.orderCode}? El cliente dejará de verlo.`)) return;
     setResultBusy(true);
     setResultMsg(null);
     try {
@@ -519,7 +521,7 @@ function LabCard({ o, onStatus, onChanged }: {
               {nextActions.map(([s, label], i) => (
                 <button
                   key={s}
-                  onClick={() => onStatus(o, s)}
+                  onClick={() => (s === "cancelado" ? setConfirmCancel(true) : onStatus(o, s))}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     s === "cancelado"
                       ? "bg-red-50 text-red-700 hover:bg-red-100"
@@ -572,7 +574,7 @@ function LabCard({ o, onStatus, onChanged }: {
                     🔁 Reemplazar
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)} />
                   </label>
-                  <button onClick={() => void borrarResultado()} disabled={resultBusy} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">🗑 Borrar</button>
+                  <button onClick={() => setConfirmBorrar(true)} disabled={resultBusy} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">🗑 Borrar</button>
                 </div>
               )}
               {resultMsg && <p className="mt-1.5 text-xs text-slate-600">{resultMsg}</p>}
@@ -599,6 +601,35 @@ function LabCard({ o, onStatus, onChanged }: {
             </p>
           )}
         </div>
+      )}
+
+      {confirmCancel && (
+        <ConfirmModal
+          title="¿Cancelar esta orden?"
+          description={`La orden ${o.orderCode} de ${o.petName} quedará cancelada.`}
+          confirmLabel="Sí, cancelar"
+          danger
+          onClose={() => setConfirmCancel(false)}
+          onConfirm={() => {
+            setConfirmCancel(false);
+            onStatus(o, "cancelado");
+          }}
+        />
+      )}
+
+      {confirmBorrar && (
+        <ConfirmModal
+          title="¿Borrar el resultado publicado?"
+          description={`El cliente dejará de ver el resultado de ${o.orderCode} en /estado de inmediato.`}
+          confirmLabel="Sí, borrar"
+          danger
+          busy={resultBusy}
+          onClose={() => setConfirmBorrar(false)}
+          onConfirm={async () => {
+            await borrarResultado();
+            setConfirmBorrar(false);
+          }}
+        />
       )}
     </article>
   );

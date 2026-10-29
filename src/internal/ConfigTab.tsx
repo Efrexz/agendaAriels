@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Plus } from "lucide-react";
+import { ChevronDown, Clock, GraduationCap, MessageCircle, Plus, Stethoscope } from "lucide-react";
 import { createDoctor, createSpecialty, fetchCatalog, fetchMedConfig, putMedConfig, updateCatalog, type MedDoctorPanel, type MedSpecialtyPanel } from "./apiMedical";
 import { MED_BRANCHES } from "../medical/api";
 import { HorariosTab } from "./HorariosTab";
@@ -57,7 +57,12 @@ export function ConfigTab() {
 
       {/* Duración de cita */}
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">⏱ Duración de cada cita</h3>
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-blue-500">
+            <Clock className="h-4 w-4" />
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Duración de cada cita</h3>
+        </div>
         <p className="mb-3 text-xs text-slate-500">Los horarios de la web se recalculan con este valor (conviene cambiarlo en horarios muertos: si todos ya agendaron cita no cambia la duración guardada).</p>
         <div className="flex items-center gap-2">
           <input
@@ -78,7 +83,12 @@ export function ConfigTab() {
 
       {/* Métodos de pago */}
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">💳 Métodos de pago (texto del mensaje al cliente)</h3>
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E8F7EE] text-green-600">
+            <MessageCircle className="h-4 w-4" />
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Métodos de pago (texto del mensaje al cliente)</h3>
+        </div>
         <p className="mb-3 text-xs text-slate-500">Va en el mensaje de "solicitud especializada". Actualiza los números cuando toque — el texto es libre.</p>
         <textarea
           rows={4}
@@ -93,7 +103,12 @@ export function ConfigTab() {
 
       {/* Doctores */}
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">🩺 Doctores</h3>
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFF1E6] text-orange-500">
+            <Stethoscope className="h-4 w-4" />
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Doctores</h3>
+        </div>
         <div className="mb-4 flex flex-col gap-2">
           {doctors.map((d) => (
             <div key={d.id} className="flex items-center justify-between gap-3 rounded-xl bg-slate-50 px-3 py-2 text-sm">
@@ -152,7 +167,12 @@ export function ConfigTab() {
 
       {/* Especialidades */}
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
-        <h3 className="mb-3 text-sm font-bold text-slate-800">🎓 Especialidades (precio y sedes)</h3>
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EDEFFF] text-[#475AAB]">
+            <GraduationCap className="h-4 w-4" />
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Especialidades (precio y sedes)</h3>
+        </div>
         <div className="mb-4 flex flex-col gap-2">
           {specialties.map((s) => (
             <div key={s.id} className="flex flex-wrap items-center justify-between gap-2 rounded-xl bg-slate-50 px-3 py-2 text-sm">
@@ -225,7 +245,7 @@ function HorariosSection() {
         className="flex w-full items-center gap-3 text-left"
       >
         <span className="min-w-0 flex-1">
-          <h3 className="text-sm font-bold text-slate-800 block">📅 Horarios médicos de la web</h3>
+          <h3 className="text-sm font-bold text-[#475AAB] block">📅 Horarios médicos de la web</h3>
           <p className="text-xs text-slate-500">El horario semanal que ve un cliente al agendar una cita en la web. Se toca solo cuando un doctor muda su horario.</p>
         </span>
         <ChevronDown className={`h-5 w-5 shrink-0 text-slate-400 transition-transform duration-300 ${open ? "rotate-180" : ""}`} />

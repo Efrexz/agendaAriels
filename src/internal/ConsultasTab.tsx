@@ -9,6 +9,7 @@ import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalSt
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
+import { ConfirmModal } from "./ConfirmModal";
 
 // Pestaña Consultas: vista del counter para citas médicas.
 // Por defecto HOY, con franja de "Mañana", semana, búsqueda y citas manuales.
@@ -128,7 +129,6 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   );
 
   async function setApptStatus(a: MedAppt, status: string) {
-    if (status === "cancelado" && !window.confirm(`¿Cancelar la cita ${a.appointmentCode} de ${a.petName}?`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -241,7 +241,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
           onClick={() => setManualOpen(true)}
           className="flex items-center gap-1.5 rounded-2xl bg-brand-blue px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
         >
-          <PlusCircle className="h-4 w-4" /> ＋ Cita manual
+          <PlusCircle className="h-4 w-4" />Cita manual
         </button>
       </div>
 
@@ -495,6 +495,8 @@ function ApptCard({ a, onStatus, onReagendar }: {
   onReagendar: (a: MedAppt) => void;
 }) {
   const [open, setOpen] = useState(false);
+  // Confirmación de cancelación con modal propio (adiós window.confirm)
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const meta = medStatusMeta(a.status);
 
   const nextActions: Array<[string, string]> = [];
@@ -592,7 +594,7 @@ function ApptCard({ a, onStatus, onReagendar }: {
               return (
                 <button
                   key={s}
-                  onClick={() => onStatus(a, s)}
+                  onClick={() => (s === "cancelado" ? setConfirmCancel(true) : onStatus(a, s))}
                   className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
                     peligro
                       ? s === "no_llego"
@@ -635,6 +637,20 @@ function ApptCard({ a, onStatus, onReagendar }: {
             </p>
           )}
         </div>
+      )}
+
+      {confirmCancel && (
+        <ConfirmModal
+          title="¿Cancelar esta cita?"
+          description={`La cita ${a.appointmentCode} de ${a.petName} quedará cancelada y el cliente será avisado por WhatsApp si el servidor está disponible.`}
+          confirmLabel="Sí, cancelar"
+          danger
+          onClose={() => setConfirmCancel(false)}
+          onConfirm={() => {
+            setConfirmCancel(false);
+            onStatus(a, "cancelado");
+          }}
+        />
       )}
     </article>
   );

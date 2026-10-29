@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { updateStatus, resendWhatsapp, type PanelBooking } from "./api";
 import { printViaQz } from "./qz";
+import { ConfirmModal } from "./ConfirmModal";
 import { NOTIFIABLE_STATUSES, SLOT_LABELS, STATUS_ORDER, statusMeta } from "../statuses";
 
 function formatTime(iso: string): string {
@@ -89,6 +90,8 @@ export function BookingCard({
   const [error, setError] = useState<string | null>(null);
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+  // Confirmación de cancelación con modal propio (adiós window.confirm)
+  const [confirmCancel, setConfirmCancel] = useState(false);
   const meta = statusMeta(booking.status);
   const firstType = (booking.pets[0]?.type ?? "").toLowerCase();
   const SpeciesIcon = firstType.includes("gato") ? Cat : firstType.includes("perro") ? Dog : User;
@@ -107,7 +110,6 @@ export function BookingCard({
   }, [booking.status]);
 
   async function setStatus(status: string) {
-    if (status === "cancelado" && !window.confirm(`¿Cancelar la reserva ${booking.bookingCode}?`)) return;
     setBusy(true);
     setError(null);
     try {
@@ -299,7 +301,7 @@ export function BookingCard({
                 <button
                   key={s}
                   disabled={busy}
-                  onClick={() => setStatus(s)}
+                  onClick={() => (s === "cancelado" ? setConfirmCancel(true) : setStatus(s))}
                   title={
                     NOTIFIABLE_STATUSES.has(s)
                       ? `${m.label} (además avisa al cliente por WhatsApp)`
@@ -336,6 +338,21 @@ export function BookingCard({
             </details>
           )}
         </div>
+      )}
+
+      {confirmCancel && (
+        <ConfirmModal
+          title="¿Cancelar esta reserva?"
+          description={`La reserva ${booking.bookingCode} quedará cancelada y el cliente recibirá el aviso por WhatsApp si el servidor está disponible.`}
+          confirmLabel={busy ? "Cancelando…" : "Sí, cancelar"}
+          danger
+          busy={busy}
+          onClose={() => setConfirmCancel(false)}
+          onConfirm={async () => {
+            await setStatus("cancelado");
+            setConfirmCancel(false);
+          }}
+        />
       )}
     </article>
   );
