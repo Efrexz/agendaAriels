@@ -133,8 +133,9 @@ const PROGRESS_GROUPS: Array<{ label: string; steps: Step[] }> = [
   { label: "Datos", steps: ["datos"] },
 ];
 
-// Icono por especialidad: palabra clave (normalizada sin acentos) → icono.
-// Las especialidades son dinámicas (Config las crea), el fallback es el birrete.
+// Icono y descripción por especialidad: palabra clave (normalizada sin
+// acentos) → icono/descripción. Las especialidades son dinámicas (Config las
+// crea): fallback birrete + descripción genérica.
 const ESPECIALIDAD_REGEX_ICONS: Array<[RegExp, LucideIcon]> = [
   [/nutri|aliment|dieta/, Apple],
   [/odont|denta/, Smile],
@@ -146,6 +147,21 @@ function especialidadIcon(name: string): LucideIcon {
   const n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
   for (const [re, icon] of ESPECIALIDAD_REGEX_ICONS) if (re.test(n)) return icon;
   return GraduationCap;
+}
+
+// Descripción breve por especialidad (estilo mockup): 1 línea bajo el nombre.
+// Fallback genérico para especialidades nuevas creadas desde Config.
+const ESPECIALIDAD_REGEX_DESC: Array<[RegExp, string]> = [
+  [/nutri|aliment|dieta/, "Asesoría nutricional para una vida saludable."],
+  [/odont|denta/, "Cuidado dental y salud bucal."],
+  [/trauma|orto/, "Diagnóstico y tratamiento de lesiones óseas y articulares."],
+  [/derma|piel/, "Diagnóstico y tratamiento de la piel."],
+  [/cardi|coraz/, "Evaluación y cuidado del corazón."],
+];
+function especialidadDesc(name: string): string {
+  const n = name.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  for (const [re, desc] of ESPECIALIDAD_REGEX_DESC) if (re.test(n)) return desc;
+  return "Atención especializada para tu mascota.";
 }
 
 // Tinte pastel por servicio (cards del paso servicio, estilo mockup):
@@ -685,12 +701,13 @@ export default function App() {
                         Sede {branch?.short ?? ""}
                       </p>
                     </div>
-                    <h2 className="mb-5 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                    <h2 className="mb-1 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
                       <span className="block">Elige la especialidad</span>
                       <span className="block">
                         que tu mascota <span className="text-orange-500">necesita</span>
                       </span>
                     </h2>
+                    <p className="mb-5 text-sm text-[#546A8E]">Selecciona el servicio que tu mascota necesita.</p>
                     {!specialties && <Loading />}
                     {specialties && specialties.length === 0 && (
                       <p className="rounded-2xl bg-amber-50 p-4 text-left text-sm text-amber-800">
@@ -700,6 +717,7 @@ export default function App() {
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {specialties?.map((s, i) => {
                         const Icon = especialidadIcon(s.name);
+                        const selected = form.specialtyId === s.id;
                         return (
                           <motion.button
                             key={s.id}
@@ -712,18 +730,32 @@ export default function App() {
                             initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                             animate={{ opacity: 1, y: 0 }}
                             transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 + i * 0.08 }}
-                            className="group flex items-center gap-3 rounded-2xl bg-white p-4 text-left shadow-sm ring-1 ring-[#DCEBFF] transition-all hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 hover:ring-blue-300 active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2"
+                            className={`group flex items-center gap-3 rounded-[18px] p-4 text-left shadow-sm transition-all ${
+                              selected
+                                ? "ring-2 ring-orange-500 bg-[#FFF9F3] shadow-md shadow-orange-100/60"
+                                : "bg-white ring-1 ring-[#DCEBFF] hover:-translate-y-0.5 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 hover:ring-blue-300"
+                            } active:translate-y-0 active:scale-[0.98] focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 focus-visible:ring-offset-2`}
                           >
-                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF] text-blue-600 shadow-sm transition-all duration-300 group-hover:bg-blue-600/10 group-hover:shadow-md">
-                              <Icon className="h-6 w-6 transition-transform duration-300 group-hover:scale-110" />
+                            <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-xl shadow-sm transition-all duration-300 ${
+                              selected ? "bg-[#FFECD9] text-orange-500" : "bg-gradient-to-br from-[#EFF6FF] to-[#DCEBFF] text-blue-600"
+                            }`}>
+                              <Icon className="h-6 w-6 transition-transform duration-300" strokeWidth={2.25} />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block font-display text-base font-bold leading-tight text-[#475AAB] sm:text-lg">
+                              <span className="block font-display text-base font-bold leading-tight text-[#1A2238] sm:text-lg">
                                 {s.name}
                               </span>
-                              <span className="mt-0.5 block text-xs font-bold text-brand-orange">
+                              <span className="mt-0.5 block text-[11px] leading-snug text-[#8A97B1]">
+                                {especialidadDesc(s.name)}
+                              </span>
+                              <span className={`mt-1 block text-sm font-bold ${selected ? "text-orange-500" : "text-brand-orange"}`}>
                                 S/ {s.cost.toFixed(0)}
                               </span>
+                            </span>
+                            <span className={`mt-1 flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-all duration-300 group-hover:translate-x-0.5 ${
+                              selected ? "bg-orange-500 text-white" : "bg-[#EFF6FF] text-blue-600"
+                            }`}>
+                              <ChevronRight className="h-4 w-4" />
                             </span>
                           </motion.button>
                         );
@@ -1511,7 +1543,7 @@ function Resumen({ form, header = false, onLink }: {
             <CalendarDays className="h-5 w-5" />
           </span>
           <span>
-            <p className="font-display text-lg font-bold leading-tight text-[#1A2238]">Resumen de tu cita</p>
+            <p className="font-display text-lg font-bold leading-tight text-brand-blue">Resumen de tu cita</p>
             <p className="text-xs text-[#8A97B1]">Revisa los detalles de tu cita</p>
           </span>
         </div>
