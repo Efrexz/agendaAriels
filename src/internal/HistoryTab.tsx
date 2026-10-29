@@ -265,8 +265,8 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
         </p>
       )}
 
-      {/* Grupos por día (contenedor blanco, como las franjas de grooming) */}
-      <div className="flex items-start gap-5 lg:grid-cols-2 grid grid-cols-1">
+      {/* Grupos por día (contenedor blanco, apilados: lectura cronológica) */}
+      <div className="flex flex-col gap-5">
         {grupos.map((group) => (
           <section key={group.key} className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 sm:p-4">
             <div className="mb-3 flex flex-wrap items-center gap-2">
