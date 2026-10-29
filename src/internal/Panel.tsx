@@ -208,7 +208,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
             <PawPrint className="h-5 w-5" />
           </div>
           <div>
-            <h1 className="text-lg font-bold leading-tight text-slate-900">Panel Interno · Grooming</h1>
+            <h1 className="text-lg font-bold leading-tight text-[#475AAB]">Panel Interno · Grooming</h1>
             <p className="text-xs text-slate-500">Reservas por franja · búsqueda · días ocupados</p>
           </div>
         </div>
@@ -223,7 +223,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
 
       {/* Controles */}
       <div className="no-print mb-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-1 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
+        <label className="flex items-center gap-1 rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
           <CalendarDays className="h-4 w-4 text-brand-blue" />
           <input
             type="date"
@@ -256,7 +256,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
             setBranch(e.target.value);
             resetDayView();
           }}
-          className="rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
+          className="rounded-2xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none transition hover:ring-brand-blue"
         >
           <option value="all">Todas las sedes</option>
           {BRANCH_OPTIONS.map(([value, label]) => (
@@ -266,16 +266,16 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
           ))}
         </select>
         {/* Atajos rápidos (maqueta): un clic y la lista del día aparece */}
-        <div className="flex overflow-hidden rounded-xl bg-white shadow-sm ring-1 ring-slate-200">
+        <div className="flex items-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
           <button
             onClick={() => {
               setDate(limaToday());
               resetDayView();
             }}
-            className={`px-3.5 py-2.5 text-sm font-semibold transition ${
+            className={`rounded-xl px-3.5 py-1.5 text-sm font-semibold transition ${
               date === limaToday()
-                ? "bg-brand-blue text-white"
-                : "text-slate-600 hover:bg-blue-50 hover:text-brand-blue"
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-500 hover:text-brand-blue"
             }`}
           >
             Hoy
@@ -285,10 +285,10 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
               setDate(limaTomorrow());
               resetDayView();
             }}
-            className={`px-3.5 py-2.5 text-sm font-semibold transition ${
+            className={`rounded-xl px-3.5 py-1.5 text-sm font-semibold transition ${
               date === limaTomorrow()
-                ? "bg-brand-blue text-white"
-                : "text-slate-600 hover:bg-blue-50 hover:text-brand-blue"
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-500 hover:text-brand-blue"
             }`}
           >
             Mañana
@@ -300,7 +300,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
             setAutoPrint(!autoPrint);
           }}
           title={autoPrint ? "Auto-impresión activa: cada reserva nueva se imprime sola" : "Auto-impresión desactivada"}
-          className={`flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm shadow-sm ring-1 transition ${
+          className={`flex items-center gap-2 rounded-2xl px-3 py-2.5 text-sm shadow-sm ring-1 transition ${
             autoPrint
               ? "bg-brand-blue text-white ring-brand-blue"
               : "bg-white text-slate-600 ring-slate-200 hover:text-brand-blue"
@@ -314,13 +314,13 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
             setLoading(true);
             setTick((t) => t + 1);
           }}
-          className="flex items-center gap-2 rounded-xl bg-white px-3 py-2.5 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-blue"
+          className="flex items-center gap-2 rounded-2xl bg-white px-3 py-2.5 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-blue"
           title="Refrescar"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Actualizar
         </button>
-        <label className="ml-auto flex min-w-56 flex-1 items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200 sm:max-w-xs">
+        <label className="ml-auto flex min-w-56 flex-1 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue sm:max-w-xs">
           <Search className="h-4 w-4 text-slate-400" />
           <input
             value={query}

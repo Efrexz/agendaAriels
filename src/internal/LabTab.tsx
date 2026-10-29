@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ClipboardList, Clock, Copy, FileText, FlaskConical, History, PlusCircle, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";
-import {
+import { Check, ChevronDown, ClipboardList, Clock, Copy, FileText, FlaskConical, History, PlusCircle, Search, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";import {
   addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
   getLabResultUrl, patchLabStatus, publishLabResult, uploadLabResultFile,
   type LabOrder, type LabView,
@@ -252,37 +251,44 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
           <FlaskConical className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-bold leading-tight text-slate-900">Laboratorio</h2>
+          <h2 className="font-display text-lg font-bold leading-tight text-[#475AAB]">Laboratorio</h2>
           <p className="text-xs text-slate-500"> Cuaderno digital de exámenes externos, resultados y seguimiento</p>
         </div>
       </header>
 
-      {/* Controles */}
+      {/* Controles — control segmentado (estilo común de las 3 pestañas) */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
         {([["active", "En curso"], ["today", "Hoy"], ["week", "Última semana"]] as Array<[LabView, string]>).map(([v, label]) => (
           <button
             key={v}
             onClick={() => { setVista(v); setQuery(""); setSearchResults(null); }}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${vista === v ? "bg-brand-blue text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-blue"}`}
+            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
+              vista === v
+                ? "bg-brand-blue text-white shadow-sm"
+                : "text-slate-500 hover:text-brand-blue"
+            }`}
           >{label}{v === "active" && overdueCount > 0 ? ` (${overdueCount} ⚠)` : ""}</button>
         ))}
         <select
           value={branch}
           onChange={(e) => { setBranch(e.target.value); setSearchResults(null); }}
-          className="ml-auto rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
+          className="ml-auto rounded-2xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none transition hover:ring-brand-blue"
         >
           <option value="all">Todas las sedes</option>
           {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
         </select>
-        <input
-          value={query}
-          onChange={(e) => onQuery(e.target.value)}
-          placeholder="Buscar código/teléfono/mascota/historia…"
-          className="w-56 rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
-        />
+        <label className="flex w-56 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => onQuery(e.target.value)}
+            placeholder="Buscar código/teléfono/mascota…"
+            className="w-full text-sm outline-none"
+          />
+        </label>
         <button
           onClick={() => setNewOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="flex items-center gap-1.5 rounded-2xl bg-brand-blue px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
         >
           <PlusCircle className="h-4 w-4" /> ＋ Nueva orden
         </button>

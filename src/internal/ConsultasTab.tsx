@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
+import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
   type MedAppt,
@@ -170,13 +170,13 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
 
   return (
     <div>
-      {/* Encabezado (aún no existía: Historial sí lo tiene) */}
+      {/* Encabezado */}
       <header className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-blue-100 text-brand-blue">
-          <span className="text-lg">🩺</span>
+          <Stethoscope className="h-5 w-5" />
         </div>
         <div>
-          <h2 className="font-display text-lg font-bold leading-tight text-slate-900">Citas médicas</h2>
+          <h2 className="font-display text-lg font-bold leading-tight text-[#475AAB]">Citas médicas</h2>
           <p className="text-xs text-slate-500"> Agenda del día/semana, búsquedas y pendientes</p>
         </div>
       </header>
@@ -184,53 +184,62 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
       {/* Por asignar (especializadas) — siempre visible arriba */}
       <PendientesBox pendings={pendings} onChanged={() => setTick((t) => t + 1)} />
 
-      {/* Controles */}
+      {/* Controles — control segmentado (estilo común de las 3 pestañas) */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {([["hoy", "Hoy"], ["manana", "Mañana"], ["semana", "Esta semana"]] as Array<[Vista, string]>).map(([v, label]) => (
-          <button
-            key={v}
-            onClick={() => { setVista(v); setQuery(""); setSearchResults(null); }}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${vista === v ? "bg-brand-blue text-white" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-blue"}`}
-          >{label}</button>
-        ))}
+        <div className="flex items-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          {([["hoy", "Hoy"], ["manana", "Mañana"], ["semana", "Esta semana"]] as Array<[Vista, string]>).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => { setVista(v); setQuery(""); setSearchResults(null); }}
+              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${
+                vista === v
+                  ? "bg-brand-blue text-white shadow-sm"
+                  : "text-slate-500 hover:text-brand-blue"
+              }`}
+            >{label}</button>
+          ))}
+        </div>
         <select
           value={branch}
           onChange={(e) => { setBranch(e.target.value); setQuery(""); setSearchResults(null); }}
-          className="ml-auto rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
+          className="ml-auto rounded-2xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none transition hover:ring-brand-blue"
         >
           <option value="all">Todas las sedes</option>
           {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
         </select>
-        <input
-          value={query}
-          onChange={(e) => {
-            // Igual que el grooming: búsqueda en vivo con debounce (no onBlur)
-            const raw = e.target.value;
-            setQuery(raw);
-            searchSeqRef.current += 1;
-            const mySeq = searchSeqRef.current;
-            if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
-            if (raw.trim().length < 3) {
-              setSearchResults(null);
-              return;
-            }
-            searchTimerRef.current = setTimeout(() => {
-              void (async () => {
-                try {
-                  const { results } = await searchMedAppts(raw.trim());
-                  if (searchSeqRef.current === mySeq) setSearchResults(results ?? []);
-                } catch {
-                  /* conserva lo anterior */
-                }
-              })();
-            }, 300);
-          }}
-          placeholder="Buscar código/teléfono/nombre…"
-          className="w-52 rounded-xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
-        />
+        <label className="flex w-52 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue">
+          <Search className="h-4 w-4 shrink-0 text-slate-400" />
+          <input
+            value={query}
+            onChange={(e) => {
+              // Igual que el grooming: búsqueda en vivo con debounce (no onBlur)
+              const raw = e.target.value;
+              setQuery(raw);
+              searchSeqRef.current += 1;
+              const mySeq = searchSeqRef.current;
+              if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+              if (raw.trim().length < 3) {
+                setSearchResults(null);
+                return;
+              }
+              searchTimerRef.current = setTimeout(() => {
+                void (async () => {
+                  try {
+                    const { results } = await searchMedAppts(raw.trim());
+                    if (searchSeqRef.current === mySeq) setSearchResults(results ?? []);
+                  } catch {
+                    /* conserva lo anterior */
+                  }
+                })();
+              }, 300);
+            }}
+            placeholder="Buscar código/teléfono/nombre…"
+            className="w-full text-sm outline-none"
+          />
+        </label>
         <button
           onClick={() => setManualOpen(true)}
-          className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700"
+          className="flex items-center gap-1.5 rounded-2xl bg-brand-blue px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
         >
           <PlusCircle className="h-4 w-4" /> ＋ Cita manual
         </button>

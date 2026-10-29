@@ -184,7 +184,7 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
 
   return (
     <div>
-      <h1 className="mb-4 flex items-center gap-2.5 font-display text-xl font-bold text-slate-900">
+      <h1 className="mb-4 flex items-center gap-2.5 font-display text-xl font-bold text-[#475AAB]">
         <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-blue-50 text-brand-blue">
           <History className="h-5 w-5" />
         </span>
