@@ -1038,21 +1038,10 @@ export default function App() {
                       {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
                       {submitting ? "Registrando…" : "Confirmar cita"}
                     </button>
-                    {!canSubmit && !submitting && (
-                      <p className="mt-2 text-center text-[11px] text-[#8A97B1]">
-                        Completa el nombre de la mascota, tu nombre y tu celular para confirmar.
-                      </p>
-                    )}
                     <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-[#8A97B1]">
                       <LockKeyholeOpen className="h-3.5 w-3.5" />
                       Tus datos están protegidos y serán usados solo para la gestión de tu cita.
                     </p>
-                    <img
-                      src="/images/vetMascot/confirmaCita.webp"
-                      alt="Perro y gato asomando felices"
-                      className="mt-2 w-full max-w-md object-contain mix-blend-multiply"
-                      draggable={false}
-                    />
                   </aside>
                 </section>
               )}
@@ -1583,7 +1572,7 @@ function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-[11px] font-medium text-[#8A97B1]">{label}</span>
-        <span className="leading-snug text-sm font-bold text-[#1A2238]">{children}</span>
+        <span className="whitespace-nowrap text-xs leading-snug font-bold text-[#1A2238]">{children}</span>
       </span>
       {onLink && (
         <button
