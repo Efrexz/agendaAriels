@@ -3,7 +3,9 @@ import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Apple, ArrowRight, Bone, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight,
   ClipboardList, Clock, Copy, FileCheck2, FileX2, GraduationCap, Heart, HeartPulse, Info, Loader2,
-  MapPin, MessageCircle, Microscope, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
+  LockKeyholeOpen,
+  Mail,
+  MapPin, MessageCircle, Microscope, PawPrint, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
   Sunset, UserRound, type LucideIcon,
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
@@ -936,7 +938,14 @@ export default function App() {
                       </div>
                     )}
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <Field label="Nombre de la mascota" value={form.petName} onChange={(v) => update("petName", v)} placeholder="Ej: Manolo" />
+                      <Field
+                        label="Nombre de la mascota"
+                        value={form.petName}
+                        onChange={(v) => update("petName", v)}
+                        placeholder="Ej: Manolo"
+                        icon={PawPrint}
+                        iconBox="bg-[#FFF1E6] text-orange-500"
+                      />
                       <div className="flex flex-col gap-1">
                         <span className="text-xs font-medium text-[#546A8E]">Tipo</span>
                         <div className="flex gap-2">
@@ -956,9 +965,31 @@ export default function App() {
                           ))}
                         </div>
                       </div>
-                      <Field label="Tu nombre completo" value={form.ownerName} onChange={(v) => update("ownerName", v)} placeholder="Ej: Juan Pérez" />
-                      <Field label="Tu celular (WhatsApp)" value={form.ownerPhone} onChange={(v) => update("ownerPhone", v)} placeholder="999 111 222" type="tel" />
-                      <Field label="Correo (opcional)" value={form.ownerEmail} onChange={(v) => update("ownerEmail", v)} placeholder="tucorreo@ejemplo.com" type="email" />
+                      <Field
+                        label="Tu nombre completo"
+                        value={form.ownerName}
+                        onChange={(v) => update("ownerName", v)}
+                        placeholder="Ej: Juan Pérez"
+                        icon={UserRound}
+                      />
+                      <Field
+                        label="Tu celular (WhatsApp)"
+                        value={form.ownerPhone}
+                        onChange={(v) => update("ownerPhone", v)}
+                        placeholder="999 111 222"
+                        type="tel"
+                        icon={MessageCircle}
+                        iconBox="bg-[#E8F7EE] text-green-600"
+                      />
+                      <Field
+                        label="Correo (opcional)"
+                        value={form.ownerEmail}
+                        onChange={(v) => update("ownerEmail", v)}
+                        placeholder="tucorreo@ejemplo.com"
+                        type="email"
+                        icon={Mail}
+                        iconBox="bg-[#FFF1E6] text-orange-500"
+                      />
                     </div>
                     <label className="mt-3 flex flex-col gap-1">
                       <span className="text-xs font-medium text-[#546A8E]">¿Qué le pasa a tu mascota? (opcional)</span>
@@ -976,7 +1007,7 @@ export default function App() {
 
                   {/* Ticket de resumen + CTA (primero en móvil, pegote en desktop) */}
                   <aside className="order-first lg:order-none lg:sticky lg:top-24">
-                    <Resumen form={form} />
+                    <Resumen form={form} header onLink={(t) => go(t)} />
                     {form.serviceType === "especializada" && (
                       <motion.div
                         initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
@@ -998,10 +1029,10 @@ export default function App() {
                     <button
                       onClick={() => void submit()}
                       disabled={submitting || !canSubmit}
-                      className={`mt-4 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl text-lg font-bold text-white transition-all ${
+                      className={`mt-4 flex min-h-[56px] w-full items-center justify-center gap-2 rounded-full text-lg font-bold text-white transition-all ${
                         submitting || !canSubmit
-                          ? "cursor-not-allowed bg-blue-300"
-                          : "cursor-pointer bg-gradient-to-r from-blue-600 to-orange-400 shadow-md hover:-translate-y-0.5 hover:shadow-lg hover:shadow-blue-200/50 active:scale-[0.98]"
+                          ? "cursor-not-allowed bg-orange-300"
+                          : "cursor-pointer bg-gradient-to-b from-orange-500 to-orange-400 shadow-md shadow-orange-200/70 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/60 active:scale-[0.98]"
                       }`}
                     >
                       {submitting ? <Loader2 className="h-5 w-5 animate-spin" /> : <CheckCircle2 className="h-6 w-6" />}
@@ -1012,6 +1043,16 @@ export default function App() {
                         Completa el nombre de la mascota, tu nombre y tu celular para confirmar.
                       </p>
                     )}
+                    <p className="mt-2 flex items-center justify-center gap-1.5 text-[11px] text-[#8A97B1]">
+                      <LockKeyholeOpen className="h-3.5 w-3.5" />
+                      Tus datos están protegidos y serán usados solo para la gestión de tu cita.
+                    </p>
+                    <img
+                      src="/images/vetMascot/confirmaCita.webp"
+                      alt="Perro y gato asomando felices"
+                      className="mt-2 w-full max-w-md object-contain mix-blend-multiply"
+                      draggable={false}
+                    />
                   </aside>
                 </section>
               )}
@@ -1461,15 +1502,38 @@ function DoctorAvatar({ name }: { name: string }) {
   );
 }
 
-function Resumen({ form }: { form: FormData }) {
+type ResumenLink = "sede" | "servicio" | "doctor" | "agenda";
+
+// Resumen reutilizable (aside del paso de datos con links "Cambiar"_activation
+// + card del éxito sin links). links activa los "Cambiar" por fila.
+function Resumen({ form, header = false, onLink }: {
+  form: FormData;
+  header?: boolean;
+  onLink?: (target: ResumenLink) => void;
+}) {
   const b = MED_BRANCHES.find((x) => x.value === form.branch);
   const serviceLabel = SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
   const esEspecializada = form.serviceType === "especializada";
   return (
     <div className="w-full max-w-sm rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] px-4 py-3 text-left shadow-sm sm:px-5">
+      {header && (
+        <div className="mb-1.5 flex items-center gap-3 border-b border-[#EDF4FD] pb-3">
+          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#E8F2FF] text-blue-500">
+            <CalendarDays className="h-5 w-5" />
+          </span>
+          <span>
+            <p className="font-display text-lg font-bold leading-tight text-[#1A2238]">Resumen de tu cita</p>
+            <p className="text-xs text-[#8A97B1]">Revisa los detalles de tu cita</p>
+          </span>
+        </div>
+      )}
       <ul className="grid">
-        {b && <SummaryRow icon={MapPin} tint="blue" label="Sede">{b.label}</SummaryRow>}
-        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope} tint="orange" label="Servicio">
+        {b && (
+          <SummaryRow icon={MapPin} tint="blue" label="Sede" onLink={onLink ? () => onLink("sede") : undefined}>
+            {b.label}
+          </SummaryRow>
+        )}
+        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope} tint="orange" label="Servicio" onLink={onLink ? () => onLink("servicio") : undefined}>
           {serviceLabel}
           {esEspecializada && form.specialtyName ? ` · ${form.specialtyName}` : ""}
           {esEspecializada && form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
@@ -1477,10 +1541,12 @@ function Resumen({ form }: { form: FormData }) {
         {/* Doctor y fecha/hora SOLO existen en general/rayos/eco: la especializada
             no pide ni doctor ni fecha — los confirma la especialista tras el pago. */}
         {!esEspecializada && form.doctorName && (
-          <SummaryRow icon={UserRound} tint="blue" label="Médico veterinario">{form.doctorName}</SummaryRow>
+          <SummaryRow icon={UserRound} tint="blue" label="Médico veterinario" onLink={onLink ? () => onLink("doctor") : undefined}>
+            {form.doctorName}
+          </SummaryRow>
         )}
         {!esEspecializada && form.date && form.startMinute !== null && (
-          <SummaryRow icon={CalendarDays} tint="orange" label="Fecha y hora">
+          <SummaryRow icon={CalendarDays} tint="orange" label="Fecha y hora" onLink={onLink ? () => onLink("agenda") : undefined}>
             {prettyDate(form.date)} · {hora(form.startMinute)}
           </SummaryRow>
         )}
@@ -1494,19 +1560,20 @@ function Resumen({ form }: { form: FormData }) {
   );
 }
 
-// Fila del resumen estilo mockup: icono pastel grande + label pequeña + valor neto.
+// Fila del resumen estilo mockup: icono pastel + label/valor + link "Cambiar".
 const TINTS: Record<"blue" | "orange" | "amber", { box: string }> = {
   blue: { box: "bg-[#E8F2FF] text-blue-500" },
   orange: { box: "bg-[#FFEFD9] text-orange-500" },
   amber: { box: "bg-[#FFF3E2] text-amber-600" },
 };
 
-function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false }: {
+function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false, onLink }: {
   icon: LucideIcon;
   children: React.ReactNode;
   label: string;
   tint?: "blue" | "orange" | "amber";
   accent?: boolean;
+  onLink?: () => void;
 }) {
   const box = (accent ? TINTS.amber : TINTS[tint]).box;
   return (
@@ -1514,10 +1581,18 @@ function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false
       <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${box}`}>
         <Icon className="h-5 w-5" strokeWidth={2.25} />
       </span>
-      <span className="flex min-w-0 flex-col">
+      <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-[11px] font-medium text-[#8A97B1]">{label}</span>
         <span className="leading-snug text-sm font-bold text-[#1A2238]">{children}</span>
       </span>
+      {onLink && (
+        <button
+          onClick={onLink}
+          className="self-center shrink-0 rounded px-1.5 py-0.5 text-xs font-semibold text-blue-500 transition hover:text-blue-600 hover:underline"
+        >
+          Cambiar
+        </button>
+      )}
     </li>
   );
 }
@@ -1530,19 +1605,28 @@ function Loading() {
   );
 }
 
-function Field({ label, value, onChange, placeholder, type = "text" }: {
+function Field({ label, value, onChange, placeholder, type = "text", icon, iconBox = "bg-[#EFF6FF] text-blue-500" }: {
   label: string; value: string; onChange: (v: string) => void; placeholder: string; type?: string;
+  icon?: LucideIcon; iconBox?: string;
 }) {
+  const Icon = icon;
   return (
     <label className="flex flex-col gap-1">
       <span className="text-xs font-medium text-[#546A8E]">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        placeholder={placeholder}
-        className="rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20"
-      />
+      <div className="relative">
+        {Icon && (
+          <span className={`pointer-events-none absolute left-2 top-1/2 flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-xl ${iconBox}`}>
+            <Icon className="h-4 w-4" />
+          </span>
+        )}
+        <input
+          type={type}
+          value={value}
+          onChange={(e) => onChange(e.target.value)}
+          placeholder={placeholder}
+          className={`w-full rounded-xl border border-[#DCEBFF] bg-[#F7FBFF] ${Icon ? "pl-11" : ""} px-3 py-2.5 text-sm outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-500/20`}
+        />
+      </div>
     </label>
   );
 }
