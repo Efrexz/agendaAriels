@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Stethoscope, User, UserRound, type LucideIcon } from "lucide-react";
+import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
   type MedAppt,
@@ -532,9 +532,27 @@ function ApptCard({ a, onStatus, onReagendar }: {
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             <span className="text-xs text-slate-500">{MED_SERVICE_LABELS[a.serviceType]}{a.specialtyName ? ` · ${a.specialtyName}` : ""}</span>
           </div>
-          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500">
-            <UserRound className="h-3 w-3 shrink-0 text-slate-400" />
-            {a.ownerName}
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-slate-500">
+            <span className="flex items-center gap-1">
+              <UserRound className="h-3 w-3 shrink-0 text-slate-400" />
+              {a.ownerName}
+            </span>
+            <a
+              className="flex items-center gap-1 font-semibold text-brand-blue underline decoration-dotted"
+              href={`tel:${a.ownerPhone}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Phone className="h-3 w-3 shrink-0" />
+              {a.ownerPhone}
+            </a>
+            <span onClick={(e) => e.stopPropagation()}>
+              <MiniWhatsApp phone={a.ownerPhone} message={`Hola ${a.ownerName} 🐾 le escribimos de Ariel's Clinic sobre la cita de ${a.petName} (código ${a.appointmentCode}).`} />
+            </span>
+            <span className="flex items-center gap-1">
+              <MapPin className="h-3 w-3 shrink-0 text-slate-400" />
+              {MED_BRANCHES.find((b) => b.value === a.branch)?.short ?? a.branch}
+            </span>
+            {a.ownerEmail !== "-" && <span className="hidden truncate md:inline text-slate-400">✉ {a.ownerEmail}</span>}
           </p>
         </div>
         <span className="hidden shrink-0 font-mono text-[11px] font-bold text-slate-400 sm:block">{a.appointmentCode}</span>
@@ -543,23 +561,6 @@ function ApptCard({ a, onStatus, onReagendar }: {
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          {/* Contacto + sede */}
-          <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
-            <User className="h-4 w-4 shrink-0 text-slate-400" />
-            {a.ownerName}
-            <a className="flex items-center gap-1 text-brand-blue underline decoration-dotted" href={`tel:${a.ownerPhone}`}>
-              <Phone className="h-3.5 w-3.5" />
-              {a.ownerPhone}
-            </a>
-            <MiniWhatsApp phone={a.ownerPhone} message={`Hola ${a.ownerName} 🐾 le escribimos de Ariel's Clinic sobre la cita de ${a.petName} (código ${a.appointmentCode}).`} />
-            <span className="flex items-center gap-1 text-slate-500">
-              <MapPin className="h-3.5 w-3.5" />
-              {MED_BRANCHES.find((b) => b.value === a.branch)?.short ?? a.branch}
-            </span>
-            {a.ownerEmail !== "-" && <span className="text-xs text-slate-400">✉ {a.ownerEmail}</span>}
-            <span className="ml-auto font-mono text-[11px] font-bold text-slate-400 sm:hidden">{a.appointmentCode}</span>
-          </div>
-
           {/* Detalle en columnas (mock): motivo / médico / orden y pago */}
           <div className="grid gap-2 sm:grid-cols-3">
             <InfoCell icon={FileText} tint="bg-[#EFF6FF] text-blue-500" label="Motivo de consulta">
