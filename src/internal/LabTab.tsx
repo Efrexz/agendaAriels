@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, Copy, PlusCircle, TriangleAlert } from "lucide-react";
+import { Check, ChevronDown, ClipboardList, Clock, Copy, FileText, FlaskConical, History, PlusCircle, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";
 import {
   addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
   getLabResultUrl, patchLabStatus, publishLabResult, uploadLabResultFile,
@@ -246,10 +246,10 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
 
   return (
     <div>
-      {/* Encabezado (aún no existía: Historial sí lo tiene) */}
+      {/* Encabezado */}
       <header className="mb-4 flex items-center gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-orange-100 text-brand-orange">
-          <span className="text-lg">🧪</span>
+          <FlaskConical className="h-5 w-5" />
         </div>
         <div>
           <h2 className="font-display text-lg font-bold leading-tight text-slate-900">Laboratorio</h2>
@@ -333,6 +333,35 @@ const LAB_BORDER: Record<string, string> = {
   cancelado: "border-l-red-500",
 };
 
+// Chip de fecha pastel por estado (mismo lenguaje que las cards de consultas).
+const LAB_TIME_CHIP: Record<string, string> = {
+  recibida: "bg-blue-50 text-blue-700",
+  en_laboratorio: "bg-amber-50 text-amber-700",
+  resultado_listo: "bg-green-50 text-green-700",
+  entregada: "bg-slate-100 text-slate-600",
+  cancelado: "bg-red-50 text-red-700",
+};
+
+// Celdas del detalle estilo mockup (icono pastel + label + valor).
+function LabInfoCell({ icon: Icon, tint, label, children }: {
+  icon: LucideIcon;
+  tint: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl bg-[#F8FBFF] px-3 py-2.5 ring-1 ring-[#EDF4FD]">
+      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-[#8A97B1]">{label}</span>
+        <span className="block break-words text-sm font-semibold text-[#1A2238]">{children}</span>
+      </span>
+    </div>
+  );
+}
+
 function LabCard({ o, onStatus, onChanged }: {
   o: LabOrder;
   onStatus: (o: LabOrder, status: string) => void;
@@ -404,6 +433,7 @@ function LabCard({ o, onStatus, onChanged }: {
 
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ${LAB_BORDER[o.status] ?? "border-l-slate-300"} ${o.overdue ? "ring-2 ring-amber-400" : "ring-slate-200"}`}>
+      {/* Bloque visible: chip de fecha + mascota + estado + examen */}
       <div
         role="button"
         tabIndex={0}
@@ -411,46 +441,98 @@ function LabCard({ o, onStatus, onChanged }: {
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
         }}
-        className="flex cursor-pointer items-center justify-between gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
+        className="flex cursor-pointer items-center gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
         onClick={() => setOpen((v) => !v)}
       >
+        <div className={`flex h-14 w-[4.5rem] shrink-0 flex-col items-center justify-center rounded-xl ${LAB_TIME_CHIP[o.status] ?? "bg-slate-100 text-slate-600"}`}>
+          <span className="text-sm font-black leading-none">
+            {new Date(o.createdAt).toLocaleDateString("es-PE", { timeZone: "America/Lima", day: "2-digit" })}
+          </span>
+          <span className="text-[10px] font-bold uppercase leading-none">
+            {new Date(o.createdAt).toLocaleDateString("es-PE", { timeZone: "America/Lima", month: "short" }).replace(".", "")}
+          </span>
+          <span className="mt-0.5 text-[10px] leading-none opacity-80">reg.</span>
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-slate-800">
-              {o.petName} ({o.ownerName}) · {o.examType} · {o.labName}
-              {!crossSede && <span className="font-normal text-slate-400"> · {branchShort(o.sedeResponsable)}</span>}
+            <p className="truncate text-sm font-bold text-brand-blue">
+              {o.petName} <span className="font-medium text-slate-500">({o.petType})</span>
             </p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             {o.overdue && <span className="rounded-full bg-amber-500 px-2 py-0.5 text-[10px] font-bold text-white">⚠ &gt;7 días en lab</span>}
-            {crossSede && (
-              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-semibold text-slate-600">
-                📍 Origen {branchShort(o.sedeOrigen)} → Responsable {branchShort(o.sedeResponsable)}
-              </span>
-            )}
           </div>
-          <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">{o.orderCode}</p>
+          <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-slate-500">
+            <span className="flex items-center gap-1">
+              <UserRound className="h-3 w-3 shrink-0 text-slate-400" />
+              {o.ownerName}
+            </span>
+            <a
+              className="flex items-center gap-1 font-semibold text-brand-blue underline decoration-dotted"
+              href={`tel:${o.ownerPhone}`}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <Phone className="h-3 w-3 shrink-0" />
+              {o.ownerPhone}
+            </a>
+            <span onClick={(e) => e.stopPropagation()}>
+              <MiniWhatsApp phone={o.ownerPhone} message={`Hola ${o.ownerName} 🐾 le escribimos de Ariel's Clinic sobre el examen de ${o.petName} (${o.examType}, código ${o.orderCode}).`} />
+            </span>
+            <span className="flex items-center gap-1">
+              🧪 {o.examType}
+              {!crossSede && <span className="text-slate-400">· {branchShort(o.sedeResponsable)}</span>}
+            </span>
+          </p>
         </div>
+        <span className="hidden shrink-0 font-mono text-[11px] font-bold text-slate-400 sm:block">{o.orderCode}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
       </div>
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          <p className="text-sm text-slate-600">👤 {o.ownerName} · 📞 {o.ownerPhone} <MiniWhatsApp phone={o.ownerPhone} message={`Hola ${o.ownerName} 🐾 le escribimos de Ariel's Clinic sobre el examen de ${o.petName} (${o.examType}, código ${o.orderCode}).`} /></p>
-          <p className="text-sm text-slate-600">🏠 Historia: {o.historyCode}{o.doctorName !== "-" ? ` · 🩺 Solicitó: ${o.doctorName}` : ""}</p>
-          <p className="text-sm text-slate-500">🧪 {o.labName}</p>
-          {o.paidNotes !== "-" && <p className="text-xs text-slate-500">💳 {o.paidNotes}</p>}
-          {o.notes !== "-" && <p className="text-xs text-slate-500">📝 {o.notes}</p>}
-          <p className="text-xs text-slate-400">Registrada: {timeOfLima(o.createdAt)} · por {o.createdBy}</p>
+          {/* Detalle en columnas (estilo mock): examen / lab / historia y médico / pago */}
+          <div className="grid gap-2 sm:grid-cols-3">
+            <LabInfoCell icon={FileText} tint="bg-[#EFF6FF] text-blue-500" label="Examen">
+              {o.examType}
+            </LabInfoCell>
+            <LabInfoCell icon={FlaskConical} tint="bg-[#FFF1E6] text-orange-500" label="Laboratorio">
+              {o.labName}
+              {crossSede && <span className="block text-[11px] font-medium text-slate-400">📍 Origen {branchShort(o.sedeOrigen)} → Responsable {branchShort(o.sedeResponsable)}</span>}
+            </LabInfoCell>
+            <LabInfoCell icon={ClipboardList} tint="bg-[#EDEFFF] text-[#475AAB]" label="Historia / médico">
+              {o.historyCode}{o.doctorName && o.doctorName !== "-" ? ` · ${o.doctorName}` : ""}
+            </LabInfoCell>
+            <LabInfoCell icon={Wallet} tint="bg-[#E8F7EE] text-green-600" label="Pago / notas">
+              {o.paidNotes !== "-" ? o.paidNotes : o.notes !== "-" ? o.notes : "—"}
+            </LabInfoCell>
+          </div>
 
           {nextActions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {nextActions.map(([s, label]) => (
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              {nextActions.map(([s, label], i) => (
                 <button
                   key={s}
                   onClick={() => onStatus(o, s)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${s === "cancelado" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    s === "cancelado"
+                      ? "bg-red-50 text-red-700 hover:bg-red-100"
+                      : i === 0
+                        ? "bg-brand-blue text-white shadow-sm hover:bg-blue-700"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
                 >{label}</button>
               ))}
+              {o.timeline && o.timeline.length > 0 && (
+                <details className="ml-auto">
+                  <summary className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
+                    <History className="h-3.5 w-3.5" /> Historial ({o.timeline.length})
+                  </summary>
+                  <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
+                    {o.timeline.map((t, i) => (
+                      <li key={i}>{timeOfLima(t.createdAt)} — {LAB_STATUS_META[t.status]?.label ?? t.status} ({t.createdBy})</li>
+                    ))}
+                  </ul>
+                </details>
+              )}
             </div>
           )}
 
@@ -496,15 +578,17 @@ function LabCard({ o, onStatus, onChanged }: {
             </div>
           )}
 
-          {o.timeline && o.timeline.length > 0 && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-500">Historial ({o.timeline.length})</summary>
-              <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
-                {o.timeline.map((t, i) => (
-                  <li key={i}>{timeOfLima(t.createdAt)} — {LAB_STATUS_META[t.status]?.label ?? t.status} ({t.createdBy})</li>
-                ))}
-              </ul>
-            </details>
+          {/* Último evento del timeline, visible sin abrir nada */}
+          {o.timeline?.length ? (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Clock className="h-3 w-3 shrink-0" />
+              Registrada {timeOfLima(o.timeline[o.timeline.length - 1].createdAt)} · {LAB_STATUS_META[o.timeline[o.timeline.length - 1].status]?.label ?? ""} ({o.timeline[o.timeline.length - 1].createdBy})
+            </p>
+          ) : (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Clock className="h-3 w-3 shrink-0" />
+              Registrada {timeOfLima(o.createdAt)} · por {o.createdBy}
+            </p>
           )}
         </div>
       )}
