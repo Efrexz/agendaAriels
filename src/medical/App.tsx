@@ -1496,9 +1496,9 @@ function Resumen({ form }: { form: FormData }) {
 
 // Fila del resumen estilo mockup: icono pastel grande + label pequeña + valor neto.
 const TINTS: Record<"blue" | "orange" | "amber", { box: string }> = {
-  blue: { box: "bg-[#EFF6FF] text-blue-600" },
-  orange: { box: "bg-[#FFF1E6] text-orange-500" },
-  amber: { box: "bg-[#FFF7EE] text-amber-600" },
+  blue: { box: "bg-[#E8F2FF] text-blue-500" },
+  orange: { box: "bg-[#FFEFD9] text-orange-500" },
+  amber: { box: "bg-[#FFF3E2] text-amber-600" },
 };
 
 function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false }: {
@@ -1508,11 +1508,11 @@ function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false
   tint?: "blue" | "orange" | "amber";
   accent?: boolean;
 }) {
-  const box = accent ? TINTS.amber : TINTS[tint];
+  const box = (accent ? TINTS.amber : TINTS[tint]).box;
   return (
     <li className="flex items-center gap-3 border-b border-[#EDF4FD] py-2.5 last:border-b-0">
-      <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl ${box}`}>
-        <Icon className="h-5 w-5" />
+      <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${box}`}>
+        <Icon className="h-5 w-5" strokeWidth={2.25} />
       </span>
       <span className="flex min-w-0 flex-col">
         <span className="text-[11px] font-medium text-[#8A97B1]">{label}</span>

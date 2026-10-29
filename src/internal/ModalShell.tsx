@@ -1,3 +1,4 @@
+import { createPortal } from "react-dom";
 import { useCallback, useEffect, useState } from "react";
 import { X } from "lucide-react";
 
@@ -50,8 +51,8 @@ export function ModalShell({ title, dirty, onClose, children, center = false }: 
     return () => window.removeEventListener("keydown", onKey);
   }, [maybeClose]);
 
-  return (
-    <div className={`fixed inset-0 z-50 flex justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm ${center ? "items-center" : "items-start"}`}>
+  return createPortal(
+    <div className={`fixed inset-0 z-[80] flex justify-center overflow-y-auto bg-black/40 p-4 backdrop-blur-sm ${center ? "items-center" : "items-start"}`}>
       <div className={`relative w-full max-w-md rounded-2xl bg-white p-5 shadow-2xl ${center ? "" : "mt-10"}`} onClick={(e) => e.stopPropagation()}>
         <button
           onClick={() => maybeClose(false)}
@@ -88,6 +89,7 @@ export function ModalShell({ title, dirty, onClose, children, center = false }: 
           </div>
         )}
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
