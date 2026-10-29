@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, PlusCircle } from "lucide-react";
+import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Stethoscope, User, UserRound, type LucideIcon } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
   type MedAppt,
@@ -261,9 +261,14 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
           )}
           {grouped.map(([doctor, list]) => (
             <section key={doctor}>
-              <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                🩺 {doctor}
-                <span className="text-slate-400">({list.length})</span>
+              <h3 className="mb-2 flex items-center gap-2 text-sm font-semibold text-brand-blue">
+                <span className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#EFF6FF] text-blue-500">
+                  <Stethoscope className="h-3.5 w-3.5" />
+                </span>
+                {doctor}
+                <span className="rounded-full bg-brand-blue/10 px-2 py-0.5 text-[11px] font-bold text-brand-blue">
+                  {list.length} cita{list.length !== 1 ? "s" : ""}
+                </span>
               </h3>
               <div className="flex flex-col gap-2">
                 {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} />)}
@@ -443,6 +448,38 @@ const MED_BORDER: Record<string, string> = {
   cancelado: "border-l-red-500",
 };
 
+// Chip de fecha/hora pastel por estado (mock: hora grande a la izquierda).
+const MED_TIME_CHIP: Record<string, string> = {
+  solicitud: "bg-amber-50 text-amber-700",
+  pagado: "bg-amber-50 text-amber-700",
+  asignada: "bg-blue-50 text-blue-700",
+  confirmada: "bg-green-50 text-green-700",
+  en_consulta: "bg-sky-50 text-sky-700",
+  atendida: "bg-slate-100 text-slate-600",
+  no_llego: "bg-orange-50 text-orange-700",
+  cancelado: "bg-red-50 text-red-700",
+};
+
+// Bloques del detalle estilo mockup: icono pastel + label + valor.
+function InfoCell({ icon: Icon, tint, label, children }: {
+  icon: LucideIcon;
+  tint: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="flex items-start gap-2.5 rounded-xl bg-[#F8FBFF] px-3 py-2.5 ring-1 ring-[#EDF4FD]">
+      <span className={`mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${tint}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0">
+        <span className="block text-[11px] font-medium text-[#8A97B1]">{label}</span>
+        <span className="block break-words text-sm font-semibold text-[#1A2238]">{children}</span>
+      </span>
+    </div>
+  );
+}
+
 function ApptCard({ a, onStatus, onReagendar }: {
   a: MedAppt;
   onStatus: (a: MedAppt, status: string) => void;
@@ -456,8 +493,22 @@ function ApptCard({ a, onStatus, onReagendar }: {
   else if (a.status === "en_consulta") nextActions.push(["atendida", "🏁 Atendida"]);
   else if (a.status === "asignada") nextActions.push(["confirmada", "📨 Confirmar al cliente"]);
 
+  // Chip de fecha/hora: día corto + fecha corta en Lima.
+  const fechaChip = (() => {
+    if (!a.apptDate) return { dia: "Sin", corto: "fecha", hora: "" };
+    const d = new Date(a.apptDate + "T12:00:00Z");
+    const dia = DIAS[d.getUTCDay()];
+    const corto = new Intl.DateTimeFormat("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "short" }).format(d);
+    return { dia, corto, hora: a.startMinute !== null ? hour(a.startMinute) : "" };
+  })();
+
+  const timeChip = MED_TIME_CHIP[a.status] ?? "bg-slate-100 text-slate-600";
+  // Último evento del timeline: línea visible al pie (mock).
+  const ultimo = a.timeline?.length ? a.timeline[a.timeline.length - 1] : null;
+
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${MED_BORDER[a.status] ?? "border-l-slate-300"}`}>
+      {/* Bloque visible: chip de hora + mascota + estado + código */}
       <div
         role="button"
         tabIndex={0}
@@ -465,61 +516,113 @@ function ApptCard({ a, onStatus, onReagendar }: {
         onKeyDown={(e) => {
           if (e.key === "Enter" || e.key === " ") { e.preventDefault(); setOpen((v) => !v); }
         }}
-        className="flex cursor-pointer items-center justify-between gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
+        className="flex cursor-pointer items-center gap-3 p-4 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
         onClick={() => setOpen((v) => !v)}
       >
+        <div className={`flex h-14 w-[4.5rem] shrink-0 flex-col items-center justify-center rounded-xl ${timeChip}`}>
+          <span className="text-sm font-black leading-none">{fechaChip.hora || "—"}</span>
+          <span className="mt-0.5 text-[10px] leading-none">{fechaChip.dia}</span>
+          <span className="text-[10px] leading-none opacity-80">{fechaChip.corto}</span>
+        </div>
         <div className="min-w-0 flex-1">
           <div className="flex flex-wrap items-center gap-2">
-            <p className="truncate text-sm font-semibold text-slate-800">
-              {a.petName} ({a.ownerName})
-              {a.apptDate ? ` · ${DIAS[new Date(a.apptDate + "T12:00:00Z").getUTCDay()]} ${a.apptDate}` : " · Sin fecha"}
-              {a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""}
+            <p className="truncate text-sm font-bold text-brand-blue">
+              {a.petName} <span className="font-medium text-slate-500">({a.petType})</span>
             </p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
             <span className="text-xs text-slate-500">{MED_SERVICE_LABELS[a.serviceType]}{a.specialtyName ? ` · ${a.specialtyName}` : ""}</span>
           </div>
-          <p className="mt-0.5 truncate font-mono text-[11px] text-slate-400">{a.appointmentCode}</p>
+          <p className="mt-0.5 flex items-center gap-1 truncate text-xs text-slate-500">
+            <UserRound className="h-3 w-3 shrink-0 text-slate-400" />
+            {a.ownerName}
+          </p>
         </div>
+        <span className="hidden shrink-0 font-mono text-[11px] font-bold text-slate-400 sm:block">{a.appointmentCode}</span>
         <ChevronDown className={`h-4 w-4 shrink-0 text-slate-400 transition ${open ? "rotate-180" : ""}`} />
       </div>
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          <p className="text-sm text-slate-600">👤 {a.ownerName} · 📞 {a.ownerPhone}{a.ownerEmail !== "-" ? ` · ✉ ${a.ownerEmail}` : ""} <MiniWhatsApp phone={a.ownerPhone} message={`Hola ${a.ownerName} 🐾 le escribimos de Ariel's Clinic sobre la cita de ${a.petName} (código ${a.appointmentCode}).`} /></p>
-          {a.petNotes && a.petNotes !== "-" && <p className="text-sm text-slate-500">📝 {a.petNotes}</p>}
-          {a.doctorName && <p className="text-sm text-slate-600">🩺 {a.doctorName}</p>}
-          {a.needsOrder && (
-            <p className="text-xs text-amber-700">📄 Orden médica: {a.hasOrder ? "presentará orden sellada" : "⚠️ sin orden"}</p>
-          )}
-          {a.paymentNotes && a.paymentNotes !== "-" && <p className="text-xs text-slate-500">💳 {a.paymentNotes}</p>}
-          {nextActions.length > 0 && (
-            <div className="mt-3 flex flex-wrap gap-2">
-              {nextActions.map(([s, label]) => (
+          {/* Contacto + sede */}
+          <div className="mb-3 flex flex-wrap items-center gap-x-2 gap-y-1 text-sm text-slate-600">
+            <User className="h-4 w-4 shrink-0 text-slate-400" />
+            {a.ownerName}
+            <a className="flex items-center gap-1 text-brand-blue underline decoration-dotted" href={`tel:${a.ownerPhone}`}>
+              <Phone className="h-3.5 w-3.5" />
+              {a.ownerPhone}
+            </a>
+            <MiniWhatsApp phone={a.ownerPhone} message={`Hola ${a.ownerName} 🐾 le escribimos de Ariel's Clinic sobre la cita de ${a.petName} (código ${a.appointmentCode}).`} />
+            <span className="flex items-center gap-1 text-slate-500">
+              <MapPin className="h-3.5 w-3.5" />
+              {MED_BRANCHES.find((b) => b.value === a.branch)?.short ?? a.branch}
+            </span>
+            {a.ownerEmail !== "-" && <span className="text-xs text-slate-400">✉ {a.ownerEmail}</span>}
+            <span className="ml-auto font-mono text-[11px] font-bold text-slate-400 sm:hidden">{a.appointmentCode}</span>
+          </div>
+
+          {/* Detalle en columnas (mock): motivo / médico / orden y pago */}
+          <div className="grid gap-2 sm:grid-cols-3">
+            <InfoCell icon={FileText} tint="bg-[#EFF6FF] text-blue-500" label="Motivo de consulta">
+              {a.petNotes && a.petNotes !== "-" ? a.petNotes : "—"}
+            </InfoCell>
+            <InfoCell icon={Stethoscope} tint="bg-[#FFF1E6] text-orange-500" label="Médico veterinario">
+              {a.doctorName ?? "—"}
+            </InfoCell>
+            <InfoCell icon={NotebookText} tint="bg-[#EDEFFF] text-[#475AAB]" label="Orden / pago">
+              {a.needsOrder
+                ? (a.hasOrder ? "Presentará orden sellada" : "⚠️ Sin orden")
+                : a.paymentNotes !== "-" ? a.paymentNotes : "—"}
+            </InfoCell>
+          </div>
+
+          {/* Acciones + historial (mock: historial a la derecha de la fila) */}
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            {nextActions.map(([s, label], i) => {
+              const peligro = s === "cancelado" || s === "no_llego";
+              return (
                 <button
                   key={s}
                   onClick={() => onStatus(a, s)}
-                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${s === "cancelado" || s === "no_llego" ? "bg-red-50 text-red-700 hover:bg-red-100" : "bg-slate-100 text-slate-700 hover:bg-slate-200"}`}
+                  className={`rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+                    peligro
+                      ? s === "no_llego"
+                        ? "bg-orange-100 text-orange-700 hover:bg-orange-200"
+                        : "bg-red-50 text-red-700 ring-1 ring-red-200 hover:bg-red-100"
+                      : i === 0
+                        ? "bg-brand-blue text-white shadow-sm hover:bg-blue-700"
+                        : "bg-slate-100 text-slate-700 hover:bg-slate-200"
+                  }`}
                 >{label}</button>
-              ))}
-            </div>
-          )}
-          {(a.status === "no_llego" || a.status === "cancelado") && (
-            <button
-              onClick={() => onReagendar(a)}
-              className="mt-2 inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40"
-            >
-              🔁 Reagendar como nueva cita
-            </button>
-          )}
-          {a.timeline && a.timeline.length > 0 && (
-            <details className="mt-2">
-              <summary className="cursor-pointer text-xs font-semibold text-slate-500">Historial ({a.timeline.length})</summary>
-              <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
-                {a.timeline.map((t, i) => (
-                  <li key={i}>{new Date(t.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[t.status]?.label ?? t.status} ({t.createdBy})</li>
-                ))}
-              </ul>
-            </details>
+              );
+            })}
+            {(a.status === "no_llego" || a.status === "cancelado") && (
+              <button
+                onClick={() => onReagendar(a)}
+                className="flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40"
+              >
+                🔁 Reagendar como nueva cita
+              </button>
+            )}
+            {a.timeline && a.timeline.length > 0 && (
+              <details className="ml-auto">
+                <summary className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
+                  <History className="h-3.5 w-3.5" /> Historial ({a.timeline.length})
+                </summary>
+                <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
+                  {a.timeline.map((t, i) => (
+                    <li key={i}>{new Date(t.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[t.status]?.label ?? t.status} ({t.createdBy})</li>
+                  ))}
+                </ul>
+              </details>
+            )}
+          </div>
+
+          {/* Último evento del timeline, visible sin abrir nada */}
+          {ultimo && (
+            <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
+              <Clock className="h-3 w-3 shrink-0" />
+              {new Date(ultimo.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[ultimo.status]?.label ?? ultimo.status} ({ultimo.createdBy})
+            </p>
           )}
         </div>
       )}
