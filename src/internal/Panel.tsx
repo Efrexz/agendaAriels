@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, LogOut, PawPrint, Printer, RefreshCw, Search } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, Clock, LogOut, PawPrint, Printer, RefreshCw, Search } from "lucide-react";
 import { fetchClosures, fetchDay, searchBookings, type PanelBooking, type PanelClosure } from "./api";
 import { printViaQz } from "./qz";
 import { BookingCard } from "./BookingCard";
 import { ClosuresPanel } from "./ClosuresPanel";
 import { NewArrivalsToast } from "./NewArrivalsToast";
-import { BRANCH_LABELS, SLOT_LABELS } from "../statuses";
+import { BRANCH_LABELS, SLOT_LABELS, statusMeta } from "../statuses";
 
 function limaToday(): string {
   return new Intl.DateTimeFormat("en-CA", {
@@ -20,12 +20,19 @@ const BRANCH_OPTIONS = Object.entries(BRANCH_LABELS);
 
 function limaTomorrow(): string {
   // Mañana en la zona de la clínica (avanza el "reloj" +24h).
+  return shiftLimaDay(limaToday(), 1);
+}
+
+// Delta de días en el calendario de Lima (mediodía UTC evita el corrimiento
+// del formato en-CA por zona).
+function shiftLimaDay(dateStr: string, delta: number): string {
+  const base = new Date(`${dateStr}T12:00:00Z`).getTime() + delta * 24 * 3600 * 1000;
   return new Intl.DateTimeFormat("en-CA", {
     timeZone: "America/Lima",
     year: "numeric",
     month: "2-digit",
     day: "2-digit",
-  }).format(new Date(Date.now() + 24 * 3600 * 1000));
+  }).format(new Date(base));
 }
 
 export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { email?: string; onSignOut: () => void; embedded?: boolean; jumpSearch?: string | null }) {
@@ -176,6 +183,22 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
     };
   }, [bookings, searchResults]);
 
+  // Contadores de estado por franja (chips del header, referix visual rápida
+  // para el counter).
+  const byState = useMemo(
+    () =>
+      Object.fromEntries(
+        (Object.keys(bySlot) as Array<keyof typeof bySlot>).map((slot) => [
+          slot,
+          bySlot[slot].reduce<Record<string, number>>((acc, b) => {
+            acc[b.status] = (acc[b.status] ?? 0) + 1;
+            return acc;
+          }, {}),
+        ]),
+      ),
+    [bySlot],
+  );
+
   return (
     <div className={`mx-auto max-w-6xl ${embedded ? "p-0" : "min-h-screen p-4 pb-24 lg:p-8"}`}>
       {/* Encabezado */}
@@ -200,8 +223,8 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
 
       {/* Controles */}
       <div className="no-print mb-4 flex flex-wrap items-center gap-3">
-        <label className="flex items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
-          <CalendarDays className="h-4 w-4 text-slate-400" />
+        <label className="flex items-center gap-1 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200">
+          <CalendarDays className="h-4 w-4 text-brand-blue" />
           <input
             type="date"
             value={date}
@@ -211,6 +234,21 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
             }}
             className="text-sm outline-none"
           />
+          {/* ‹ › del mockup: saltar día sin abrir el picker */}
+          <button
+            onClick={() => { setDate(shiftLimaDay(date, -1)); resetDayView(); }}
+            title="Día anterior"
+            className="rounded-lg p-0.5 text-slate-500 transition hover:bg-slate-100 hover:text-brand-blue"
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </button>
+          <button
+            onClick={() => { setDate(shiftLimaDay(date, 1)); resetDayView(); }}
+            title="Día siguiente"
+            className="rounded-lg p-0.5 text-slate-500 transition hover:bg-slate-100 hover:text-brand-blue"
+          >
+            <ChevronRight className="h-4 w-4" />
+          </button>
         </label>
         <select
           value={branch}
@@ -234,8 +272,10 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
               setDate(limaToday());
               resetDayView();
             }}
-            className={`px-3 py-2.5 text-sm font-semibold transition hover:bg-blue-50 hover:text-brand-blue ${
-              date === limaToday() ? "bg-brand-blue/10 text-brand-blue" : "text-slate-600"
+            className={`px-3.5 py-2.5 text-sm font-semibold transition ${
+              date === limaToday()
+                ? "bg-brand-blue text-white"
+                : "text-slate-600 hover:bg-blue-50 hover:text-brand-blue"
             }`}
           >
             Hoy
@@ -245,8 +285,10 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
               setDate(limaTomorrow());
               resetDayView();
             }}
-            className={`border-l border-slate-200 px-3 py-2.5 text-sm font-semibold transition hover:bg-blue-50 hover:text-brand-blue ${
-              date === limaTomorrow() ? "bg-brand-blue/10 text-brand-blue" : "text-slate-600"
+            className={`px-3.5 py-2.5 text-sm font-semibold transition ${
+              date === limaTomorrow()
+                ? "bg-brand-blue text-white"
+                : "text-slate-600 hover:bg-blue-50 hover:text-brand-blue"
             }`}
           >
             Mañana
@@ -320,35 +362,52 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
         </>
       )}
 
-      {/* Lista del día por franja */}
+      {/* Lista del día por franja (contenedores blancos estilo mockup) */}
       {searchResults === null && (
-        <div className="grid gap-6 lg:grid-cols-2">
+        <div className="grid items-start gap-5 lg:grid-cols-2">
           {(["9-11", "11-14"] as const).map((slot) => (
-            <section key={slot}>
-              <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-700">
-                <span className="rounded-lg bg-brand-blue/10 px-2 py-1 text-brand-blue">{SLOT_LABELS[slot]}</span>
-                <span className="text-slate-400">{bySlot[slot].length} reserva(s)</span>
-              </h2>
-              <div className="flex flex-col gap-3">
-                {bySlot[slot].length === 0 && (
-                  <p className="rounded-xl bg-white/60 px-4 py-6 text-center text-sm text-slate-400">
-                    Sin reservas en esta franja
-                  </p>
-                )}
-                {bySlot[slot].map((booking) => (
-                  <BookingCard
-                    key={booking.id}
-                    booking={booking}
-                    onChanged={() => {
-                      setLoading(true);
-                      setTick((t) => t + 1);
-                    }}
-                    printing={printingId === booking.id}
-                    onPrint={(id) => setPrintingId(id)}
-                    onPrinted={() => setPrintingId(null)}
-                  />
-                ))}
+            <section key={slot} className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 sm:p-4">
+              <div className="mb-3 flex flex-wrap items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-blue-500">
+                  <Clock className="h-4 w-4" />
+                </span>
+                <h2 className="font-display text-base font-bold text-brand-blue">{SLOT_LABELS[slot]}</h2>
+                <span className="text-xs text-slate-400">{bySlot[slot].length} reserva(s)</span>
+                {/* Contadores por estado: cómo va la franja de un vistazo */}
+                <span className="ml-auto flex flex-wrap items-center justify-end gap-1.5">
+                  {(Object.keys(byState[slot]) as string[])
+                    .filter((st) => byState[slot][st] > 0)
+                    .map((st) => (
+                      <span
+                        key={st}
+                        className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ${statusMeta(st).badge}`}
+                      >
+                        {byState[slot][st]} {statusMeta(st).short}
+                      </span>
+                    ))}
+                </span>
               </div>
+              {bySlot[slot].length === 0 ? (
+                <p className="rounded-xl bg-slate-50 px-4 py-6 text-center text-sm text-slate-400">
+                  Sin reservas en esta franja
+                </p>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  {bySlot[slot].map((booking) => (
+                    <BookingCard
+                      key={booking.id}
+                      booking={booking}
+                      onChanged={() => {
+                        setLoading(true);
+                        setTick((t) => t + 1);
+                      }}
+                      printing={printingId === booking.id}
+                      onPrint={(id) => setPrintingId(id)}
+                      onPrinted={() => setPrintingId(null)}
+                    />
+                  ))}
+                </div>
+              )}
             </section>
           ))}
         </div>
