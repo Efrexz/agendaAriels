@@ -258,17 +258,19 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
 
       {/* Controles — control segmentado (estilo común de las 3 pestañas) */}
       <div className="mb-4 flex flex-wrap items-center gap-2">
-        {([["active", "En curso"], ["today", "Hoy"], ["week", "Última semana"]] as Array<[LabView, string]>).map(([v, label]) => (
-          <button
-            key={v}
-            onClick={() => { setVista(v); setQuery(""); setSearchResults(null); }}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-              vista === v
-                ? "bg-brand-blue text-white shadow-sm"
-                : "text-slate-500 hover:text-brand-blue"
-            }`}
-          >{label}{v === "active" && overdueCount > 0 ? ` (${overdueCount} ⚠)` : ""}</button>
-        ))}
+        <div className="flex items-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          {([["active", "En curso"], ["today", "Hoy"], ["week", "Última semana"]] as Array<[LabView, string]>).map(([v, label]) => (
+            <button
+              key={v}
+              onClick={() => { setVista(v); setQuery(""); setSearchResults(null); }}
+              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${
+                vista === v
+                  ? "bg-brand-blue text-white shadow-sm"
+                  : "text-slate-500 hover:text-brand-blue"
+              }`}
+            >{label}{v === "active" && overdueCount > 0 ? ` (${overdueCount} ⚠)` : ""}</button>
+          ))}
+        </div>
         <select
           value={branch}
           onChange={(e) => { setBranch(e.target.value); setSearchResults(null); }}
@@ -290,7 +292,7 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
           onClick={() => setNewOpen(true)}
           className="flex items-center gap-1.5 rounded-2xl bg-brand-blue px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
         >
-          <PlusCircle className="h-4 w-4" /> ＋ Nueva orden
+          <PlusCircle className="h-4 w-4" />Nueva orden
         </button>
       </div>
 

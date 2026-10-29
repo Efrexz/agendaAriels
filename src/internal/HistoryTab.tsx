@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { ChevronDown, History, RefreshCw, Search } from "lucide-react";
+import { CalendarDays, ChevronDown, FlaskConical, History, RefreshCw, Scissors, Search, Stethoscope, type LucideIcon } from "lucide-react";
 import { fetchHistory } from "./api";
 import { fetchMedHistory } from "./apiMedical";
 import { fetchLabList } from "./apiLab";
@@ -28,10 +28,11 @@ interface HistItem {
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
 }
 
-const KIND_META: Record<HistTarget, { label: string; chip: string }> = {
-  grooming: { label: "🐕 Grooming", chip: "bg-orange-100 text-orange-700" },
-  consultas: { label: "🩺 Consultas", chip: "bg-blue-100 text-blue-700" },
-  laboratorio: { label: "🧪 Laboratorio", chip: "bg-amber-100 text-amber-800" },
+// Icono pastel por tipo (cards, mismo lenguaje que las pestañas).
+const KIND_META: Record<HistTarget, { label: string; chip: string; icon: LucideIcon; iconBox: string; border: string }> = {
+  grooming: { label: "Grooming", chip: "bg-orange-100 text-orange-700", icon: Scissors, iconBox: "bg-[#FFF1E6] text-orange-500", border: "border-l-blue-500" },
+  consultas: { label: "Consultas", chip: "bg-blue-100 text-blue-700", icon: Stethoscope, iconBox: "bg-[#EFF6FF] text-blue-500", border: "border-l-sky-500" },
+  laboratorio: { label: "Laboratorio", chip: "bg-amber-100 text-amber-800", icon: FlaskConical, iconBox: "bg-[#FFEFD9] text-amber-600", border: "border-l-amber-400" },
 };
 
 const RANGOS: Array<{ value: "hoy" | "semana" | "mes"; label: string; days: number }> = [
@@ -191,48 +192,52 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
         Historial de la clínica
       </h1>
 
-      {/* Tipo: una sección a la vez (solo se consulta esa tabla) */}
+      {/* Tipo: una sección a la vez (solo se consulta esa tabla) — segmentado */}
       <div className="no-print mb-3 flex flex-wrap items-center gap-2">
-        {(Object.keys(KIND_META) as HistTarget[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => { setTipo(t); setOpenCode(null); }}
-            aria-pressed={tipo === t}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-              tipo === t
-                ? "bg-brand-blue text-white shadow-md shadow-blue-600/20"
-                : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-blue"
-            }`}
-          >
-            {KIND_META[t].label}
-          </button>
-        ))}
+        <div className="flex items-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          {(Object.keys(KIND_META) as HistTarget[]).map((t) => (
+            <button
+              key={t}
+              onClick={() => { setTipo(t); setOpenCode(null); }}
+              aria-pressed={tipo === t}
+              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${
+                tipo === t
+                  ? "bg-brand-blue text-white shadow-sm"
+                  : "text-slate-500 hover:text-brand-blue"
+              }`}
+            >
+              {KIND_META[t].label}
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* Filtros: rango + sede + texto */}
       <div className="no-print mb-5 flex flex-wrap items-center gap-2">
-        {RANGOS.map((r) => (
-          <button
-            key={r.value}
-            onClick={() => setRango(r.value)}
-            className={`rounded-xl px-4 py-2 text-sm font-semibold transition ${
-              rango === r.value ? "bg-brand-blue text-white shadow-md shadow-blue-600/20" : "bg-white text-slate-600 ring-1 ring-slate-200 hover:ring-brand-blue"
-            }`}
-          >
-            {r.label}
-          </button>
-        ))}
+        <div className="flex items-center rounded-2xl bg-white p-1 shadow-sm ring-1 ring-slate-200">
+          {RANGOS.map((r) => (
+            <button
+              key={r.value}
+              onClick={() => setRango(r.value)}
+              className={`rounded-xl px-4 py-1.5 text-sm font-semibold transition ${
+                rango === r.value ? "bg-brand-blue text-white shadow-sm" : "text-slate-500 hover:text-brand-blue"
+              }`}
+            >
+              {r.label}
+            </button>
+          ))}
+        </div>
         <select
           value={sede}
           onChange={(e) => setSede(e.target.value)}
-          className="rounded-xl bg-white px-3 py-2 text-sm shadow-sm ring-1 ring-slate-200 outline-none"
+          className="rounded-2xl bg-white px-3 py-2.5 text-sm shadow-sm ring-1 ring-slate-200 outline-none transition hover:ring-brand-blue"
         >
           <option value="all">Todas las sedes</option>
           <option value="san_martin">San Martín de Porres</option>
           <option value="los_olivos">Los Olivos</option>
           <option value="san_miguel">San Miguel</option>
         </select>
-        <label className="ml-auto flex min-w-56 items-center gap-2 rounded-xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-200 sm:max-w-xs">
+        <label className="ml-auto flex min-w-56 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue sm:max-w-xs">
           <Search className="h-4 w-4 text-slate-400" />
           <input
             value={query}
@@ -244,7 +249,7 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
         <button
           onClick={() => setTick((t) => t + 1)}
           title="Refrescar"
-          className="rounded-xl bg-white px-3 py-2 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-blue"
+          className="rounded-2xl bg-white px-3 py-2.5 text-sm text-slate-600 shadow-sm ring-1 ring-slate-200 transition hover:text-brand-blue"
         >
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
         </button>
@@ -260,15 +265,18 @@ export function HistoryTab({ onJump }: { onJump: (tab: HistTarget, q: string) =>
         </p>
       )}
 
-      {/* Grupos por día */}
-      <div className="flex flex-col gap-6">
+      {/* Grupos por día (contenedor blanco, como las franjas de grooming) */}
+      <div className="flex items-start gap-5 lg:grid-cols-2 grid grid-cols-1">
         {grupos.map((group) => (
-          <section key={group.key}>
-            <h2 className="mb-3 flex flex-wrap items-center gap-2 text-sm">
-              <span className="rounded-lg bg-brand-blue/10 px-2 py-1 font-semibold text-brand-blue capitalize">{group.label}</span>
-              <span className="text-slate-400">{group.list.length} registro(s)</span>
-            </h2>
-            <div className="flex flex-col gap-2">
+          <section key={group.key} className="rounded-2xl bg-white p-3 shadow-sm ring-1 ring-slate-200 sm:p-4">
+            <div className="mb-3 flex flex-wrap items-center gap-2">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#EFF6FF] text-blue-500">
+                <CalendarDays className="h-4 w-4" />
+              </span>
+              <h2 className="font-display text-base font-bold text-brand-blue capitalize">{group.label}</h2>
+              <span className="text-xs text-slate-400">{group.list.length} registro(s)</span>
+            </div>
+            <div className="flex flex-col gap-2.5">
               {group.list.map((it) => (
                 <HistoryCard
                   key={`${it.kind}-${it.code}`}
@@ -292,8 +300,9 @@ function outOfRange(dateKey: string, from: string, to: string): boolean {
 
 function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boolean; onToggle: () => void; onJump: (tab: HistTarget, q: string) => void }) {
   const kind = KIND_META[it.kind];
+  const KindIcon = kind.icon;
   return (
-    <article className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+    <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 transition hover:shadow-md ${kind.border}`}>
       <div
         role="button"
         tabIndex={0}
@@ -304,9 +313,11 @@ function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boole
         className="flex cursor-pointer items-center gap-3 p-3.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40 focus-visible:ring-inset"
         onClick={onToggle}
       >
-        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${kind.chip}`}>{kind.label}</span>
+        <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl ${kind.iconBox}`}>
+          <KindIcon className="h-5 w-5" strokeWidth={2.25} />
+        </span>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-slate-800">{it.title}</p>
+          <p className="truncate text-sm font-bold text-brand-blue">{it.title}</p>
           <p className="truncate text-xs text-slate-500">{it.detail}</p>
         </div>
         <div className="hidden min-w-0 shrink-0 sm:block">
@@ -318,7 +329,12 @@ function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boole
 
       {open && (
         <div className="border-t border-slate-100 p-4 pt-3">
-          <p className="mb-2 font-mono text-xs font-bold text-brand-blue">{it.code}</p>
+          <p className="mb-2 flex items-center gap-2">
+            <span className="rounded-xl bg-sky-100 px-3 py-1.5 font-mono text-sm font-bold tracking-wider text-brand-blue">
+              {it.code}
+              <span className="ml-1.5 rounded-full bg-white px-1.5 py-0.5 text-[10px] font-semibold ring-1 ring-sky-200">{kind.label}</span>
+            </span>
+          </p>
           {it.timeline && it.timeline.length > 0 ? (
             <ul className="mb-3 flex flex-col gap-1 text-xs text-slate-500">
               {it.timeline.map((t, i) => (
@@ -335,9 +351,7 @@ function HistoryCard({ it, open, onToggle, onJump }: { it: HistItem; open: boole
           )}
           <button
             onClick={() => onJump(it.kind, it.code)}
-            className={`no-print inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold text-white transition-100 ${
-              it.kind === "grooming" ? "bg-brand-blue hover:bg-blue-700" : it.kind === "consultas" ? "bg-blue-600 hover:bg-blue-700" : "bg-amber-600 hover:bg-amber-700"
-            }`}
+            className="no-print inline-flex items-center gap-1.5 rounded-lg bg-brand-blue px-3.5 py-1.5 text-xs font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:bg-blue-700"
           >
             Abrir en pestaña {kind.label} →
           </button>
