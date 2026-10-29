@@ -693,7 +693,7 @@ export default function App() {
               {/* ── Especialidad (especializada): 2 columnas + mascota, mismo
                       lenguaje del paso doctor ── */}
               {step === "especialidad" && (
-                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                <section className="grid items-center gap-4 lg:grid-cols-[1.25fr_0.75fr] lg:gap-6">
                   <div>
                     <div className="mb-1.5 flex items-center gap-2.5">
                       <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
@@ -742,7 +742,7 @@ export default function App() {
                               <Icon className="h-6 w-6 transition-transform duration-300" strokeWidth={2.25} />
                             </span>
                             <span className="min-w-0 flex-1">
-                              <span className="block font-display text-base font-bold leading-tight text-[#1A2238] sm:text-lg">
+                              <span className="block font-display text-base font-bold leading-tight text-[#475AAB] sm:text-lg">
                                 {s.name}
                               </span>
                               <span className="mt-0.5 block text-[11px] leading-snug text-[#8A97B1]">
@@ -761,7 +761,9 @@ export default function App() {
                         );
                       })}
                     </div>
-                    <p className="mt-3 text-[11px] text-[#8A97B1]">
+                    {/* Nota de pago estilo mockup: píldora azul con icono */}
+                    <p className="mt-4 flex items-center gap-2.5 rounded-2xl bg-[#EFF6FF] px-4 py-3 text-xs font-medium text-[#3B5178] ring-1 ring-[#DCEBFF]">
+                      <CalendarDays className="h-4 w-4 shrink-0 text-blue-500" />
                       La consulta se paga por adelantado; después confirmamos fecha, hora y doctor.
                     </p>
                   </div>
@@ -1446,7 +1448,7 @@ function EspecialidadCollage() {
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
-    <div className="relative mx-auto w-full max-w-xs justify-center lg:max-w-none">
+    <div className="relative mx-auto w-full max-w-[19rem] justify-center lg:max-w-[22rem]">
       <motion.img
         src="/images/vetMascot/especializada.webp"
         alt="Especialidades disponibles: cardiología, nutrición, neurología y traumatología"
@@ -1604,7 +1606,7 @@ function SummaryRow({ icon: Icon, children, label, tint = "blue", accent = false
       </span>
       <span className="flex min-w-0 flex-1 flex-col">
         <span className="text-[11px] font-medium text-[#8A97B1]">{label}</span>
-        <span className="whitespace-nowrap text-xs leading-snug font-bold text-[#1A2238]">{children}</span>
+        <span className="text-xs leading-snug font-bold text-[#1A2238]">{children}</span>
       </span>
       {onLink && (
         <button
