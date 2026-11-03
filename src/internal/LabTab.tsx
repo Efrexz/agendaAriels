@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Check, ChevronDown, ClipboardList, Clock, Copy, FileText, FlaskConical, History, PlusCircle, Search, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";import {
   addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
-  getLabResultUrl, patchLabStatus, publishLabResult, uploadLabResultFile,
+  getLabResultUrl, patchLabStatus, publishLabResult, resendLabResult, uploadLabResultFile,
   type LabOrder, type LabView,
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
@@ -10,6 +10,7 @@ import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
 import { ConfirmModal } from "./ConfirmModal";
+import { useVisibleRefresh } from "./useVisibleRefresh";
 
 // Pestaña 🧪 Laboratorio: reemplazo digital del cuaderno de exámenes externos.
 // Vista por defecto "En curso" + Hoy/Semana/Búsqueda. Cross-sede: cada orden
@@ -137,6 +138,8 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
   const firstLoadRef = useRef(true);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  useVisibleRefresh(setTick, !query.trim() && !newOpen && !busy);
 
   // Salto desde 📚 Historial: busca la orden al montar en la frontera async.
   useEffect(() => {
@@ -382,6 +385,7 @@ function LabCard({ o, onStatus, onChanged }: {
   // Confirmaciones con modal propio (cancelar orden / borrar resultado)
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmBorrar, setConfirmBorrar] = useState(false);
+  const [confirmReenvio, setConfirmReenvio] = useState(false);
   const meta = labStatusMeta(o.status);
 
   async function publicarResultado(file: File | null) {
@@ -390,20 +394,35 @@ function LabCard({ o, onStatus, onChanged }: {
     setResultMsg(null);
     try {
       const { path } = await uploadLabResultFile(o.id, file, o.orderCode);
-      await publishLabResult({
+      const published = await publishLabResult({
         id: o.id,
         path,
         name: file.name,
         mime: file.type,
         size: file.size,
       });
-      setResultMsg("✓ Resultado publicado — el cliente ya puede verlo en /estado con su código.");
+      setResultMsg(published.notified
+        ? "✓ Resultado publicado y enlace privado enviado por WhatsApp."
+        : "⚠ Resultado publicado, pero el enlace no se envió. Usa 'Reenviar enlace' para intentarlo de nuevo.");
       onChanged();
     } catch (err) {
       setResultMsg(err instanceof Error ? err.message : "No se pudo publicar el resultado.");
     } finally {
       setResultBusy(false);
       if (resultFileRef.current) resultFileRef.current.value = "";
+    }
+  }
+
+  async function reenviarResultado() {
+    setResultBusy(true);
+    setResultMsg(null);
+    try {
+      const result = await resendLabResult(o.id);
+      setResultMsg(result.notified ? "✓ Nuevo enlace enviado por WhatsApp; el anterior ya no permite solicitar descargas." : "⚠ No se envió el enlace. Revisa la conexión de WhatsApp e intenta nuevamente.");
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "No se pudo enviar el enlace.");
+    } finally {
+      setResultBusy(false);
     }
   }
 
@@ -553,7 +572,7 @@ function LabCard({ o, onStatus, onChanged }: {
               {!o.resultPath ? (
                 <>
                   <p className="mt-1 text-xs text-slate-500">
-                    Sube el PDF o la foto del resultado: el cliente lo descarga gratis desde /estado con su código (se borra solo a los 20 días).
+                    Sube el PDF o la foto: enviaremos al cliente un enlace privado por WhatsApp. Disponible durante 20 días.
                   </p>
                   <input
                     ref={resultFileRef}
@@ -570,6 +589,7 @@ function LabCard({ o, onStatus, onChanged }: {
                     ✓ Publicado {o.resultPublishedAt ? timeOfLima(o.resultPublishedAt) : ""}
                   </span>
                   <button onClick={() => void verResultado()} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">👁 Ver</button>
+                  <button onClick={() => setConfirmReenvio(true)} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">↗ Reenviar enlace</button>
                   <label className="cursor-pointer rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
                     🔁 Reemplazar
                     <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)} />
@@ -585,6 +605,8 @@ function LabCard({ o, onStatus, onChanged }: {
             <div className="mt-2 flex items-center gap-2 text-xs text-slate-500">
               📄 Resultado publicado {o.resultPublishedAt ? `(${timeOfLima(o.resultPublishedAt)})` : ""}
               <button onClick={() => void verResultado()} disabled={resultBusy} className="rounded-lg bg-slate-100 px-2.5 py-1 font-semibold text-slate-700 hover:bg-slate-200">👁 Ver</button>
+              <button onClick={() => setConfirmReenvio(true)} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2.5 py-1 font-semibold text-white disabled:opacity-50">↗ Reenviar enlace</button>
+              {resultMsg && <span role="status">{resultMsg}</span>}
             </div>
           )}
 
@@ -614,6 +636,17 @@ function LabCard({ o, onStatus, onChanged }: {
             setConfirmCancel(false);
             onStatus(o, "cancelado");
           }}
+        />
+      )}
+
+      {confirmReenvio && (
+        <ConfirmModal
+          title="¿Enviar un nuevo enlace privado?"
+          description="Se enviará al WhatsApp registrado. El enlace anterior dejará de permitir nuevas descargas, incluso si falla el envío. Verifica que el número corresponda al cliente."
+          confirmLabel="Enviar enlace"
+          busy={resultBusy}
+          onClose={() => setConfirmReenvio(false)}
+          onConfirm={async () => { setConfirmReenvio(false); await reenviarResultado(); }}
         />
       )}
 

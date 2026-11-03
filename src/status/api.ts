@@ -31,3 +31,16 @@ export async function fetchTracking(code: string): Promise<TrackingResult> {
   }
   return body.booking;
 }
+
+export async function fetchLabDownload(code: string, token: string): Promise<string> {
+  const res = await fetch("/api/lab-download", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, token }),
+    cache: "no-store",
+    referrerPolicy: "no-referrer",
+  });
+  const body = await res.json().catch(() => ({})) as { ok?: boolean; url?: string; error?: string };
+  if (!res.ok || !body.ok || !body.url) throw new Error(body.error ?? "No pudimos abrir el resultado. Intenta nuevamente.");
+  return body.url;
+}

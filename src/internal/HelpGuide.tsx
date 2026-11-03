@@ -48,7 +48,7 @@ const SECTIONS: Section[] = [
     steps: [
       "Pestaña 'En curso' es la de trabajo diario; Hoy/Última semana para revisar entregadas.",
       "Flujo por tarjeta: '🔬 Enviar al laboratorio' → '✅ Resultado listo' (el cliente recibe WhatsApp) → '📋 Entregada / leído' cuando lo retira.",
-      "Cuando el resultado llega: sube el PDF o foto en la propia tarjeta y publícalo — el cliente lo descarga en /estado con su código (dura 20 días).",
+      "Cuando el resultado llega: sube el PDF o foto en la tarjeta. Se envía un enlace privado por WhatsApp, disponible durante 20 días; si falla, usa 'Reenviar enlace'.",
       "Anillo ámbar '⚠ >7 días': la orden lleva una semana en el laboratorio y no volvió — hay que reclamar.",
       "Cross-sede: '📍 Origen X → Responsable Y' indica qué sede registró y cuál atiende.",
     ],

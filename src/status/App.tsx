@@ -13,7 +13,7 @@ import {
   PawPrint,
   Search,
 } from "lucide-react";
-import { fetchTracking, isLabTracking } from "./api";
+import { fetchLabDownload, fetchTracking, isLabTracking } from "./api";
 import type { TrackingBooking, TrackingLab, TrackingResult } from "./types";
 import { SLOT_LABELS, STATUS_META, STATUS_ORDER, statusMeta } from "../statuses";
 import { LAB_STATUS_ORDER, labStatusMeta } from "../labStatuses";
@@ -268,6 +268,10 @@ function StatusCard({
 }
 
 export default function App() {
+  const [privateAccess] = useState(() => ({
+    code: (new URLSearchParams(window.location.search).get("code") ?? "").trim().toUpperCase(),
+    token: new URLSearchParams(window.location.hash.slice(1)).get("resultado") ?? "",
+  }));
   const [code, setCode] = useState("");
   const [result, setResult] = useState<TrackingResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -428,7 +432,7 @@ export default function App() {
 
         {/* Resultado / error / carga: nunca faltan (sin "salto" del contenido) */}
         {result && (isLabTracking(result)
-          ? <LabView order={result} polling={polling} />
+          ? <LabView order={result} polling={polling} token={privateAccess.code === result.orderCode ? privateAccess.token : ""} />
           : <BookingView booking={result} polling={polling} />)}
         {!result && loading && <SkeletonView reduceMotion={reduceMotion} />}
         {!result && !loading && error && <ErrorView message={error} />}
@@ -603,12 +607,33 @@ function BookingView({
 function LabView({
   order,
   polling,
+  token,
 }: {
   order: TrackingLab;
   polling: boolean;
+  token: string;
 }) {
   const current = labStatusMeta(order.status);
   const reduceMotion = useReducedMotion() ?? false;
+  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+  async function download() {
+    // Abrir desde el clic evita que el navegador bloquee la ventana tras el fetch.
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    setDownloadBusy(true);
+    setDownloadError(null);
+    try {
+      const url = await fetchLabDownload(order.orderCode, token);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch (err) {
+      tab?.close();
+      setDownloadError(err instanceof Error ? err.message : "No pudimos abrir el resultado.");
+    } finally {
+      setDownloadBusy(false);
+    }
+  }
   return (
     <main>
       {/* Desktop: estado a la IZQUIERDA + seguimiento a la DERECHA; móvil: apilado */}
@@ -647,20 +672,15 @@ function LabView({
       </div>
 
       {/* Resultado del examen (ancho completo, bajo las 2 columnas) */}
-      {order.resultFile && (
+      {order.resultAvailable && (
         <section className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-2 ring-green-200">
           <p className="text-sm font-semibold text-slate-800">📄 Tu resultado ya está disponible</p>
-          <p className="mt-1 text-xs text-slate-500">{order.resultFile.name}</p>
-          <a
-            href={order.resultFile.url}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700"
-          >
-            ⬇ Descargar resultado
-          </a>
+          {token ? <button onClick={() => void download()} disabled={downloadBusy} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50">
+            {downloadBusy ? "Abriendo…" : "⬇ Descargar resultado"}
+          </button> : <p className="mt-2 text-xs text-slate-500">Para descargarlo, abre el enlace privado que te enviamos por WhatsApp. Si no lo recibiste, solicítalo a la sede.</p>}
+          {downloadError && <p role="alert" className="mt-2 text-xs text-red-700">{downloadError}</p>}
           <p className="mt-2 text-[11px] text-slate-400">
-            El enlace dura 10 minutos y se regenera cada vez que abres esta página. El archivo se borra de la web a los 20 días.
+            No compartas tu enlace privado. El archivo está disponible durante 20 días desde su publicación.
           </p>
         </section>
       )}

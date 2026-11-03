@@ -10,6 +10,7 @@ import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalShell } from "./ModalShell";
 import { ConfirmModal } from "./ConfirmModal";
+import { useVisibleRefresh } from "./useVisibleRefresh";
 
 // Pestaña Consultas: vista del counter para citas médicas.
 // Por defecto HOY, con franja de "Mañana", semana, búsqueda y citas manuales.
@@ -59,6 +60,10 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   const firstLoadRef = useRef(true);
   const searchSeqRef = useRef(0);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Evita interrumpir búsquedas, formularios o peticiones en curso. La vista
+  // semanal hace ocho consultas, por eso se actualiza con menor frecuencia.
+  useVisibleRefresh(setTick, !query.trim() && !manualOpen && !busy, vista === "semana" ? 60_000 : 30_000);
 
   // Salto desde 📚 Historial: busca el código al montar en la frontera async.
   useEffect(() => {

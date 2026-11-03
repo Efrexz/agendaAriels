@@ -19,8 +19,8 @@ export interface TrackingLab {
   sedePhone: string;
   createdAt: string;
   timeline: Array<{ status: string; createdAt: string }>;
-  /** Resultado publicado: link firmado (10 min, generado por el servidor). */
-  resultFile?: { url: string; name: string; publishedAt: string } | null;
+  /** Hay un archivo, pero su descarga requiere el enlace privado. */
+  resultAvailable?: boolean;
   /** true → el resultado existió pero su ventana de 20 días ya terminó. */
   resultExpired?: boolean;
 }

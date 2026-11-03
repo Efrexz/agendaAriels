@@ -133,6 +133,7 @@ export async function uploadLabResultFile(
   const path = `${orderId}/${orderCode}-resultado-${Date.now()}.${ext}`;
   const { error } = await client.storage.from("lab-results").upload(path, file, {
     contentType: file.type,
+    cacheControl: "60",
   });
   if (error) throw new Error(`No pudimos subir el archivo: ${error.message}`);
   return { path };
@@ -144,11 +145,15 @@ export async function publishLabResult(input: {
   name: string;
   mime: string;
   size: number;
-}): Promise<{ ok: boolean }> {
+}): Promise<{ ok: boolean; notified: boolean }> {
   return authedFetch("/api/internal/lab/result", {
     method: "POST",
     body: JSON.stringify(input),
   });
+}
+
+export async function resendLabResult(id: string): Promise<{ notified: boolean }> {
+  return authedFetch("/api/internal/lab/resend-result", { method: "POST", body: JSON.stringify({ id }) });
 }
 
 export async function getLabResultUrl(id: string): Promise<{ url: string; name: string }> {
