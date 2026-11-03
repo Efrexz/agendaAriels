@@ -3,6 +3,7 @@ import { isValidMedicalStatus } from "./db.js";
 import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booking.js";
 import { minuteToTime } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard, BRANCH_LABELS, BRANCH_PHONES } from "./_shared.js";
+import { MedicalSlotConflictError } from "./errors.js";
 
 // PATCH /api/medical/status  { id, status }
 // Cambia el estado de una cita (flujo del panel). Solo staff.
@@ -101,7 +102,7 @@ export default async function handler(req: Req, res: Res) {
     // counter clickeando a la vez no generan doble WhatsApp de confirmación).
     const changed = await db.transitionApptStatus(id, previous, status, staff.email);
     if (!changed) {
-      res.status(200).json({ ok: true, status, notified: false, stale: true });
+      res.status(409).json({ ok: false, error: "La cita cambió. Actualiza la lista antes de continuar." });
       return;
     }
 
@@ -131,6 +132,10 @@ export default async function handler(req: Req, res: Res) {
 
     res.status(200).json({ ok: true, status, notified });
   } catch (err) {
+    if (err instanceof MedicalSlotConflictError) {
+      res.status(409).json({ ok: false, error: "El horario ya está ocupado por otra cita." });
+      return;
+    }
     console.error(`[medical/status] ${err instanceof Error ? err.message : err}`);
     res.status(500).json({ ok: false, error: "Error inesperado del servidor." });
   }

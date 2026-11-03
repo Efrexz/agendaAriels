@@ -66,14 +66,16 @@ describe("GET /api/lab-status (estatus público del examen)", () => {
     expect(JSON.stringify(body)).not.toContain("LabVet Centro");
   });
 
-  it("incluye la timeline de estados", async () => {
+  it("incluye estados y fechas sin exponer al personal ni campos internos", async () => {
     dbMock.findOrderByCode.mockResolvedValue(order);
     dbMock.listStatusUpdatesMany.mockResolvedValue({
-      [order.id]: [{ status: "recibida", createdBy: "vet_ariel@hotmail.com", createdAt: "2026-10-22T10:00:00Z" }],
+      [order.id]: [{ status: "recibida", createdBy: "staff@example.com", createdAt: "2026-10-22T10:00:00Z", internalNote: "privado" }],
     });
     const { body } = await buildLabStatusResponse(dbMock as never, order.orderCode);
     const o = (body as { order: { timeline: unknown[] } }).order;
-    expect(o.timeline).toHaveLength(1);
+    expect(o.timeline).toEqual([{ status: "recibida", createdAt: "2026-10-22T10:00:00Z" }]);
+    expect(JSON.stringify(body)).not.toContain("staff@example.com");
+    expect(JSON.stringify(body)).not.toContain("privado");
   });
 
   it("404 sin distinción de causa", async () => {
@@ -81,6 +83,21 @@ describe("GET /api/lab-status (estatus público del examen)", () => {
     const { status, body } = await buildLabStatusResponse(dbMock as never, "LAB-XXXXX");
     expect(status).toBe(404);
     expect((body as { ok: boolean }).ok).toBe(false);
+  });
+
+  it("publicación nunca entrega URL ni nombre de archivo con solo el código", async () => {
+    dbMock.findOrderByCode.mockResolvedValue({ ...order, resultPath: "private/path", resultName: "privado.pdf", resultPublishedAt: new Date().toISOString() });
+    const { body } = await buildLabStatusResponse(dbMock as never, order.orderCode);
+    expect((body.order as { resultAvailable: boolean }).resultAvailable).toBe(true);
+    expect(JSON.stringify(body)).not.toContain("private/path");
+    expect(JSON.stringify(body)).not.toContain("privado.pdf");
+    expect(JSON.stringify(body)).not.toContain("url");
+  });
+
+  it("vence a los 20 días aunque la purga no haya corrido", async () => {
+    dbMock.findOrderByCode.mockResolvedValue({ ...order, resultPath: "private/path", resultPublishedAt: new Date(Date.now() - 20 * 86400_000).toISOString() });
+    const { body } = await buildLabStatusResponse(dbMock as never, order.orderCode);
+    expect((body.order as { resultExpired: boolean }).resultExpired).toBe(true);
   });
 
   it("código mal formado: 400", async () => {

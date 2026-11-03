@@ -3,6 +3,7 @@ import { addDays, format } from "date-fns";
 import { getLimaDayKey } from "../lib-lima.js";
 import { currentMinuteLima, weekdayOf } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard } from "./_shared.js";
+import { MedicalSlotConflictError } from "./errors.js";
 
 // POST /api/medical/assign  { id, doctorId?, apptDate?, startMinute?, paymentNotes? }
 // Counter asigna doctor/fecha/hora (y notas de pago) a una especializada.
@@ -123,13 +124,22 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    await db.assignAppt(
+    const assigned = await db.assignAppt(
       id,
       { doctorId, apptDate, startMinute, paymentNotes: paymentNotes ?? undefined, durationMinutes: duration },
       staff.email,
       "asignada",
     );
-    res.status(200).json({ ok: true, status: "asignada" });  } catch {
+    if (!assigned) {
+      res.status(409).json({ ok: false, error: "La cita ya cambió. Actualiza la lista antes de asignarla." });
+      return;
+    }
+    res.status(200).json({ ok: true, status: "asignada" });
+  } catch (err) {
+    if (err instanceof MedicalSlotConflictError) {
+      res.status(409).json({ ok: false, error: "El doctor ya tiene una cita en ese horario. Elige otro." });
+      return;
+    }
     res.status(500).json({ ok: false, error: "Error inesperado del servidor." });
   }
 }

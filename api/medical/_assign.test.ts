@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MedicalSlotConflictError } from "./errors.js";
 
 const dbMock = {
   findApptById: vi.fn(),
@@ -56,7 +57,7 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     dbMock.listTimeOff.mockResolvedValue([]);
     dbMock.listDoctorSchedules.mockResolvedValue([{ weekday: 3, startMinute: 540, endMinute: 780 }]);
     dbMock.getConfig.mockResolvedValue({ appt_duration_minutes: "60" });
-    dbMock.assignAppt.mockReset().mockResolvedValue(undefined);
+    dbMock.assignAppt.mockReset().mockResolvedValue(true);
   });
 
   it("asigna en slot libre y FIJA duration_minutes de config (antes era 0)", async () => {
@@ -137,5 +138,26 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     );
     expect(entries[0]?.s).toBe(409);
     expect(JSON.stringify(entries[0]?.b)).toMatch(/pago/i);
+  });
+
+  it("la base rechaza una reserva simultánea: responde 409", async () => {
+    const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
+    dbMock.assignAppt.mockRejectedValue(new MedicalSlotConflictError());
+    const { res, entries } = makeRes();
+    await handler({ method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 540 } }, res);
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
+  });
+
+  it("dos personas asignan la misma solicitud: el segundo intento responde 409", async () => {
+    const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
+    dbMock.assignAppt.mockResolvedValue(false);
+    const { res, entries } = makeRes();
+    await handler({ method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 540 } }, res);
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
+    expect(JSON.stringify(entries[0]?.b)).toMatch(/cambió/);
   });
 });

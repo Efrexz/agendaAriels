@@ -97,7 +97,7 @@ export default async function handler(req: Req, res: Res) {
     // dos PCs clickeando a la vez no generan doble WhatsApp.
     const changed = await db.transitionStatus(bookingId, previous, status, staff.email);
     if (!changed) {
-      res.status(200).json({ ok: true, status, notified: false, stale: true });
+      res.status(409).json({ ok: false, error: "La reserva cambió. Actualiza la lista antes de continuar." });
       return;
     }
 

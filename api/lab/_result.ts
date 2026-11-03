@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import { createClient } from "@supabase/supabase-js";
 import { getLabDb, notConfigured, staffGuard } from "./_shared.js";
+import { newResultToken, resultTokenHash, sendResultLink } from "./_access.js";
 
 // ─────────────────────────────────────────────────────────────
 // /api/internal/lab/result  (solo staff)
@@ -100,17 +101,24 @@ export default async function handler(req: Req, res: Res) {
         res.status(409).json({ ok: false, error: "Solo se publica el resultado con la orden en 'Resultado listo'." });
         return;
       }
-      // Reemplazo: el archivo anterior sale del bucket (best-effort) antes de
-      // registrar el nuevo — sin huérfanos en el storage.
+      const token = newResultToken();
+      const published = await db.setResultFile(id, path, name, resultTokenHash(token), order.resultPath);
+      if (!published) {
+        res.status(409).json({ ok: false, error: "La orden o el resultado cambió. Actualiza e intenta nuevamente." });
+        return;
+      }
+      // Solo borrar el anterior después de registrar el reemplazo. Storage puede
+      // devolver error sin lanzar excepción; en ese caso queda un huérfano.
       if (order.resultPath && order.resultPath !== path) {
         try {
-          await serviceClient()!.storage.from("lab-results").remove([order.resultPath]);
-        } catch (err) {
-          console.warn(`[lab/result POST] archivo anterior no borrado: ${err instanceof Error ? err.message : err}`);
+          const { error } = await serviceClient()!.storage.from("lab-results").remove([order.resultPath]);
+          if (error) console.warn("[lab/result POST] No se pudo borrar el archivo anterior.");
+        } catch {
+          console.warn("[lab/result POST] No se pudo borrar el archivo anterior.");
         }
       }
-      await db.setResultFile(id, path, name);
-      res.status(200).json({ ok: true });
+      const notified = await sendResultLink(order, token);
+      res.status(200).json({ ok: true, notified });
       return;
     }
 
@@ -130,8 +138,16 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
     const client = serviceClient()!;
-    await client.storage.from("lab-results").remove([order.resultPath]);
-    await db.clearResultFile(id);
+    const { error: storageError } = await client.storage.from("lab-results").remove([order.resultPath]);
+    if (storageError) {
+      res.status(503).json({ ok: false, error: "No se pudo borrar el archivo. Intenta nuevamente." });
+      return;
+    }
+    const cleared = await db.clearResultFile(id, order.resultPath);
+    if (!cleared) {
+      res.status(409).json({ ok: false, error: "El resultado cambió. Actualiza la orden antes de continuar." });
+      return;
+    }
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error(`[lab/result] ${err instanceof Error ? err.message : err}`);

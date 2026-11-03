@@ -87,7 +87,7 @@ export default async function handler(req: Req, res: Res) {
     // counter a la vez no envíam doble WhatsApp de "resultados listos").
     const changed = await db.transitionOrderStatus(id, previous, status, staff.email);
     if (!changed) {
-      res.status(200).json({ ok: true, status, notified: false, stale: true });
+      res.status(409).json({ ok: false, error: "La orden cambió. Actualiza la lista antes de continuar." });
       return;
     }
 

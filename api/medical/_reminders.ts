@@ -2,10 +2,11 @@ import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booki
 import { getLimaDayKey } from "../lib-lima.js";
 import { minuteToTime } from "./slots.js";
 import { BRANCH_LABELS, getMedicalDb } from "./_shared.js";
+import { isAuthorizedCron } from "../_cron.js";
 
 // GET /api/medical/reminders — CRON DIARIO (vercel.json: 23:00 UTC = 18:00 Lima).
 // Recordatorio del día ANTES al cliente con cita confirmada mañana + resumen al counter.
-// Protegido con CRON_SECRET (header Authorization: Bearer). Sin secret (dev): abierto.
+// CRON_SECRET es obligatorio en todos los entornos, incluido desarrollo.
 
 export const maxDuration = 60;
 
@@ -100,9 +101,11 @@ export function buildCounterReminderSummary(appts: CounterSummaryAppt[], date: s
 }
 
 export default async function handler(req: Req, res: Res) {
-  const secret = process.env.CRON_SECRET;
-  const token = req.headers?.authorization;
-  if (secret && token !== `Bearer ${secret}`) {
+  if (req.method !== "GET") {
+    res.status(405).json({ ok: false, error: "Método no permitido." });
+    return;
+  }
+  if (!isAuthorizedCron(req.headers)) {
     res.status(401).json({ ok: false, error: "No autorizado." });
     return;
   }

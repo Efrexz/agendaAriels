@@ -241,22 +241,12 @@ export class LabDb {
     return (data ?? []).map((r) => rowToRecord(r as unknown as LabDbRow));
   }
 
-  /** Cambio de estado ATÓMICO (mismo estándar medical/grooming): solo gana
-   *  quien partió del estado anterior — doble click no duplica WhatsApp. */
+  /** Estado e historial se confirman juntos; solo gana una transición. */
   async transitionOrderStatus(orderId: string, from: string, to: string, createdBy: string): Promise<boolean> {
-    const { data, error: updErr } = await this.client
-      .from("lab_orders")
-      .update({ status: to })
-      .eq("id", orderId)
-      .eq("status", from)
-      .select("id");
-    if (updErr) throw new Error(`transitionOrderStatus: ${updErr.message}`);
-    if ((data ?? []).length === 0) return false;
-    const { error } = await this.client
-      .from("lab_status_updates")
-      .insert({ order_id: orderId, status: to, created_by: createdBy });
-    if (error) throw new Error(`transitionOrderStatus timeline: ${error.message}`);
-    return true;
+    const { data, error } = await this.client.rpc("api_lab_transition", { p_id: orderId, p_from: from, p_to: to, p_actor: createdBy });
+    if (error) throw new Error(`transitionOrderStatus: ${error.message}`);
+    if (typeof data !== "boolean") throw new Error("transitionOrderStatus: respuesta inválida");
+    return data;
   }
 
   async listStatusUpdatesMany(
@@ -315,21 +305,42 @@ export class LabDb {
   // ── Resultado del examen (Storage privado + ventana de 20 días) ──
 
   /** Registra el archivo ya subido por el staff al bucket (browser directo). */
-  async setResultFile(orderId: string, path: string, name: string): Promise<void> {
-    const { error } = await this.client
+  async setResultFile(orderId: string, path: string, name: string, accessHash: string, previousPath: string | null): Promise<boolean> {
+    let query = this.client
       .from("lab_orders")
-      .update({ result_path: path, result_name: name, result_published_at: new Date().toISOString() })
-      .eq("id", orderId);
+      .update({ result_path: path, result_name: name, result_published_at: new Date().toISOString(), result_access_hash: accessHash })
+      .eq("id", orderId).eq("status", "resultado_listo");
+    query = previousPath === null ? query.is("result_path", null) : query.eq("result_path", previousPath);
+    const { data, error } = await query.select("id");
     if (error) throw new Error(`setResultFile: ${error.message}`);
+    return (data ?? []).length === 1;
   }
 
   /** Borra el registro del archivo (el storage lo elimina el llamador). */
-  async clearResultFile(orderId: string): Promise<void> {
-    const { error } = await this.client
+  async clearResultFile(orderId: string, expectedPath: string): Promise<boolean> {
+    const { data, error } = await this.client
       .from("lab_orders")
-      .update({ result_path: null, result_name: "", result_published_at: null })
-      .eq("id", orderId);
+      .update({ result_path: null, result_name: "", result_published_at: null, result_access_hash: null })
+      .eq("id", orderId).eq("result_path", expectedPath).select("id");
     if (error) throw new Error(`clearResultFile: ${error.message}`);
+    return (data ?? []).length === 1;
+  }
+
+  /** La huella no forma parte de los listados ni del registro público. */
+  async findResultAccessHash(orderId: string): Promise<string | null> {
+    const { data, error } = await this.client.from("lab_orders")
+      .select("result_access_hash").eq("id", orderId).maybeSingle();
+    if (error) throw new Error(`findResultAccessHash: ${error.message}`);
+    return data?.result_access_hash ?? null;
+  }
+
+  /** Evita emitir un enlace si el archivo cambió mientras se preparaba. */
+  async rotateResultAccess(orderId: string, path: string, publishedAt: string, hash: string): Promise<boolean> {
+    const { data, error } = await this.client.from("lab_orders")
+      .update({ result_access_hash: hash }).eq("id", orderId)
+      .eq("result_path", path).eq("result_published_at", publishedAt).select("id");
+    if (error) throw new Error(`rotateResultAccess: ${error.message}`);
+    return (data ?? []).length === 1;
   }
 
   /** Órdenes con resultado EXPIRADO (publicado hace más de la ventana dada). */
@@ -348,19 +359,23 @@ export class LabDb {
    *  result_published_at (es la señal "resultado existió pero ya expiró"
    *  para el aviso en /estado). Si siguió en 'resultado_listo' pasa a
    *  'entregada' (cron, el estado queda coherente). */
-  async finalizePurge(orderId: string, hadStatus: string): Promise<void> {
-    const { error } = await this.client
+  async finalizePurge(orderId: string, hadStatus: string, expectedPath: string, publishedAt: string): Promise<boolean> {
+    const { data, error } = await this.client
       .from("lab_orders")
-      .update({ result_path: null, result_name: "" })
-      .eq("id", orderId);
+      .update({ result_path: null, result_name: "", result_access_hash: null })
+      .eq("id", orderId).eq("result_path", expectedPath).eq("result_published_at", publishedAt).select("id");
     if (error) throw new Error(`finalizePurge: ${error.message}`);
+    if ((data ?? []).length !== 1) return false;
     if (hadStatus === "resultado_listo") {
       const { error: e2 } = await this.client
         .from("lab_orders")
         .update({ status: "entregada" })
         .eq("id", orderId)
-        .eq("status", "resultado_listo");
+        .eq("status", "resultado_listo")
+        .is("result_path", null)
+        .eq("result_published_at", publishedAt);
       if (e2) throw new Error(`finalizePurge status: ${e2.message}`);
     }
+    return true;
   }
 }

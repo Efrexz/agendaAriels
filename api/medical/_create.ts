@@ -4,6 +4,7 @@ import { getLimaDayKey } from "../lib-lima.js";
 import { computeFreeSlots, currentMinuteLima, weekdayOf } from "./slots.js";
 import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booking.js";
 import { BRANCH_LABELS, BRANCH_PHONES, getMedicalDb } from "./_shared.js";
+import { MedicalSlotConflictError } from "./errors.js";
 
 // POST /api/medical/create — PÚBLICO (wizard /cita-medica).
 // Crea citas: general / rayos / eco (slot exacto) y especializada (solicitud).
@@ -330,6 +331,9 @@ export async function handleMedicalCreate(opts: {
         console.warn(`[medical/create] código ${code} colisionó, reintentando`);
       }
     } catch (err) {
+      if (err instanceof MedicalSlotConflictError) {
+        return { status: 409, body: { ok: false, error: "Ese horario ya no está disponible. Elige otro." } };
+      }
       console.error(`[medical/create] insert falló: ${err instanceof Error ? err.message : err}`);
       return { status: 500, body: { ok: false, error: "No pudimos registrar tu cita. Intenta de nuevo." } };
     }

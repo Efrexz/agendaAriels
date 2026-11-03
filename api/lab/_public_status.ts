@@ -1,18 +1,16 @@
 import { z } from "zod/v4";
-import { createClient } from "@supabase/supabase-js";
 import { getLabDb, notConfigured, LAB_BRANCH_LABELS, LAB_BRANCH_PHONES } from "./_shared.js";
+import { RESULT_WINDOW_MS } from "./_access.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/lab-status?code=LAB-XXXXX
 // Página del cliente: estado del EXAMEN en tiempo real. Expone
 // SOLO campos seguros: mascota, examen, estado e timeline.
 // NUNCA teléfono del dueño, notas, montos ni médico.
-// Resultado publicado: URL FIRMADA de 10 minutos (storage privado);
-// tras 20 días la API dice "expirado" y la página muestra el aviso
+// Resultado publicado: solo indica disponibilidad, nunca el archivo.
+// Tras 20 días la API dice "expirado" y la página muestra el aviso
 // con WhatsApp de la sede. (Los resultados se purgan con el cron.)
 // ─────────────────────────────────────────────────────────────
-
-const RESULT_WINDOW_MS = 20 * 24 * 60 * 60 * 1000;
 
 function OrderParseDate(iso: string | null): number {
   return iso ? Date.parse(iso) : NaN;
@@ -71,27 +69,18 @@ export async function buildLabStatusResponse(
     sedeLabel: LAB_BRANCH_LABELS[order.sedeResponsable] ?? order.sedeResponsable,
     sedePhone: LAB_BRANCH_PHONES[order.sedeResponsable] ?? "",
     createdAt: order.createdAt,
-    timeline: timeline[order.id] ?? [],
+    // Nunca exponer el email/identidad del personal ni futuros campos internos.
+    timeline: (timeline[order.id] ?? []).map(({ status, createdAt }) => ({ status, createdAt })),
   };
 
-  // Resultado publicado → link firmado corto (nunca público permanente).
-  // Expirado (ventana 20 días, archivo ya borrado por el cron) → resultExpired:
+  // Resultado publicado → indicador sin datos de descarga.
+  // Expirado (ventana 20 días o archivo borrado por el cron) → resultExpired:
   // la página muestra el aviso amigable + WhatsApp de la sede.
   const publishedMs = OrderParseDate(order.resultPublishedAt);
-  if (order.resultPath && Number.isFinite(publishedMs) && Date.now() - publishedMs <= RESULT_WINDOW_MS) {
-    const client = createClient(
-      process.env.SUPABASE_URL ?? "",
-      process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
-      { auth: { persistSession: false } },
-    );
-    const { data, error } = await client.storage.from("lab-results").createSignedUrl(order.resultPath, 600);
-    if (!error && data?.signedUrl) {
-      orderBody.resultFile = {
-        url: data.signedUrl,
-        name: order.resultName || order.orderCode,
-        publishedAt: order.resultPublishedAt,
-      };
-    }
+  if (Number.isFinite(publishedMs) && Date.now() - publishedMs >= RESULT_WINDOW_MS) {
+    orderBody.resultExpired = true;
+  } else if (order.resultPath && Number.isFinite(publishedMs)) {
+    orderBody.resultAvailable = true;
   } else if (!order.resultPath && Number.isFinite(publishedMs)) {
     orderBody.resultExpired = true;
   }

@@ -77,11 +77,11 @@ describe("PATCH /api/internal/lab/status (estados laboratorio)", () => {
     expect(text).toContain("Boby");
   });
 
-  it("carrera perdida: sin notificación y stale", async () => {
+  it("carrera perdida: informa conflicto sin notificación", async () => {
     dbMock.transitionOrderStatus.mockResolvedValue(false);
     const { res, entries } = makeRes();
     await handler({ method: "PATCH", headers: {}, body: { id: order.id, status: "resultado_listo" } }, res);
-    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, notified: false, stale: true } });
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
     expect(sendMock).not.toHaveBeenCalled();
   });
 

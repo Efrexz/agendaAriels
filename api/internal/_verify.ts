@@ -28,12 +28,19 @@ export async function verifyStaff(jwt: string | null | undefined): Promise<Staff
   if (!jwt) return null;
   const admin = getAdminClient();
   if (!admin) return null;
-  const { data, error } = await admin.auth.getUser(jwt);
-  if (error || !data?.user) return null;
-  return {
-    id: data.user.id,
-    email: data.user.email ?? "sin-correo",
-  };
+  try {
+    const { data, error } = await admin.auth.getUser(jwt);
+    if (error || !data?.user) return null;
+    // Una sesión válida no basta: el usuario debe estar autorizado por la clínica.
+    // Ante errores o tabla ausente se deniega el acceso, nunca se hace fallback.
+    const { data: membership, error: membershipError } = await admin
+      .from("staff_users").select("user_id").eq("user_id", data.user.id)
+      .eq("active", true).maybeSingle();
+    if (membershipError || !membership) return null;
+    return { id: data.user.id, email: data.user.email ?? "sin-correo" };
+  } catch {
+    return null;
+  }
 }
 
 export function bearerFrom(headers: Record<string, string | string[] | undefined>): string | null {

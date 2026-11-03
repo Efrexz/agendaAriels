@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { MedicalSlotConflictError } from "./errors.js";
 
 const dbMock = {
   findApptById: vi.fn(),
@@ -77,11 +78,11 @@ describe("PATCH /api/medical/status (estados médicos)", () => {
     expect(sendMock).toHaveBeenCalledOnce();
   });
 
-  it("carrera perdida: sin notificación y stale", async () => {
+  it("carrera perdida: informa conflicto sin notificación", async () => {
     dbMock.transitionApptStatus.mockResolvedValue(false);
     const { res, entries } = makeRes();
     await handler({ method: "PATCH", headers: {}, body: { id: appt.id, status: "confirmada" } }, res);
-    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, notified: false, stale: true } });
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
     expect(sendMock).not.toHaveBeenCalled();
   });
 
@@ -98,6 +99,15 @@ describe("PATCH /api/medical/status (estados médicos)", () => {
     const { res, entries } = makeRes();
     await handler({ method: "PATCH", headers: {}, body: { id: appt.id, status: "en_consulta" } }, res);
     expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, notified: false } });
+    expect(sendMock).not.toHaveBeenCalled();
+  });
+
+  it("si otro registro ocupa el horario, no reactiva ni notifica", async () => {
+    dbMock.findApptById.mockResolvedValue({ ...appt, status: "cancelado" });
+    dbMock.transitionApptStatus.mockRejectedValue(new MedicalSlotConflictError());
+    const { res, entries } = makeRes();
+    await handler({ method: "PATCH", headers: {}, body: { id: appt.id, status: "confirmada" } }, res);
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
     expect(sendMock).not.toHaveBeenCalled();
   });
 });

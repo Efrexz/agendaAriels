@@ -74,7 +74,7 @@ describe("PATCH estado del panel (api/internal/status)", () => {
     dbMock.transitionStatus.mockResolvedValue(false);
     const { res, entries } = makeRes();
     await handler(reqFor("listo"), res);
-    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, notified: false, stale: true } });
+    expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
     expect(sendMock).not.toHaveBeenCalled();
   });
 

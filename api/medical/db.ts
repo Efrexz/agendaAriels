@@ -1,5 +1,6 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 import { phoneMatchesDigits } from "../db.js";
+import { MedicalSlotConflictError } from "./errors.js";
 
 // ─────────────────────────────────────────────────────────────
 // Repositorio médico server-side (service_role). Igual estándar
@@ -417,6 +418,7 @@ export class MedicalDb {
       .single();
     if (!error && data) return { code: null, id: String(data.id) };
     if (error && error.code === "23505") return { code: "23505", id: null };
+    if (error && error.code === "23P01") throw new MedicalSlotConflictError();
     if (error) throw new Error(`insertAppointment: ${error.message}`);
     return { code: null, id: null };
   }
@@ -526,33 +528,21 @@ export class MedicalDb {
   }
 
   async recordApptStatus(apptId: string, status: string, createdBy: string): Promise<void> {
-    const { error: updErr } = await this.client
-      .from("medical_appointments")
-      .update({ status })
-      .eq("id", apptId);
-    if (updErr) throw new Error(`recordApptStatus update: ${updErr.message}`);
+    // Solo registra el estado inicial: actualizar la cita aquí podía pisar
+    // un cambio del mostrador ocurrido después de la inserción.
     const { error } = await this.client
       .from("medical_status_updates")
       .insert({ appointment_id: apptId, status, created_by: createdBy });
     if (error) throw new Error(`recordApptStatus insert: ${error.message}`);
   }
 
-  /** Cambio de estado ATÓMICO: solo gana quien partió del estado anterior
-   * (evita doble WhatsApp 'confirmada' por carreras entre PCs del counter). */
+  /** Estado e historial se confirman juntos; la exclusión conserva el 409. */
   async transitionApptStatus(apptId: string, from: string, to: string, createdBy: string): Promise<boolean> {
-    const { data, error: updErr } = await this.client
-      .from("medical_appointments")
-      .update({ status: to })
-      .eq("id", apptId)
-      .eq("status", from)
-      .select("id");
-    if (updErr) throw new Error(`transitionApptStatus: ${updErr.message}`);
-    if ((data ?? []).length === 0) return false;
-    const { error } = await this.client
-      .from("medical_status_updates")
-      .insert({ appointment_id: apptId, status: to, created_by: createdBy });
-    if (error) throw new Error(`recordApptStatus insert: ${error.message}`);
-    return true;
+    const { data, error } = await this.client.rpc("api_medical_transition", { p_id: apptId, p_from: from, p_to: to, p_actor: createdBy });
+    if (error?.code === "23P01") throw new MedicalSlotConflictError();
+    if (error) throw new Error(`transitionApptStatus: ${error.message}`);
+    if (typeof data !== "boolean") throw new Error("transitionApptStatus: respuesta inválida");
+    return data;
   }
 
   async assignAppt(
@@ -560,25 +550,18 @@ export class MedicalDb {
     patch: { doctorId?: string; apptDate?: string; startMinute?: number; paymentNotes?: string; durationMinutes?: number },
     createdBy: string,
     newStatus?: string,
-  ): Promise<void> {
+  ): Promise<boolean> {
     const row: Record<string, unknown> = {};
-    if (newStatus) row.status = newStatus;
     if (patch.doctorId) row.doctor_id = patch.doctorId;
     if (patch.apptDate) row.appt_date = patch.apptDate;
     if (patch.startMinute !== undefined && patch.startMinute !== null) row.start_minute = patch.startMinute;
     if (patch.durationMinutes && patch.durationMinutes > 0) row.duration_minutes = patch.durationMinutes;
     if (patch.paymentNotes !== undefined) row.payment_notes = patch.paymentNotes;
-    const { error: updErr } = await this.client
-      .from("medical_appointments")
-      .update(row)
-      .eq("id", apptId);
-    if (updErr) throw new Error(`assignAppt update: ${updErr.message}`);
-    if (newStatus) {
-      const { error } = await this.client
-        .from("medical_status_updates")
-        .insert({ appointment_id: apptId, status: newStatus, created_by: createdBy });
-      if (error) throw new Error(`assignAppt insert: ${error.message}`);
-    }
+    const { data, error } = await this.client.rpc("api_medical_assign", { p_id: apptId, p_patch: row, p_status: newStatus ?? null, p_actor: createdBy });
+    if (error?.code === "23P01") throw new MedicalSlotConflictError();
+    if (error) throw new Error(`assignAppt: ${error.message}`);
+    if (typeof data !== "boolean") throw new Error("assignAppt: respuesta inválida");
+    return data;
   }
 
   async listApptStatusUpdates(apptId: string): Promise<{ status: string; createdBy: string; createdAt: string }[]> {

@@ -52,6 +52,8 @@ import labPublicStatusHandler from "./lab/_public_status.js";
 import labCatalogHandler from "./lab/_catalog.js";
 import labResultHandler from "./lab/_result.js";
 import labPurgeHandler from "./lab/_purge.js";
+import labDownloadHandler from "./lab/_download.js";
+import labResendResultHandler from "./lab/_resend_result.js";
 
 export const maxDuration = 60;
 
@@ -97,11 +99,13 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /internal/lab/list": { handler: labListHandler as Handler },
   "PATCH /internal/lab/status": { handler: labStatusHandler as Handler },
   "GET /lab-status": { handler: labPublicStatusHandler as Handler },
+  "POST /lab-download": { handler: labDownloadHandler as Handler },
   "GET /internal/lab/catalog": { handler: labCatalogHandler as Handler },
   "POST /internal/lab/catalog": { handler: labCatalogHandler as Handler },
   "POST /internal/lab/result": { handler: labResultHandler as Handler },
   "GET /internal/lab/result": { handler: labResultHandler as Handler },
   "DELETE /internal/lab/result": { handler: labResultHandler as Handler },
+  "POST /internal/lab/resend-result": { handler: labResendResultHandler as Handler },
   "GET /internal/lab/purge": { handler: labPurgeHandler as Handler },
 };
 

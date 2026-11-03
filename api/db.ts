@@ -222,22 +222,12 @@ export class SupabaseBookingDb implements BookingDb {
     if (error) throw new Error(`recordStatus falló: ${error.message}`);
   }
 
-  /** Cambio de estado atómico: si nadie más cambió el estado (evita doble
-   * WhatsApp por carreras del panel), inserta el timeline y devuelve true. */
+  /** Estado e historial se confirman juntos; solo gana una transición. */
   async transitionStatus(bookingId: string, from: string, to: string, createdBy: string): Promise<boolean> {
-    const { data, error: updErr } = await this.client
-      .from("bookings")
-      .update({ status: to })
-      .eq("id", bookingId)
-      .eq("status", from)
-      .select("id");
-    if (updErr) throw new Error(`transition status falló: ${updErr.message}`);
-    if ((data ?? []).length === 0) return false;
-    const { error } = await this.client
-      .from("status_updates")
-      .insert({ booking_id: bookingId, status: to, created_by: createdBy });
-    if (error) throw new Error(`recordStatus falló: ${error.message}`);
-    return true;
+    const { data, error } = await this.client.rpc("api_grooming_transition", { p_id: bookingId, p_from: from, p_to: to, p_actor: createdBy });
+    if (error) throw new Error(`transition status falló: ${error.message}`);
+    if (typeof data !== "boolean") throw new Error("transition status: respuesta inválida");
+    return data;
   }
 
   async countBookingsFor(branch: string, date: string, timeSlot: string | null): Promise<number> {
