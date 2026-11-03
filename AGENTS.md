@@ -25,8 +25,7 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 
 ## Módulo 3 — Laboratorio (LAB-XXXXX)
 - Órdenes cross-sede: `sede_origen` (registró) vs `sede_responsable` (atiende). Estados: recibida→en_laboratorio→resultado_listo→entregada (+cancelado); vencimiento >7 días dispara anillo ámbar.
-- Resultado: PDF/JPG subido en panel → cliente lo descarga en `/estado` (URL firmada 10 min, ventana 20 días, purge `api/lab/_purge.ts`); expirado → CTA WhatsApp a la sede.
-- Catálogo persistente de labs/exámenes (combobox con ➕ en vivo).
+- Resultado: PDF/JPG subido en panel → cliente lo recibe por WhatsApp con ENLACE PRIVADO (token 256-bit, huella en `lab_orders.result_access_hash`) y descarga en `/estado` sin cuenta; el código corto solo muestra ESTADO (nunca el archivo). Ventana 20 días, purge `api/lab/_purge.ts`; reemplazo/borrado/rotación de enlace los mata al instante. Panel: botón "↗ Reenviar enlace" (con modal de advertencia) si el WhatsApp falla o el cliente pierde el enlace. Endpoints: `POST /api/lab-download` (token→URL firmada 60s) · `POST /api/internal/lab/resend-result`. Catálogo persistente de labs/exámenes (combobox con ➕ en vivo).
 
 ## Panel interno (`/internal`, src/internal/)
 - Pestañas: Grooming · Consultas · Laboratorio · Historial · Config. (Horarios médicos viven como sección desplegable dentro de ⚙ Config desde 2026-10-27 — tarea de baja frecuencia).
@@ -34,6 +33,8 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 - Cards acordeón accesibles (role=button, aria-expanded, Enter/Espacio). Creación CTAs = `bg-brand-blue`; verde reservado a semántica de éxito. Acento de pestaña activa: grooming azul / consultas sky / laboratorio naranja. Guardas defensivas `?? []` en todos los fetch (una API malformada no debe tumbar el panel).
 - ⚙ Config médica: duración cita, texto métodos de pago, doctores (activate/baja) y especialidades (precio + sedes por botón SPA/LO/SM).
 - MINI WHATSAPP (2026-10-27): botón verde junto al teléfono en cards de Consultas/Lab → `wa.me` normalizado `src/internal/waLink.ts` (helper con test) + `MiniWhatsApp.tsx` (mensaje pre-armado con código).
+- AUTO-REFRESH VISIBLE (2026-10-31): `src/internal/useVisibleRefresh.ts` — Consultas/Laboratorio se reconsultan cada 30s (semana médica 60s) SOLO pestaña visible y sin búsqueda/modal/petición en curso.
+- ACCESO DE STAFF (2026-10-31): las APIs `/api/internal/*` y `/api/medical/*` exigen sesión válida Y fila `active` en `staff_users` (RLS: cada usuario lee solo su fila). Dar de alta personal = `INSERT INTO staff_users (user_id) SELECT id FROM auth.users WHERE email='...';`. Subida de resultados LAB al bucket también exige miembros activos (policy "staff upload lab results").
 - TOAST de llegadas (`NewArrivalsToast.tsx`): si el panel está abierto y entra reserva/cita/orden creada después (sessionStart/seen por pestaña; en consultas solo Hoy/Mañana), toast azul abajo-derecha "clic para ver" → refresca y oculta 8s. Patrón anti-dismissed (visible = count ∉ dismissed).
 - REAGENDAR 1 clic: en cards de Consultas con `no_llego/cancelado` → botón "🔁 Reagendar como nueva cita" abre el modal manual con prefill (dueño/mascota/tipo/sede/notas); el guard dirty compara contra el prefill (no pregunta si no se tocó nada).
 - GUÍA "?" (`HelpGuide.tsx`): botón flotante abajo-izquierda → modal con pasos por pestaña en lenguaje de mostrador (onboarding del staff).
@@ -43,7 +44,7 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 - Card top con degradado azul→naranja. Progreso: completado=azul, ACTIVO=naranja con halo, label "Paso X de 4" naranja.
 - Paso servicio: cards horizontales pastel por servicio (`SERVICE_TINT`: general azul, rayos cyan, eco naranja, especializada verde semántico) — foto circular con HALO desplazado detrás + ola grande inferior + rayitas "¡" ancladas al círculo de la foto + pill "📄 Requiere orden" (solo rayos/eco) + badge "El más solicitado" en general (flag `popular`).
 - Paso especialidad: cards 2col con icono por palabra clave (`ESPECIALIDAD_REGEX_ICONS`, fallback birrete) + collage de 4 especialidades a la derecha (`especializada.webp`, RGB enmarcado con `EspecialidadCollage`). Paso doctor/orden: 2 col con mascota webp. Mascotas: webp en `public/images/vetMascot/` (listo=spaListo, entregado=entregado "Gracias por su preferencia", cancelado VA+LAB=cancelado.webp, LAB entregada=resultadoListo.webp (reuso pedido por el usuario), recogida/entrega comparten camino.webp; resultadoListo con alpha real; card "Consulta Especializada" del paso servicio usa especializadas.webp). Pago/copy comparten imagen INTENCIONAL (bulldog clipboard; no pedir arte). Pendiente de arte único: fotos reales de doctores en `public/images/doctores/` (no existe; cards muestran estetoscopio fallback).
-- /estado: tracking con tinte por estado (`STATUS_TINT` en src/status/mascots.ts), métricas en fila 3-col, skeleton, card de error con mascota + CTA WhatsApp, botón copiar-enlace, document.title dinámico.
+- /estado: tracking con tinte por estado (`STATUS_TINT` en src/status/mascots.ts), métricas en fila 3-col, skeleton, card de error con mascota + CTA WhatsApp, botón copiar-enlace, document.title dinámico. LAB: el resultado aparece "disponible"; la descarga SOLO por enlace privado (sin fragmento `#resultado=` se explica cómo pedirlo). `no-referrer` y sin cachear al documento.
 
 ## Comité de estilos (el usuario confirma ideas antes de construir)
 Usuarios finales = recepcionistas (panel) y dueños de mascotas. Todo cambio visual del wizard/panel se verifica con capturas antes de commitear; el usuario revisa y el jefe aprueba los cambios estéticos grandes (mockup del paso servicio aprobado). NO versionar maquetas de guía (patrón 83477a6).
@@ -52,13 +53,14 @@ Usuarios finales = recepcionistas (panel) y dueños de mascotas. Todo cambio vis
 Ficha por mascota e historial clínico (usan VetPraxis) · notas internas por cliente · métricas/estadísticas ni export CSV (descartado por el jefe) · foto/video del staff al cliente · foto de referencia y "cómo llegar" en la página del cliente.
 
 ## Env vars (Vercel prod+preview+dev)
-SUPABASE_URL/ANON/SERVICE_ROLE · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short: activo en Development; falta Production+Preview + redeploy) · EVOLUTION_API_URL/INSTANCE/KEY (WhatsApp) · EVOLUTION_DRY_RUN · WHATSAPP_DESTINO · CRON_SECRET (PENDIENTE registrar) · VITE_SUPABASE_URL/ANON_KEY (panel).
+SUPABASE_URL/ANON/SERVICE_ROLE · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short: activo en Development; falta Production+Preview + redeploy) · EVOLUTION_API_URL/INSTANCE/KEY (WhatsApp) · EVOLUTION_DRY_RUN · WHATSAPP_DESTINO · CRON_SECRET (verificado en Production/Preview/Development el 30/10; NO rotar sin necesidad) · LAB_RESULT_PUBLIC_ORIGIN (opcional: solo para probar enlaces LAB contra dominio distinto a producción; debe ser https:// raíz) · VITE_SUPABASE_URL/ANON_KEY (panel).
+
+## BD y migraciones (aplicado del 30–31/10 vía Management API, sin schema_migrations remoto)
+`supabase/migrations/`: 01 prevención solapamientos (constraint exclusión por doctor/fecha; el backend devuelve 409 amigable) · 02 `lab_orders.result_access_hash` (huella del enlace privado) · 03 tabla `staff_users` (personal activo; alta manual por SQL) · 04 policy Storage con check de membresía · 05 funciones `api_*_transition`/`api_medical_assign` (estado+historial atómicos, solo service_role). Cambios de estado van por estas funciones (código local=deployado tras 03/11). QA remotos: VA-C42S8 · CM-TVPKV · CM-WL5FX · LAB-T87WZ (marcados QA, no borrar sin acordar).
 
 ## Deuda conocida (pendiente del usuario, no del código)
 1. VET_MESSAGE_MODE=short en Production+Preview (hoy solo Development) + redeploy.
-2. CRON_SECRET en Vercel para blindar el cron de recordatorios.
-3. QZ Tray física: instalar en PC del mostrador y probar TM-T20II.
-4. Cambiar contraseña de vet_ariel@hotmail.com (quedó compartida por chat).
-5. Cuentas reales del staff por correo.
-6. Grooming: faltan artes recibido/camino/corte (la cascada muestra placeholder DogAndCat).
-7. Aún hay `window.confirm` en cancelaciones (documentado para otro ciclo: modal propio + semáforo de citas atrasadas en consultas + fetch por rango de la vista semana).
+2. QZ Tray física: instalar en PC del mostrador y probar TM-T20II.
+3. Cambiar contraseña de vet_ariel@hotmail.com (quedó compartida por chat).
+4. Cuentas reales del staff por correo (+ altas en `staff_users`).
+5. Grooming: faltan artes recibido/camino/corte (la cascada muestra placeholder DogAndCat).
