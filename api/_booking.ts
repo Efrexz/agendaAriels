@@ -1,6 +1,7 @@
 import { z } from "zod/v4";
 import { addDays, format } from "date-fns";
-import { SupabaseBookingDb, type BookingDb, type BookingRowInput } from "./db.js";
+import { createHash } from "node:crypto";
+import { SupabaseBookingDb, type BookingDb, type BookingRecord, type BookingRowInput } from "./db.js";
 
 // ─────────────────────────────────────────────────────────────
 // Módulo compartido interno de la función api/booking.ts.
@@ -49,7 +50,7 @@ export interface BookingEnv {
 
 export interface BookingResult {
   status: number;
-  body: { ok: boolean; error?: string; bookingCode?: string; whatsappDelivered?: boolean };
+  body: { ok: boolean; error?: string; bookingCode?: string; whatsappDelivered?: boolean; bookingStored?: boolean; codeConflict?: boolean };
 }
 
 // ── Tiempo Lima ──────────────────────────────────────────────
@@ -288,34 +289,32 @@ export async function sendClientReceipt(
 const DEDUPE_WINDOW_MS = 60_000;
 const MAX_DEDUPE_ENTRIES = 200;
 
-const recentBookings = new Map<string, { code: string; at: number }>();
+const recentBookings = new Map<string, { fingerprint: string; at: number; bookingStored: boolean }>();
 
 function bookingDedupeKey(payload: BookingPayload): string {
-  const digits = payload.ownerPhone.replace(/\D/g, "");
-  return `${digits}|${payload.branch}|${payload.date}|${payload.timeRange}`;
+  return payload.bookingCode;
 }
 
 export function resetBookingDedupe(): void {
   recentBookings.clear();
 }
 
-function findRecentDuplicate(payload: BookingPayload, now: number): string | null {
+function findRecentDuplicate(payload: BookingPayload, now: number): { fingerprint: string; at: number; bookingStored: boolean } | null {
   const cutoff = now - DEDUPE_WINDOW_MS;
   for (const [key, value] of recentBookings) {
     if (value.at < cutoff) recentBookings.delete(key);
   }
   const hit = recentBookings.get(bookingDedupeKey(payload));
-  return hit ? hit.code : null;
+  return hit ?? null;
 }
 
-function rememberBooking(payload: BookingPayload, now: number): void {
-  // El mismo teléfono + fecha + franja dentro de 60s ya tiene código: al
-  // repetirse (doble click) se devuelve el código original sin reenviar.
+function rememberBooking(payload: BookingPayload, now: number, bookingStored: boolean): void {
+  // Solo el mismo código y los mismos datos se consideran un reintento.
   if (recentBookings.size >= MAX_DEDUPE_ENTRIES) {
     const oldest = recentBookings.keys().next().value;
     if (oldest) recentBookings.delete(oldest);
   }
-  recentBookings.set(bookingDedupeKey(payload), { code: payload.bookingCode, at: now });
+  recentBookings.set(bookingDedupeKey(payload), { fingerprint: bookingFingerprint(payload), at: now, bookingStored });
 }
 
 // ── Mensaje corto a la veterinaria (con panel interno activo) ─
@@ -369,6 +368,38 @@ function payloadToRow(payload: BookingPayload, mapsUrl: string | null): BookingR
     mobilityPhone: payload.mobilityPhone,
     pets: payload.pets,
   };
+}
+
+// JSONB puede devolver las claves de las mascotas en otro orden.
+function stableJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value !== null && typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    return `{${Object.keys(obj).sort().map((key) => `${JSON.stringify(key)}:${stableJson(obj[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value) ?? "null";
+}
+
+function bookingFingerprint(payload: BookingPayload): string {
+  const mapsUrl = payload.ownerLat !== null && payload.ownerLng !== null ? buildMapsUrl(payload.ownerLat, payload.ownerLng) : null;
+  return createHash("sha256").update(stableJson(payloadToRow(payload, mapsUrl))).digest("hex");
+}
+
+function matchesStoredBooking(payload: BookingPayload, record: BookingRecord): boolean {
+  const mapsUrl = payload.ownerLat !== null && payload.ownerLng !== null ? buildMapsUrl(payload.ownerLat, payload.ownerLng) : null;
+  const expected = payloadToRow(payload, mapsUrl);
+  return (Object.keys(expected) as Array<keyof BookingRowInput>).every(
+    (key) => {
+      if ((key === "ownerLat" || key === "ownerLng") && typeof expected[key] === "number" && typeof record[key] === "number") {
+        // PostgreSQL guarda coordenadas en numeric(9,6), redondeando la
+        // solicitud original hasta medio millonésimo de grado.
+        const submitted = expected[key] as number;
+        const stored = record[key] as number;
+        return Math.abs(submitted - stored) <= 0.0000005 + Number.EPSILON * Math.max(1, Math.abs(submitted)) * 2;
+      }
+      return stableJson(expected[key]) === stableJson(record[key]);
+    },
+  );
 }
 
 // ── Plantilla del mensaje WhatsApp (réplica del flujo n8n) ───
@@ -488,15 +519,15 @@ export async function sendViaEvolution(
   destination?: string,
 ): Promise<{ ok: true } | { ok: false; error: string }> {
   const dest = destination ?? env.WHATSAPP_DESTINO;
-  const url = `${env.EVOLUTION_API_URL!.replace(/\/+$/, "")}/message/sendText/${env.EVOLUTION_INSTANCE}`;
-  const headers = { "Content-Type": "application/json", apikey: env.EVOLUTION_API_KEY! };
-
   if (isDryRun(env)) {
     for (const text of messages) {
       console.log(`${DRY_TAG} → ${dest}\n${text}\n${DRY_TAG} fin del mensaje`);
     }
     return { ok: true };
   }
+
+  const url = `${env.EVOLUTION_API_URL!.replace(/\/+$/, "")}/message/sendText/${env.EVOLUTION_INSTANCE}`;
+  const headers = { "Content-Type": "application/json", apikey: env.EVOLUTION_API_KEY! };
 
   for (const text of messages) {
     let lastStatus = 0;
@@ -538,6 +569,7 @@ export async function sendToBackupWebhook(
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ ...payload, whatsappDelivered: delivered }),
+      signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
     });
   } catch {
     /* el respaldo nunca rompe el flujo principal */
@@ -591,11 +623,13 @@ export async function handleBooking(options: {
   }
 
   const nowMs = now.getTime();
-  const duplicateCode = findRecentDuplicate(payload, nowMs);
-  if (duplicateCode) {
-    // Doble click rápido: misma reserva ya está en camino a la veterinaria.
+  const duplicate = findRecentDuplicate(payload, nowMs);
+  if (duplicate) {
+    if (duplicate.fingerprint !== bookingFingerprint(payload)) {
+      return { status: 409, body: { ok: false, codeConflict: true, error: "El código ya está en uso. Vuelve a intentar la reserva." } };
+    }
     console.warn("[booking] reserva duplicada detectada, se devuelve el código original");
-    return { status: 200, body: { ok: true, bookingCode: duplicateCode } };
+    return { status: 200, body: { ok: true, bookingCode: payload.bookingCode, whatsappDelivered: true, bookingStored: duplicate.bookingStored } };
   }
 
   const normalized: BookingPayload = {
@@ -611,6 +645,20 @@ export async function handleBooking(options: {
     try {
       const closed = await db.isClosed(payload.branch, payload.date, payload.timeRange);
       if (closed) {
+        // La franja puede haberse cerrado después de guardar una solicitud
+        // cuya respuesta se perdió; primero comprobar si ya está registrada.
+        let existing: BookingRecord | null;
+        try {
+          existing = await db.findByCode(payload.bookingCode);
+        } catch {
+          return { status: 503, body: { ok: false, error: "No pudimos verificar la reserva. Contacta a la veterinaria antes de volver a enviarla." } };
+        }
+        if (existing && matchesStoredBooking(normalized, existing)) {
+          return { status: 200, body: { ok: true, bookingCode: existing.bookingCode, whatsappDelivered: existing.whatsappDelivered, bookingStored: true } };
+        }
+        if (existing) {
+          return { status: 409, body: { ok: false, codeConflict: true, error: "El código ya está en uso. Vuelve a intentar la reserva." } };
+        }
         return {
           status: 400,
           body: {
@@ -620,17 +668,24 @@ export async function handleBooking(options: {
         };
       }
       const inserted = await db.insertBooking(payloadToRow(payload, normalized.mapsUrl ?? null));
-      dbOk = true;
       if (inserted.code === "23505") {
-        // Código ya registrado (reintentos de la web). Si el aviso a la
-        // veterinaria nunca llegó, el flujo de abajo lo reenvía; si ya se
-        // entregó, se devuelve el código sin duplicar mensajes.
-        const existing = await db.findByCode(payload.bookingCode);
-        if (existing?.whatsappDelivered === true) {
-          console.warn(`[booking] ${payload.bookingCode} ya registrado y entregado; sin reenvío`);
-          return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
+        // Una colisión de código no demuestra que sea la misma reserva.
+        // Si no se puede comprobar, no reenviar ni confirmar datos ajenos.
+        let existing: BookingRecord | null;
+        try {
+          existing = await db.findByCode(payload.bookingCode);
+        } catch {
+          return { status: 503, body: { ok: false, error: "No pudimos verificar la reserva. Contacta a la veterinaria antes de volver a enviarla." } };
         }
+        if (!existing) {
+          return { status: 503, body: { ok: false, error: "No pudimos verificar la reserva. Contacta a la veterinaria antes de volver a enviarla." } };
+        }
+        if (!matchesStoredBooking(normalized, existing)) {
+          return { status: 409, body: { ok: false, codeConflict: true, error: "El código ya está en uso. Vuelve a intentar la reserva." } };
+        }
+        return { status: 200, body: { ok: true, bookingCode: existing.bookingCode, whatsappDelivered: existing.whatsappDelivered, bookingStored: true } };
       }
+      dbOk = true;
     } catch (dbError) {
       // La BD no responde: no bloqueamos al cliente, sigue el flujo por WhatsApp.
       console.error(`[booking] BD no disponible: ${dbError instanceof Error ? dbError.message : dbError}`);
@@ -638,7 +693,8 @@ export async function handleBooking(options: {
   }
 
   const panelUrl = env.INTERNAL_PANEL_URL || (options.origin ? `${options.origin}/internal` : undefined);
-  const shortMode = env.VET_MESSAGE_MODE === "short";
+  // Si no quedó en el panel, el aviso debe incluir todos los datos necesarios.
+  const shortMode = env.VET_MESSAGE_MODE === "short" && dbOk;
   const messages = shortMode
     ? [buildShortVetMessage(normalized, panelUrl)]
     : buildBookingMessages(normalized);
@@ -662,6 +718,7 @@ export async function handleBooking(options: {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(normalized),
+        signal: AbortSignal.timeout(ATTEMPT_TIMEOUT_MS),
       });
       delivered = res.ok;
       if (!res.ok) error = `No se pudo entregar la reserva al WhatsApp de la veterinaria (${res.status}).`;
@@ -669,13 +726,7 @@ export async function handleBooking(options: {
       error = "No se pudo contactar a la veterinaria. Revisa tu conexión e intenta de nuevo.";
     }
   } else {
-    return {
-      status: 500,
-      body: {
-        ok: false,
-        error: "El servidor no tiene la configuración de notificaciones. Contacta a la veterinaria.",
-      },
-    };
+    error = "El servidor no tiene la configuración de notificaciones. Contacta a la veterinaria.";
   }
 
   if (db) {
@@ -696,28 +747,30 @@ export async function handleBooking(options: {
     if (dbOk) {
       return {
         status: 200,
-        body: { ok: true, bookingCode: payload.bookingCode, whatsappDelivered: false },
+        body: { ok: true, bookingCode: payload.bookingCode, whatsappDelivered: false, bookingStored: true },
       };
     }
     return {
-      status: 502,
+      status: evolutionReady || env.VITE_N8N_WEBHOOK_URL ? 502 : 500,
       body: { ok: false, error: error ?? "No se pudo entregar la reserva. Intenta de nuevo." },
     };
   }
 
-  rememberBooking(payload, nowMs);
+  rememberBooking(payload, nowMs, dbOk);
 
   // Comprobante al cliente: best effort, nunca rompe la reserva.
   const trackingUrl =
-    env.TRACKING_ENABLED === "true" && options.origin
+    dbOk && env.TRACKING_ENABLED === "true" && options.origin
       ? `${options.origin}/estado`
       : undefined;
-  const receipt = await sendClientReceipt(normalized, env, fetcher, trackingUrl);
-  if (receipt.outcome === "failed") {
-    console.warn(`[booking] ${receipt.reason}`);
+  try {
+    const receipt = await sendClientReceipt(normalized, env, fetcher, trackingUrl);
+    if (receipt.outcome === "failed") console.warn(`[booking] ${receipt.reason}`);
+  } catch {
+    console.warn("[booking] no se pudo enviar el comprobante al cliente");
   }
 
-  return { status: 200, body: { ok: true, bookingCode: payload.bookingCode } };
+  return { status: 200, body: { ok: true, bookingCode: payload.bookingCode, whatsappDelivered: true, bookingStored: dbOk } };
 }
 
 // ── Handler (ruta /api/booking) ──

@@ -1,4 +1,5 @@
-import { test, expect, type Route } from "@playwright/test";
+import type { Route } from "@playwright/test";
+import { test, expect, elegirFranjaDisponible } from "./fixtures";
 
 /**
  * Reserva completa (recurrente) hasta la confirmación, con /api/booking
@@ -13,7 +14,7 @@ test.describe("Reserva completa desde la bienvenida", () => {
       route.fulfill({
         status: 200,
         contentType: "application/json",
-        body: JSON.stringify({ ok: true }),
+        body: JSON.stringify({ ok: true, bookingCode: "VA-SRV23", bookingStored: true }),
       });
     await page.route("**/api/booking", stub);
     await page.route("**/webhook/**", stub);
@@ -31,13 +32,7 @@ test.describe("Reserva completa desde la bienvenida", () => {
     const dayButtons = page.locator(".grid.grid-cols-7").locator("button:not([disabled])");
     await dayButtons.last().click();
     await expect(page.getByText(/¡Perfecto! Elige tu horario/)).toBeVisible();
-    const noon = page.getByRole("button", { name: /Turno mediodía/ });
-    const morning = page.getByRole("button", { name: /Turno mañana/ });
-    if (await noon.isEnabled()) {
-      await noon.click();
-    } else {
-      await morning.click();
-    }
+    await elegirFranjaDisponible(page);
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
 
     // 3. Datos del cliente: prellenados por el perfil, Solo enfocar "Continuar"
@@ -55,20 +50,15 @@ test.describe("Reserva completa desde la bienvenida", () => {
 
     // 5. El servidor interceptado responde ok → pantalla de éxito
     await expect(page.getByText(/¡Solicitud enviada con éxito!/)).toBeVisible();
-    await expect(page.getByText(/VA-[A-Z0-9]{5}/)).toBeVisible();
+    await expect(page.getByText("VA-SRV23")).toBeVisible();
+    await expect(page.getByRole("link", { name: /Seguir a tu mascota/ })).toHaveAttribute("href", "/estado?code=VA-SRV23");
   });
 
   test("después de reservar el perfil queda guardado para la próxima visita", async ({ page }) => {
     await page.getByRole("button", { name: /Agendar con 3 mascotas/ }).click();
     const dayButtons = page.locator(".grid.grid-cols-7").locator("button:not([disabled])");
     await dayButtons.last().click();
-    const noon = page.getByRole("button", { name: /Turno mediodía/ });
-    const morning = page.getByRole("button", { name: /Turno mañana/ });
-    if (await noon.isEnabled()) {
-      await noon.click();
-    } else {
-      await morning.click();
-    }
+    await elegirFranjaDisponible(page);
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
     await page.getByRole("button", { name: "Continuar", exact: true }).click();
     await page.getByLabel(/He leído y acepto/).check();

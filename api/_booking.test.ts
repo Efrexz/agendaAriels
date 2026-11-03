@@ -271,7 +271,7 @@ describe("handleBooking", () => {
       fetcher: fn,
     });
     expect(result.status).toBe(200);
-    expect(result.body).toEqual({ ok: true, bookingCode: "VA-TEST1" });
+    expect(result.body).toEqual({ ok: true, bookingCode: "VA-TEST1", whatsappDelivered: true, bookingStored: false });
     // 2 mensajes a la veterinaria (resumen + Maps) + comprobante al cliente
     expect(calls).toHaveLength(3);
     expect(calls[0].text).toContain("*NUEVA RESERVA*");
@@ -299,13 +299,13 @@ describe("handleBooking", () => {
     expect(calls).toHaveLength(3);
   });
 
-  it("devuelve el mismo código si la misma reserva llega dos veces en 60s (sin reenvío)", async () => {
+  it("devuelve el mismo código si la misma solicitud llega dos veces en 60s (sin reenvío)", async () => {
     const { fn, calls } = fetchOk();
     const body = payload({ ...base, ownerLat: -12.0206, ownerLng: -77.0865 });
     const first = await handleBooking({ body, env: ENV_FULL, now: NOW, fetcher: fn });
     expect(first.status).toBe(200);
 
-    // Doble click: distinto bookingCode (se genera nuevo), mismos datos clave
+    // Reintento con el mismo código y los mismos datos.
     const again = await handleBooking({ body: payload({ ...base, ownerLat: -12.0206, ownerLng: -77.0865 }), env: ENV_FULL, now: NOW, fetcher: fn });
     expect(again.status).toBe(200);
     expect(again.body.bookingCode).toBe(first.body.bookingCode);
@@ -394,25 +394,16 @@ describe("handleBooking", () => {
     expect(result.body.bookingCode).toBe("VA-TEST1");
   });
 
-  it("23505 (duplicado web) + WhatsApp caído + BD-OK → también 200 suave", async () => {
-    const db: BookingDb = {
-      isClosed: vi.fn(async () => false),
-      insertBooking: vi.fn(async () => ({ code: "23505" })),
-      findByCode: vi.fn(async () => ({ id: "x", whatsappDelivered: false }) as unknown as BookingRecord),
-      recordStatus: vi.fn(),
-      setWhatsappDelivered: vi.fn(),
-    } as unknown as BookingDb;
-    void db.recordStatus; void db.setWhatsappDelivered;
-    const fn = vi.fn(async () => new Response("{}", { status: 503 }));
+  it("reserva guardada sin configuración de WhatsApp → 200 suave", async () => {
+    const db = fakeDb();
     const result = await handleBooking({
       body: payload({
         ...base,
         ownerLat: -12.0206,
         ownerLng: -77.0865,
       }),
-      env: ENV_FULL,
+      env: {},
       now: NOW,
-      fetcher: fn,
       db,
     });
     expect(result.status).toBe(200);
@@ -564,7 +555,7 @@ function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string
     ownerAddress: "Av. Proceres 500",
     ownerLat: -12.0206,
     ownerLng: -77.0865,
-    mapsUrl: null,
+    mapsUrl: "https://www.google.com/maps/search/?api=1&query=-12.0206,-77.0865",
     hasHistory: null,
     registeredPetName: "-",
     registeredPhone: "-",
@@ -574,7 +565,7 @@ function fakeDb(overrides: Partial<BookingDb> = {}): BookingDb & { calls: string
     petCastrated: false,
     mobilityPhoneDifferent: false,
     mobilityPhone: "-",
-    pets: [],
+    pets: payload().pets,
     status: "pendiente",
     createdAt: NOW.toISOString(),
     whatsappDelivered: false,
@@ -637,7 +628,7 @@ describe("handleBooking con BD", () => {
   });
 
   it("rechaza con 400 si el día/franja está cerrado", async () => {
-    const db = fakeDb();
+    const db = fakeDb({ findByCode: vi.fn(async () => null) });
     db.isClosed = vi.fn(async () => {
       db.calls.push("isClosed");
       return true;
@@ -654,15 +645,19 @@ describe("handleBooking con BD", () => {
     expect(db.calls).toEqual(["isClosed"]);
   });
 
+  it("recupera una reserva ya guardada aunque la franja se haya cerrado después", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({ isClosed: vi.fn(async () => true) });
+    const result = await handleBooking({ body: payload({ ...base, ...coords }), env: ENV_FULL, now: NOW, fetcher: fn, db });
+    expect(result.body).toMatchObject({ ok: true, bookingCode: "VA-TEST1", bookingStored: true, whatsappDelivered: false });
+    expect(calls).toHaveLength(0);
+  });
+
   it("código duplicado con aviso YA entregado: 200 sin reenviar a la veterinaria", async () => {
     const { fn, calls } = fetchOk();
-    const db = fakeDb({
-      insertBooking: vi.fn(async () => ({ code: "23505" as const })),
-      findByCode: vi.fn(async () => ({
-        id: "test-id",
-        whatsappDelivered: true,
-      } as unknown as BookingRecord)),
-    } as Partial<BookingDb>);
+    const db = fakeDb({ insertBooking: vi.fn(async () => ({ code: "23505" as const })) });
+    const existing = await db.findByCode("VA-TEST1");
+    db.findByCode = vi.fn(async () => existing && { ...existing, whatsappDelivered: true });
     const result = await handleBooking({
       body: payload({ ...base, ...coords }),
       env: ENV_FULL,
@@ -675,7 +670,7 @@ describe("handleBooking con BD", () => {
     expect(calls).toHaveLength(0); // nada enviado
   });
 
-  it("código duplicado con aviso NO entregado: reenvía a la veterinaria", async () => {
+  it("reintento de reserva ya guardada con aviso pendiente: no reenvía y conserva el aviso", async () => {
     const { fn, calls } = fetchOk();
     const db = fakeDb({
       insertBooking: vi.fn(async () => ({ code: "23505" as const })),
@@ -688,8 +683,66 @@ describe("handleBooking con BD", () => {
       db,
     });
     expect(result.status).toBe(200);
-    expect(calls.length).toBeGreaterThanOrEqual(1); // se reenviaron los mensajes
-    expect(db.calls).toContain("delivered"); // y quedó marcado como entregado
+    expect(result.body.whatsappDelivered).toBe(false);
+    expect(calls).toHaveLength(0);
+    expect(db.calls).not.toContain("delivered");
+  });
+
+  it("reconoce un reintento cuando PostgreSQL redondeó las coordenadas a 6 decimales", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({ insertBooking: vi.fn(async () => ({ code: "23505" as const })) });
+    const existing = await db.findByCode("VA-TEST1");
+    db.findByCode = vi.fn(async () => existing && {
+      ...existing,
+      ownerLat: -12.020624,
+      ownerLng: -77.086571,
+      mapsUrl: "https://www.google.com/maps/search/?api=1&query=-12.0206241,-77.0865714",
+    });
+    const result = await handleBooking({
+      body: payload({ ...base, ownerLat: -12.0206241, ownerLng: -77.0865714 }), env: ENV_FULL, now: NOW, fetcher: fn, db,
+    });
+    expect(result.body).toMatchObject({ ok: true, bookingCode: "VA-TEST1", whatsappDelivered: false });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("código existente de otra reserva: 409 sin confirmación ni envío", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({ insertBooking: vi.fn(async () => ({ code: "23505" as const })) });
+    const result = await handleBooking({
+      body: payload({ ...base, ...coords, ownerName: "Otra persona" }),
+      env: ENV_FULL, now: NOW, fetcher: fn, db,
+    });
+    expect(result.status).toBe(409);
+    expect(result.body).toMatchObject({ ok: false, codeConflict: true });
+    expect(calls).toHaveLength(0);
+  });
+
+  it("si no puede verificar un código duplicado, no confirma ni envía la reserva", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({
+      insertBooking: vi.fn(async () => ({ code: "23505" as const })),
+      findByCode: vi.fn(async () => { throw new Error("DB offline"); }),
+    });
+    const result = await handleBooking({ body: payload({ ...base, ...coords }), env: ENV_FULL, now: NOW, fetcher: fn, db });
+    expect(result.status).toBe(503);
+    expect(calls).toHaveLength(0);
+  });
+
+  it("dos reservas distintas con el mismo teléfono, fecha y franja no se confunden", async () => {
+    const { fn, calls } = fetchOk();
+    const first = await handleBooking({ body: payload({ ...base, ...coords }), env: ENV_FULL, now: NOW, fetcher: fn });
+    const second = await handleBooking({ body: payload({ ...base, ...coords, bookingCode: "VA-TEST2" }), env: ENV_FULL, now: NOW, fetcher: fn });
+    expect(first.body.bookingCode).toBe("VA-TEST1");
+    expect(second.body.bookingCode).toBe("VA-TEST2");
+    expect(calls).toHaveLength(6);
+  });
+
+  it("colisión en memoria con datos distintos no devuelve la primera reserva", async () => {
+    const { fn, calls } = fetchOk();
+    await handleBooking({ body: payload({ ...base, ...coords }), env: ENV_FULL, now: NOW, fetcher: fn });
+    const result = await handleBooking({ body: payload({ ...base, ...coords, ownerName: "Otra persona" }), env: ENV_FULL, now: NOW, fetcher: fn });
+    expect(result.status).toBe(409);
+    expect(calls).toHaveLength(3);
   });
 
   it("BD caída: la reserva sigue por WhatsApp (comportamiento anterior)", async () => {
@@ -709,7 +762,23 @@ describe("handleBooking con BD", () => {
     });
     warn.mockRestore();
     expect(result.status).toBe(200);
+    expect(result.body.bookingStored).toBe(false);
     expect(calls).toHaveLength(3); // flujo completo por WhatsApp
+  });
+
+  it("BD caída y modo corto: envía los datos completos, no un enlace a una reserva inexistente", async () => {
+    const { fn, calls } = fetchOk();
+    const db = fakeDb({ insertBooking: vi.fn(async () => { throw new Error("supabase down"); }) });
+    const spy = vi.spyOn(console, "error").mockImplementation(() => {});
+    try {
+      const result = await handleBooking({
+        body: payload({ ...base, ...coords }), env: { ...ENV_FULL, VET_MESSAGE_MODE: "short", TRACKING_ENABLED: "true" },
+        now: NOW, fetcher: fn, db, origin: "https://app.example",
+      });
+      expect(result.body.bookingStored).toBe(false);
+      expect(calls[0].text).toContain("Av. Proceres 500");
+      expect(calls[2].text).not.toContain("https://app.example/estado");
+    } finally { spy.mockRestore(); }
   });
 
   it("VET_MESSAGE_MODE=short envía un solo mensaje corto a la veterinaria", async () => {

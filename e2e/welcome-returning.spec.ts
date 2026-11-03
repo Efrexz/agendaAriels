@@ -1,4 +1,4 @@
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 /**
  * Flujo de cliente recurrente: siembra de demo con 3 mascotas (?demo=1),

@@ -19,6 +19,10 @@ export interface SubmitResult {
   bookingCode?: string;
   /** false → la reserva se registró pero el aviso por WhatsApp no salió. */
   whatsappDelivered?: boolean;
+  /** false → la solicitud llegó por WhatsApp, pero no se guardó en el panel. */
+  bookingStored?: boolean;
+  /** El código ya pertenecía a otra reserva; el próximo intento necesita uno nuevo. */
+  codeConflict?: boolean;
 }
 
 function formatDate(dateStr: string): string {
@@ -27,8 +31,9 @@ function formatDate(dateStr: string): string {
 }
 
 function generateBookingCode(): string {
-  const rand = Math.random().toString(36).slice(2, 7).toUpperCase();
-  return `VA-${rand}`;
+  const alphabet = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  const bytes = crypto.getRandomValues(new Uint8Array(5));
+  return `VA-${Array.from(bytes, (byte) => alphabet[byte % alphabet.length]).join("")}`;
 }
 
 function labelOr(map: Record<string, string>, key: string | null | undefined): string {
@@ -88,9 +93,7 @@ export function buildBookingPayload(formData: FormData) {
   };
 }
 
-export async function submitBooking(formData: FormData): Promise<SubmitResult> {
-  const payload = buildBookingPayload(formData);
-
+export async function submitBooking(formData: FormData, payload = buildBookingPayload(formData)): Promise<SubmitResult> {
   const devWebhook = import.meta.env.VITE_N8N_WEBHOOK_URL;
   const endpoint = import.meta.env.DEV && devWebhook ? devWebhook : "/api/booking";
 
@@ -102,20 +105,28 @@ export async function submitBooking(formData: FormData): Promise<SubmitResult> {
     });
 
     if (!response.ok) {
-      const data = (await response.json().catch(() => null)) as { error?: string } | null;
-      return { ok: false, error: data?.error ?? `Error del servidor (${response.status})` };
+      const data = (await response.json().catch(() => null)) as { error?: string; codeConflict?: boolean } | null;
+      return { ok: false, error: data?.error ?? `Error del servidor (${response.status})`, codeConflict: data?.codeConflict === true };
     }
 
     const data = (await response.json().catch(() => null)) as
-      | { bookingCode?: string; whatsappDelivered?: boolean }
+      | { ok?: boolean; bookingCode?: string; whatsappDelivered?: boolean; bookingStored?: boolean; error?: string }
       | null;
+    // El webhook legado de desarrollo no devuelve código; la API sí debe
+    // confirmar explícitamente el suyo para no mostrar uno inventado.
+    if (endpoint === "/api/booking" && (data?.ok !== true || !/^VA-[A-Z0-9]{5}$/.test(data.bookingCode ?? ""))) {
+      return { ok: false, error: "No pudimos confirmar el resultado. Contacta a la veterinaria antes de volver a enviar la solicitud." };
+    }
+    if (data?.ok === false) return { ok: false, error: data.error ?? "No se pudo enviar la solicitud." };
     return {
       ok: true,
-      bookingCode: payload.bookingCode,
+      bookingCode: data?.bookingCode ?? payload.bookingCode,
       // El endpoint antiguo (webhook de desarrollo) no manda la bandera: tratamos como entregado.
       whatsappDelivered: data?.whatsappDelivered !== false,
+      bookingStored: endpoint !== "/api/booking" ? false : data?.bookingStored,
     };
   } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : "Error de conexión" };
+    console.warn("[booking] No se pudo confirmar la respuesta", err instanceof Error ? err.name : "error");
+    return { ok: false, error: "No pudimos confirmar el resultado. Puedes reintentar o consultar con la veterinaria." };
   }
 }

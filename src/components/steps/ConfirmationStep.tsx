@@ -48,7 +48,7 @@ import {
   PERFUME_LABELS,
   BRANCH_LABELS,
 } from "../../data/labels";
-import { submitBooking } from "../../services/submitBooking";
+import { buildBookingPayload, submitBooking } from "../../services/submitBooking";
 import { saveClientProfileMerged } from "../../services/clientProfile";
 import { PRIVACY_NOTICE } from "../../data/legal";
 
@@ -240,11 +240,14 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   // WhatsApp falló pero la reserva quedó registrada: aviso ámbar suave
   // (sin rojo ni "Reintentar" → el dueño no genera reservas duplicadas).
   const [waNotDelivered, setWaNotDelivered] = useState(false);
+  const [bookingStored, setBookingStored] = useState<boolean | undefined>();
   const [privacyAccepted, setPrivacyAccepted] = useState(false);
   const [showPrivacyNotice, setShowPrivacyNotice] = useState(false);
   const [petToRemove, setPetToRemove] = useState<{ index: number; name: string } | null>(null);
   // Candado síncrono: dos clicks en milésimas no generan dos envíos.
   const submittingRef = useRef(false);
+  // Ante un fallo de red, reenviar exactamente la misma solicitud y código.
+  const attemptRef = useRef<{ formKey: string; payload: ReturnType<typeof buildBookingPayload> } | null>(null);
 
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
   const branchPhone = branch?.phone ?? null;
@@ -279,7 +282,11 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
     submittingRef.current = true;
     setSubmitState("loading");
     setSubmitError("");
-    const result = await submitBooking(formData);
+    const formKey = JSON.stringify(formData);
+    if (!attemptRef.current || attemptRef.current.formKey !== formKey) {
+      attemptRef.current = { formKey, payload: buildBookingPayload(formData) };
+    }
+    const result = await submitBooking(formData, attemptRef.current.payload);
     if (result.ok) {
       // Perfil guardado en unión: lo agendado ahora + las mascotas anteriores
       // que no van esta vez no se pierden para próximas reservas.
@@ -287,9 +294,11 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
       setSubmitState("success");
       setBookingCode(result.bookingCode ?? "");
       setWaNotDelivered(result.whatsappDelivered === false);
+      setBookingStored(result.bookingStored);
     } else {
       setSubmitState("error");
       setSubmitError(result.error ?? "Ocurrió un error inesperado");
+      if (result.codeConflict) attemptRef.current = null;
       // Permitir reintentar tras un fallo.
       submittingRef.current = false;
     }
@@ -324,17 +333,21 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
             <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
             <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{bookingCode}</p>
             <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
-            <a
-              href={`/estado?code=${bookingCode}`}
-              className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-green-700"
-            >
-              🔎 Seguir a tu mascota en tiempo real
-            </a>
+            {bookingStored !== false && (
+              <a
+                href={`/estado?code=${bookingCode}`}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-green-700"
+              >
+                🔎 Seguir a tu mascota en tiempo real
+              </a>
+            )}
           </div>
         )}
 
         <p className="text-center text-[#546A8E]">
-          Su mascotita ya fue agendada. Estaremos en contacto con usted cuando pasen por su domicilio. Recordarle que la movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada 🐾🐶🐱
+          {bookingStored === false
+            ? "Tu solicitud llegó por WhatsApp a la veterinaria, pero el seguimiento en línea no está disponible para esta reserva. La veterinaria se pondrá en contacto contigo."
+            : "Su mascotita ya fue agendada. Estaremos en contacto con usted cuando pasen por su domicilio. Recordarle que la movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada 🐾🐶🐱"}
         </p>
 
         <p className="text-center text-sm text-gray-400">

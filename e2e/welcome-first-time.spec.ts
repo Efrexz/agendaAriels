@@ -3,7 +3,7 @@
  * Cada test parte de localStorage limpio (`?demo=0` fuerza la limpieza;
  * además  NO usamos storageState compartido entre specs).
  */
-import { test, expect } from "@playwright/test";
+import { test, expect } from "./fixtures";
 
 test.describe("Bienvenida - primera vez", () => {
   test("la primera vez muestra la intro con la expectativa y avanza a Sede", async ({ page }) => {

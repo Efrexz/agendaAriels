@@ -1,5 +1,5 @@
-import { describe, it, expect } from "vitest";
-import { buildBookingPayload } from "./submitBooking";
+import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
+import { buildBookingPayload, submitBooking } from "./submitBooking";
 import type { FormData } from "../state/wizardReducer";
 import { INITIAL_FORM_DATA, buildPet } from "../state/wizardReducer";
 
@@ -154,5 +154,44 @@ describe("buildBookingPayload", () => {
   it("generates a booking code in format VA-XXXXX", () => {
     const payload = buildBookingPayload(form({ branch: "los_olivos" }));
     expect(payload.bookingCode).toMatch(/^VA-[A-Z0-9]{5}$/);
+  });
+});
+
+describe("submitBooking", () => {
+  beforeEach(() => vi.stubEnv("VITE_N8N_WEBHOOK_URL", ""));
+  afterEach(() => { vi.unstubAllGlobals(); vi.unstubAllEnvs(); });
+
+  it("muestra el código confirmado por la API, no el enviado en la solicitud", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ok: true, bookingCode: "VA-SRV23", bookingStored: true }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    const result = await submitBooking(form());
+    expect(result).toMatchObject({ ok: true, bookingCode: "VA-SRV23", bookingStored: true });
+  });
+
+  it("conserva el aviso pendiente y el estado de persistencia", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true, bookingCode: "VA-ABCDE", whatsappDelivered: false, bookingStored: true }), { status: 200 })));
+    expect(await submitBooking(form())).toMatchObject({ ok: true, bookingCode: "VA-ABCDE", whatsappDelivered: false, bookingStored: true });
+  });
+
+  it("no muestra éxito si la API no confirmó un código válido", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: true }), { status: 200 })));
+    expect(await submitBooking(form())).toMatchObject({ ok: false });
+  });
+
+  it("comunica una colisión del código para que el siguiente intento use otro", async () => {
+    vi.stubGlobal("fetch", vi.fn(async () => new Response(JSON.stringify({ ok: false, codeConflict: true, error: "Código en uso" }), { status: 409 })));
+    expect(await submitBooking(form())).toMatchObject({ ok: false, codeConflict: true });
+  });
+
+  it("permite reutilizar exactamente el mismo payload en un reintento", async () => {
+    const fetcher = vi.fn(async () => new Response(JSON.stringify({ ok: true, bookingCode: "VA-ABCDE" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetcher);
+    const data = form();
+    const attempt = buildBookingPayload(data);
+    await submitBooking(data, attempt);
+    await submitBooking(data, attempt);
+    expect(fetcher.mock.calls).toHaveLength(2);
+    const calls = fetcher.mock.calls as unknown as Array<[string, RequestInit]>;
+    expect(calls[0][1].body).toBe(calls[1][1].body);
   });
 });
