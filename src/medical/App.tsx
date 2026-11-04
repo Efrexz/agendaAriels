@@ -74,9 +74,12 @@ const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
 };
 
 function todayMinPlus(): string {
-  const max = new Date();
-  max.setDate(max.getDate() + 30);
-  return max.toISOString().slice(0, 10);
+  // El calendario se limita a la semana EN CURSO + la PRÓXIMA (agenda se
+  // publica cada lunes): más allá se deshabilita en el propio calendario.
+  const hoyKey = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+  const base = new Date(`${hoyKey}T12:00:00Z`);
+  const toSunday = 6 - ((base.getUTCDay() + 6) % 7);
+  return new Date(base.getTime() + (toSunday + 7) * 86400_000).toISOString().slice(0, 10);
 }
 
 function prettyDate(iso: string): string {
@@ -308,6 +311,7 @@ export default function App() {
   // evita guardar una hora desactualizada al volver desde "datos".
   useEffect(() => {
     if (step !== "agenda" || !form.date || !form.doctorId) return;
+    if (requestedNextWeek(form.date)) { setSlots(null); return; } // semana próxima: sin agenda todavía
     let active = true;
     (async () => {
       try {
