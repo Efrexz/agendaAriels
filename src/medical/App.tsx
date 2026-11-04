@@ -860,34 +860,14 @@ export default function App() {
                       onSelect={(d) => {
                         update("date", d);
                         update("startMinute", null);
+                        setSlots(null); // el día cambia: los horarios anteriores no aplican
                         if (form.doctorId && !requestedNextWeek(d)) void loadSlots(d, form.doctorId);
                       }}
                     />
-                    {!form.date && (
+                    {!form.date && form.doctorId && (
                       <p className="mt-4 text-sm text-[#546A8E]">
                         Toca un día del calendario para ver las horas del médico.
                       </p>
-                    )}
-                    {form.date && requestedNextWeek(form.date) && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8 }}
-                        animate={{ opacity: 1, y: 0 }}
-                        transition={{ duration: 0.3 }}
-                        className="rounded-2xl bg-[#FFF7E8] p-4 ring-1 ring-amber-200"
-                      >
-                        <p className="text-sm font-semibold text-amber-800">🗓 Semana por confirmar</p>
-                        <p className="mt-1 text-xs leading-relaxed text-amber-700">
-                          Los horarios de esta semana se publican <b>cada lunes</b>. Puedes dejar tu solicitud con el
-                          día preferido: el personal la confirma con la agenda real y te escribemos por WhatsApp con la
-                          <b> hora exacta</b>. No es un horario garantizado hasta esa confirmación.
-                        </p>
-                        <button
-                          onClick={() => go("datos")}
-                          className="mt-2.5 w-full rounded-xl bg-brand-orange px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600"
-                        >
-                          Solicitar cita — confirmamos por WhatsApp
-                        </button>
-                      </motion.div>
                     )}
                   </div>
 
@@ -905,6 +885,40 @@ export default function App() {
                       />
                     )}
                     {form.date && slotsLoading && <Loading />}
+                    {form.date && requestedNextWeek(form.date) && !slotsLoading && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DCEBFF]"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#FFEFD9] text-brand-orange">
+                            <CalendarDays className="h-5 w-5" />
+                          </span>
+                          <div className="min-w-0">
+                            <p className="font-display text-xl font-bold leading-tight text-[#475AAB]">
+                              {prettyDate(form.date)}
+                            </p>
+                            <p className="mt-0.5 flex items-center gap-1 text-xs font-semibold text-brand-orange">
+                              🗓 Semana por confirmar · se publica cada lunes
+                            </p>
+                          </div>
+                        </div>
+                        <div className="my-4 h-px bg-[#DCEBFF]" />
+                        <p className="text-sm leading-relaxed text-[#546A8E]">
+                          La agenda real de esa semana se carga <b>cada lunes</b>. Deja tu solicitud con el día
+                          preferido: el personal la confirma con la agenda real y te escribemos por WhatsApp con la
+                          <b> hora exacta</b>. No es un horario garantizado hasta esa confirmación.
+                        </p>
+                        <button
+                          onClick={() => go("datos")}
+                          className="mt-4 w-full rounded-xl bg-gradient-to-r from-orange-500 to-orange-400 px-4 py-3 text-base font-bold text-white shadow-lg shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98]"
+                        >
+                          🗓 Solicitar cita — confirmamos por WhatsApp
+                        </button>
+                      </motion.div>
+                    )}
                     {form.date && !slotsLoading && slots && slots.length === 0 && !requestedNextWeek(form.date) && (
                       <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
                         El doctor no tiene horas libres ese día — prueba otro día.
