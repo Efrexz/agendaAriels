@@ -1,5 +1,6 @@
 // Lógica PURA de disponibilidad de citas — sin Supabase ni process.env.
 // Se testa con vitest; la usan /api/medical/availability y la creación.
+import { format } from "date-fns";
 
 export interface ScheduleBlock {
   weekday: number;
@@ -20,6 +21,18 @@ export interface TimeOffBlock {
 export interface Slot {
   startMinute: number;
   endMinute: number;
+}
+
+/** Ventana de semanas en Lima (semana lunes→domingo): la agenda vigente
+ *  permite reservar con hora; la semana PRÓXIMA solo acepta solicitudes sin
+ *  hora que el counter confirma con la agenda publicada cada lunes. */
+export function weekWindow(dayKey: string): { weekEnd: string; nextWeekStart: string; nextWeekEnd: string } {
+  const wd = new Date(`${dayKey}T12:00:00Z`).getUTCDay(); // 0 dom…6 sáb
+  const toSunday = 6 - ((wd + 6) % 7);
+  const base = new Date(`${dayKey}T12:00:00Z`).getTime();
+  const shift = (days: number) => format(new Date(base + days * 86400_000), "yyyy-MM-dd");
+  const weekEnd = shift(toSunday);
+  return { weekEnd, nextWeekStart: shift(toSunday + 1), nextWeekEnd: shift(toSunday + 7) };
 }
 
 /**

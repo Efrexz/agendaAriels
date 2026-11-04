@@ -550,6 +550,7 @@ export class MedicalDb {
     patch: { doctorId?: string; apptDate?: string; startMinute?: number; paymentNotes?: string; durationMinutes?: number },
     createdBy: string,
     newStatus?: string,
+    fromStatus = "pagado",
   ): Promise<boolean> {
     const row: Record<string, unknown> = {};
     if (patch.doctorId) row.doctor_id = patch.doctorId;
@@ -557,7 +558,7 @@ export class MedicalDb {
     if (patch.startMinute !== undefined && patch.startMinute !== null) row.start_minute = patch.startMinute;
     if (patch.durationMinutes && patch.durationMinutes > 0) row.duration_minutes = patch.durationMinutes;
     if (patch.paymentNotes !== undefined) row.payment_notes = patch.paymentNotes;
-    const { data, error } = await this.client.rpc("api_medical_assign", { p_id: apptId, p_patch: row, p_status: newStatus ?? null, p_actor: createdBy });
+    const { data, error } = await this.client.rpc("api_medical_assign", { p_id: apptId, p_patch: row, p_status: newStatus ?? null, p_actor: createdBy, p_from: fromStatus });
     if (error?.code === "23P01") throw new MedicalSlotConflictError();
     if (error) throw new Error(`assignAppt: ${error.message}`);
     if (typeof data !== "boolean") throw new Error("assignAppt: respuesta inválida");

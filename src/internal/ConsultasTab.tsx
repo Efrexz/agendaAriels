@@ -340,11 +340,14 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
     if (!doctors) {
       setPending(true);
       try {
-        // Asignar especializadas: SOLO doctores especialistas
-        const docs = (await fetchDoctors(a.branch as MedBranch)).filter((d) => d.kind !== "general");
+        // Especializadas: SOLO especialistas. Solicitudes de próxima semana
+        // (general/rayos/eco): cualquier doctor activo, con el pedido preseleccionado.
+        const todos = await fetchDoctors(a.branch as MedBranch);
+        const docs = a.serviceType === "especializada" ? todos.filter((d) => d.kind !== "general") : todos;
         setDocList(docs);
-        if (docs.length > 0) setDocId(docs[0].id);
-        else setError("No hay especialistas disponibles en esta sede.");
+        if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) setDocId(a.doctorId);
+        else if (docs.length > 0) setDocId(docs[0].id);
+        else setError(a.serviceType === "especializada" ? "No hay especialistas disponibles en esta sede." : "No hay doctores disponibles en esta sede.");
       } catch (err) { setError(err instanceof Error ? err.message : "Error"); }
       finally { setPending(false); }
     }
@@ -384,13 +387,13 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
           <b className="font-mono text-brand-blue">{a.appointmentCode}</b> · {a.specialtyName} · {a.petName} ({a.petType}) · {a.ownerName} · {a.ownerPhone}
         </div>
         <div className="flex gap-2">
-          {esSolicitud ? (
+          {esSolicitud && a.serviceType === "especializada" ? (
             <button onClick={() => void marcarPagado()} disabled={busy} className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
               💰 Verifiqué el pago
             </button>
           ) : (
             <button onClick={() => void abrirAsignar()} disabled={busy} className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-              🩺 Asignar doctor/fecha
+              {a.serviceType === "especializada" ? "🩺 Asignar doctor/fecha" : "🗓 Confirmar horario (avisamos al cliente)"}
             </button>
           )}
         </div>

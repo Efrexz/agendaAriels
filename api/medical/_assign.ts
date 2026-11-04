@@ -3,11 +3,15 @@ import { addDays, format } from "date-fns";
 import { getLimaDayKey } from "../lib-lima.js";
 import { currentMinuteLima, weekdayOf } from "./slots.js";
 import { getMedicalDb, notConfigured, staffGuard } from "./_shared.js";
+import { sendViaEvolution, normalizePhoneDest, type BookingEnv, } from "../_booking.js";
+import { buildConfirmationMessage, } from "./_status.js";
+import { BRANCH_LABELS, BRANCH_PHONES } from "./_shared.js";
 import { MedicalSlotConflictError } from "./errors.js";
 
 // POST /api/medical/assign  { id, doctorId?, apptDate?, startMinute?, paymentNotes? }
-// Counter asigna doctor/fecha/hora (y notas de pago) a una especializada.
-// Pasa a 'asignada'. Luego counter marca 'confirmada' con PATCH /status.
+// • Especializada: counter asigna doctor/fecha/hora (tras 'pagado') → 'asignada'.
+// • Solicitud de PRÓXIMA semana (general/rayos/eco, sin hora): counter confirma
+//   fecha/hora con la agenda real del lunes → 'confirmada' + WhatsApp con detalles.
 
 export const maxDuration = 30;
 
@@ -54,17 +58,22 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
     if (appt.serviceType !== "especializada") {
-      res.status(400).json({ ok: false, error: "Solo las especializadas se asignan manualmente." });
-      return;
-    }
-    if (appt.status !== "solicitud" && appt.status !== "pagado") {
-      res.status(409).json({ ok: false, error: `Esta cita ya está en estado ${appt.status}.` });
-      return;
-    }
-    // Para asignar se exige pago verificado
-    if (appt.status !== "pagado") {
-      res.status(409).json({ ok: false, error: "Verifica el pago primero (estado 'pagado')." });
-      return;
+      // Solicitud de PRÓXIMA semana (sin hora): counter confirma con fecha/
+      // hora de la agenda real cargada el lunes; el cliente recibe WhatsApp.
+      if (appt.status !== "solicitud") {
+        res.status(409).json({ ok: false, error: "Esta solicitud ya fue confirmada o cambió." });
+        return;
+      }
+    } else {
+      if (appt.status !== "solicitud" && appt.status !== "pagado") {
+        res.status(409).json({ ok: false, error: `Esta cita ya está en estado ${appt.status}.` });
+        return;
+      }
+      // Para asignar se exige pago verificado
+      if (appt.status !== "pagado") {
+        res.status(409).json({ ok: false, error: "Verifica el pago primero (estado 'pagado')." });
+        return;
+      }
     }
     if (!doctorId || !apptDate || startMinute === undefined || startMinute === null) {
       res.status(400).json({ ok: false, error: "Falta doctor, fecha u hora para asignar." });
@@ -124,17 +133,47 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    const assigned = await db.assignAppt(
+    const asignada = await db.assignAppt(
       id,
       { doctorId, apptDate, startMinute, paymentNotes: paymentNotes ?? undefined, durationMinutes: duration },
       staff.email,
-      "asignada",
+      "confirmada",
+      appt.status,
     );
-    if (!assigned) {
+    if (!asignada) {
       res.status(409).json({ ok: false, error: "La cita ya cambió. Actualiza la lista antes de asignarla." });
       return;
     }
-    res.status(200).json({ ok: true, status: "asignada" });
+
+    // La solicitud confirmada recibe el WhatsApp oficial con fecha/hora/doctor.
+    let notified = false;
+    if (appt.serviceType !== "especializada") {
+      const env = process.env as BookingEnv;
+      const dest = normalizePhoneDest(appt.ownerPhone);
+      const evoReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE);
+      const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
+      if (dest && (evoReady || dryRun)) {
+        const sent = await sendViaEvolution(
+          [buildConfirmationMessage({
+            apptDate,
+            startMinute,
+            branchLabel: BRANCH_LABELS[appt.branch] ?? appt.branch,
+            doctorName: (await db.findApptById(id))?.doctorName ?? doctor.fullName,
+            specialtyName: appt.specialtyName,
+            petName: appt.petName,
+            ownerName: appt.ownerName,
+            appointmentCode: appt.appointmentCode,
+            needsOrder: appt.needsOrder,
+            branchPhone: BRANCH_PHONES[appt.branch] ?? "",
+          })],
+          env,
+          fetch,
+          dest,
+        );
+        notified = sent.ok;
+      }
+    }
+    res.status(200).json({ ok: true, status: "confirmada", notified });
   } catch (err) {
     if (err instanceof MedicalSlotConflictError) {
       res.status(409).json({ ok: false, error: "El doctor ya tiene una cita en ese horario. Elige otro." });

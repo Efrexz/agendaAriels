@@ -188,6 +188,8 @@ export default function App() {
   const [doctors, setDoctors] = useState<MedDoctor[] | null>(null);
   const [specialties, setSpecialtyList] = useState<MedSpecialty[] | null>(null);
   const [slots, setSlots] = useState<MedSlot[] | null>(null);
+  // Solicitud de próxima semana (sin hora): cambia el mensaje de confirmación.
+  const [solicitudEnviada, setSolicitudEnviada] = useState(false);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
@@ -388,6 +390,7 @@ export default function App() {
         ownerEmail: form.ownerEmail.trim() || "",
       });
       setCode(result.appointmentCode);
+      setSolicitudEnviada(result.requested === true);
       go("enviado");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar la cita");
@@ -857,13 +860,34 @@ export default function App() {
                       onSelect={(d) => {
                         update("date", d);
                         update("startMinute", null);
-                        if (form.doctorId) void loadSlots(d, form.doctorId);
+                        if (form.doctorId && !requestedNextWeek(d)) void loadSlots(d, form.doctorId);
                       }}
                     />
                     {!form.date && (
                       <p className="mt-4 text-sm text-[#546A8E]">
                         Toca un día del calendario para ver las horas del médico.
                       </p>
+                    )}
+                    {form.date && requestedNextWeek(form.date) && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.3 }}
+                        className="rounded-2xl bg-[#FFF7E8] p-4 ring-1 ring-amber-200"
+                      >
+                        <p className="text-sm font-semibold text-amber-800">🗓 Semana por confirmar</p>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-700">
+                          Los horarios de esta semana se publican <b>cada lunes</b>. Puedes dejar tu solicitud con el
+                          día preferido: el personal la confirma con la agenda real y te escribemos por WhatsApp con la
+                          <b> hora exacta</b>. No es un horario garantizado hasta esa confirmación.
+                        </p>
+                        <button
+                          onClick={() => go("datos")}
+                          className="mt-2.5 w-full rounded-xl bg-brand-orange px-4 py-2.5 text-sm font-bold text-white shadow-sm transition hover:bg-orange-600"
+                        >
+                          Solicitar cita — confirmamos por WhatsApp
+                        </button>
+                      </motion.div>
                     )}
                   </div>
 
@@ -881,7 +905,7 @@ export default function App() {
                       />
                     )}
                     {form.date && slotsLoading && <Loading />}
-                    {form.date && !slotsLoading && slots && slots.length === 0 && (
+                    {form.date && !slotsLoading && slots && slots.length === 0 && !requestedNextWeek(form.date) && (
                       <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
                         El doctor no tiene horas libres ese día — prueba otro día.
                       </p>
@@ -1154,6 +1178,14 @@ export default function App() {
                         WhatsApp de la sede y te confirmamos fecha, hora y doctor.
                       </p>
                     </div>
+                  ) : solicitudEnviada ? (
+                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                      <p className="text-xs leading-relaxed text-amber-800">
+                        <b>¡Solicitud registrada!</b> El personal confirma la <b>hora exacta</b> con la agenda
+                        publicada cada lunes y te avisamos por WhatsApp con fecha, hora y doctor — no es un
+                        horario garantizado hasta esa confirmación.
+                      </p>
+                    </div>
                   ) : (
                     <div className="flex max-w-md items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
@@ -1173,13 +1205,13 @@ export default function App() {
                     Agendar otra cita
                     <ChevronRight className="h-4 w-4" />
                   </button>
-                  <a
-                    href="/"
+                  <button
+                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); go("sede"); }}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
                   >
                     <ChevronLeft className="h-4 w-4" />
-                    Volver al inicio
-                  </a>
+                    Volver al inicio de citas
+                  </button>
                 </section>
               )}
             </motion.div>
@@ -1573,6 +1605,12 @@ function Resumen({ form, header = false, onLink }: {
             {prettyDate(form.date)} · {hora(form.startMinute)}
           </SummaryRow>
         )}
+        {!esEspecializada && form.date && form.startMinute === null && (
+          <SummaryRow icon={CalendarDays} tint="amber" label="Fecha por confirmar" accent>
+            {prettyDate(form.date)} — la hora se confirma por WhatsApp cuando la agenda se
+            publique (cada lunes)
+          </SummaryRow>
+        )}
         {esEspecializada && (
           <SummaryRow icon={CalendarDays} tint="amber" label="Fecha y hora" accent>
             La especialista confirma fecha y hora después de verificar tu pago
@@ -1652,4 +1690,16 @@ function Field({ label, value, onChange, placeholder, type = "text", icon, iconB
       </div>
     </label>
   );
+}
+
+/** Ventana de semanas en Lima (lunes→domingo): los días posteriores al domingo
+ *  de la semana en curso son "semana por confirmar": el cliente deja solicitud
+ *  sin hora y el counter la confirma cada lunes con la agenda publicada. */
+function requestedNextWeek(dateKey: string): boolean {
+  const hoyKey = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+  const base = new Date(`${hoyKey}T12:00:00Z`);
+  const wd = base.getUTCDay();
+  const toSunday = 6 - ((wd + 6) % 7);
+  const weekEndKey = new Date(base.getTime() + toSunday * 86400_000).toISOString().slice(0, 10);
+  return dateKey > weekEndKey;
 }

@@ -1,7 +1,6 @@
 import { z } from "zod/v4";
-import { addDays, format } from "date-fns";
 import { getLimaDayKey } from "../lib-lima.js";
-import { computeFreeSlots, currentMinuteLima, weekdayOf } from "./slots.js";
+import { computeFreeSlots, currentMinuteLima, weekdayOf, weekWindow } from "./slots.js";
 import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booking.js";
 import { BRANCH_LABELS, BRANCH_PHONES, getMedicalDb } from "./_shared.js";
 import { MedicalSlotConflictError } from "./errors.js";
@@ -181,6 +180,28 @@ export function buildClientApptMessage(
   return lines.join("\n");
 }
 
+/** Mensaje para Solicitudes de la PRÓXIMA semana (sin hora): nunca dice
+ *  "cita confirmada" — la hora la confirma el counter al lunes. */
+export function buildNextWeekRequestMessage(
+  p: { ownerName: string; petName: string },
+  code: string,
+  ctx: { doctor: string | null },
+): string {
+  const lines = [
+    `🗓 *Solicitud recibida, ${p.ownerName.split(/\s+/)[0]}!*`,
+    "",
+    `🐾 ${p.petName} · ${ctx.doctor ? `Dr(a). ${ctx.doctor}` : ""}`.trim(),
+    `🔖 Código: *${code}*`,
+    "",
+    "Tu día preferido quedó registrado ⚠️ La *hora exacta* se confirma cuando el personal",
+    "publica la agenda de esa semana (cada lunes): te avisamos por este medio, sin necesidad de",
+    "llamar de nuevo.",
+    "",
+    "¡Gracias por tu confianza! 🐶✨",
+  ];
+  return lines.join("\n");
+}
+
 // ── Handler ──────────────────────────────────────────────────
 
 const WINDOW_MS = 60_000;
@@ -213,13 +234,27 @@ export async function handleMedicalCreate(opts: {
   }
   const p = parsed.data;
 
-  // Ventana de fechas
+  // Semana en curso = reservas con hora; PRÓXIMA semana = solicitud sin hora que
+  // el counter confirma al lunes (la agenda se publica cada lunes temprano).
   const today = getLimaDayKey(now);
-  const maxDay = format(addDays(new Date(today + "T12:00:00Z"), MAX_ADVANCE_DAYS), "yyyy-MM-dd");
+  const { weekEnd, nextWeekEnd } = weekWindow(today);
+  const requestedDate = p.serviceType !== "especializada" && p.date ? p.date : null;
+  const requestedNextWeek = requestedDate !== null && requestedDate > weekEnd;
+  const maxDay = nextWeekEnd; // semana en curso + próxima
+
   if (p.serviceType !== "especializada") {
     if (!p.date) return { status: 400, body: { ok: false, error: "Elige la fecha de tu cita." } };
     if (p.date < today || p.date > maxDay) {
-      return { status: 400, body: { ok: false, error: "Fecha fuera del rango permitido (máx. 30 días)." } };
+      return {
+        status: 400,
+        body: { ok: false, error: "Por ahora se puede agendar esta semana o la próxima; la agenda de la otra se publica cada lunes." },
+      };
+    }
+    if (requestedNextWeek && p.startMinute !== null && p.startMinute !== undefined) {
+      return {
+        status: 400,
+        body: { ok: false, error: "Los horarios de la próxima semana se confirman cuando el personal carga la agenda. Deja tu día preferido sin hora." },
+      };
     }
   }
 
@@ -246,13 +281,16 @@ export async function handleMedicalCreate(opts: {
       }
       specialtyName = spec.name;
     } else {
-      // general / rayos / eco: doctor + franja exacta
+      // general / rayos / eco: doctor + franja exacta (semana en curso), o
+      // SOLICITUD sin hora si es de la próxima semana (agenda se publica lunes).
       if (!p.doctorId) return { status: 400, body: { ok: false, error: "Elige un doctor." } };
-      if (p.startMinute === undefined || p.startMinute === null) {
-        return { status: 400, body: { ok: false, error: "Elige la hora de tu cita." } };
-      }
-      if (p.startMinute % durationMinutes !== 0) {
-        return { status: 400, body: { ok: false, error: "Hora no coincide con la agenda del doctor." } };
+      if (!requestedNextWeek) {
+        if (p.startMinute === undefined || p.startMinute === null) {
+          return { status: 400, body: { ok: false, error: "Elige la hora de tu cita." } };
+        }
+        if (p.startMinute % durationMinutes !== 0) {
+          return { status: 400, body: { ok: false, error: "Hora no coincide con la agenda del doctor." } };
+        }
       }
       const doctors = await db.listDoctors(p.branch, null);
       const doctor = doctors.find((d) => d.id === p.doctorId && d.active) ?? null;
@@ -270,33 +308,40 @@ export async function handleMedicalCreate(opts: {
         };
       }
 
-      // Slot libre: mismo cálculo que la disponibilidad (horario, ocupadas, ausencias, pasado)
-      const busy = await db.listApptsForDoctor(p.doctorId, (p.date ?? "") as string);
-      const timeOff = (await db.listTimeOff(null, (p.date ?? "") as string, (p.date ?? "") as string))
-        .filter((t) => t.doctorId === p.doctorId);
-      const minStart = p.date === today ? currentMinuteLima(now) + 30 : 0;
-      const slots = computeFreeSlots({
-        durationMinutes,
-        weekday: weekdayOf((p.date ?? today) as string),
-        schedules: await db.listDoctorSchedules(p.doctorId),
-        busy,
-        timeOffBlocks: timeOff,
-        minStartMinute: minStart,
-      });
-      const okSlot = slots.some((s) => s.startMinute === p.startMinute);
-      if (!okSlot) {
-        return { status: 409, body: { ok: false, error: "Ese horario ya no está disponible. Elige otro." } };
+      // Slot libre: mismo cálculo que la disponibilidad. Solo se exige en la
+      // semana en curso: para la próxima la agenda aún no existe y el counter
+      // confirma el lunes con la real.
+      if (!requestedNextWeek) {
+        const busy = await db.listApptsForDoctor(p.doctorId, (p.date ?? "") as string);
+        const timeOff = (await db.listTimeOff(null, (p.date ?? "") as string, (p.date ?? "") as string))
+          .filter((t) => t.doctorId === p.doctorId);
+        const minStart = p.date === today ? currentMinuteLima(now) + 30 : 0;
+        const slots = computeFreeSlots({
+          durationMinutes,
+          weekday: weekdayOf((p.date ?? today) as string),
+          schedules: await db.listDoctorSchedules(p.doctorId),
+          busy,
+          timeOffBlocks: timeOff,
+          minStartMinute: minStart,
+        });
+        const okSlot = slots.some((s) => s.startMinute === p.startMinute);
+        if (!okSlot) {
+          return { status: 409, body: { ok: false, error: "Ese horario ya no está disponible. Elige otro." } };
+        }
       }
     }
-  } catch {
+  } catch (err) {
+    console.error(`[medical/create] validación: ${err instanceof Error ? err.message : err}`);
     return { status: 500, body: { ok: false, error: "Error inesperado del servidor." } };
   }
 
   const nowMs = now.getTime();
   const deduped = findDedupe(p, nowMs);
-  if (deduped) return { status: 200, body: { ok: true, appointmentCode: deduped } };
+  if (deduped) return { status: 200, body: { ok: true, appointmentCode: deduped, requested: requestedNextWeek } };
 
   // Insert con reintentos por unicidad del código
+  const requested = requestedNextWeek || p.serviceType === "especializada";
+  const initialStatus = requested ? "solicitud" : "confirmada";
   let inserted = false;
   let code = "";
   let newApptId: string | null = null;
@@ -310,11 +355,11 @@ export async function handleMedicalCreate(opts: {
         specialtyId: p.serviceType === "especializada" ? p.specialtyId ?? null : null,
         doctorId: p.serviceType === "especializada" ? null : p.doctorId ?? null,
         apptDate: p.serviceType === "especializada" ? null : (p.date ?? null),
-        startMinute: p.serviceType === "especializada" ? null : (p.startMinute ?? null),
-        durationMinutes: p.serviceType === "especializada" ? 0 : durationMinutes,
+        startMinute: requested ? null : (p.startMinute ?? null),
+        durationMinutes: requested ? 0 : durationMinutes,
         needsOrder: p.serviceType === "rayos" || p.serviceType === "eco",
         hasOrder: p.serviceType === "rayos" || p.serviceType === "eco" ? Boolean(p.hasOrder) : null,
-        status: p.serviceType === "especializada" ? "solicitud" : "confirmada",
+        status: initialStatus,
         petName: p.petName,
         petType: p.petType,
         petNotes: p.petNotes,
@@ -345,11 +390,7 @@ export async function handleMedicalCreate(opts: {
   // Timeline inicial
   try {
     if (newApptId) {
-      await db.recordApptStatus(
-        newApptId,
-        p.serviceType === "especializada" ? "solicitud" : "confirmada",
-        "sistema",
-      );
+      await db.recordApptStatus(newApptId, initialStatus, "sistema");
     }
   } catch {
     /* timeline best-effort */
@@ -361,28 +402,32 @@ export async function handleMedicalCreate(opts: {
   const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
 
   const counterAlert = buildCounterAlert(p, code, {
-    serviceLabel: p.serviceType === "especializada" ? "🎓 SOLICITUD ESPECIALIZADA (pago pendiente)" : null,
+    serviceLabel: requestedNextWeek
+      ? "🗓 SOLICITUD PRÓXIMA SEMANA (hora por confirmar el lunes)"
+      : p.serviceType === "especializada" ? "🎓 SOLICITUD ESPECIALIZADA (pago pendiente)" : null,
     specialty: specialtyName,
     doctor: doctorName,
-    time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null,
+    time: requestedNextWeek ? null : p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null,
   });
   if ((evoReady || dryRun) && normalizePhoneDest(env.WHATSAPP_DESTINO ?? "")) {
     await sendViaEvolution([counterAlert], env, fetch);
   }
 
-  const clientMsg = buildClientApptMessage(
-    p,
-    code,
-    { specialty: specialtyName, doctor: doctorName, time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null },
-    config.payment_info,
-  );
+  const clientMsg = requestedNextWeek
+    ? buildNextWeekRequestMessage(p, code, { doctor: doctorName })
+    : buildClientApptMessage(
+        p,
+        code,
+        { specialty: specialtyName, doctor: doctorName, time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null },
+        config.payment_info,
+      );
   const clientDest = normalizePhoneDest(p.ownerPhone);
   if ((evoReady || dryRun) && clientDest) {
     await sendViaEvolution([clientMsg], env, fetch, clientDest);
   }
 
   rememberDedupe(p, code, nowMs);
-  return { status: 200, body: { ok: true, appointmentCode: code } };
+  return { status: 200, body: { ok: true, appointmentCode: code, requested: requestedNextWeek } };
 }
 
 export default async function handler(req: Req, res: Res) {

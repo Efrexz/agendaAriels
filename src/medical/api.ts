@@ -88,8 +88,8 @@ export async function fetchSlots(doctorId: string, date: string): Promise<MedSlo
 
 export async function createAppointment(
   payload: CreateApptPayload,
-): Promise<{ appointmentCode: string }> {
-  return jsonFetch<{ appointmentCode: string }>("/api/medical/create", {
+): Promise<{ appointmentCode: string; requested?: boolean }> {
+  return jsonFetch<{ appointmentCode: string; requested?: boolean }>("/api/medical/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),

@@ -69,7 +69,7 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
       { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 540 } },
       res,
     );
-    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "asignada" } });
+    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "confirmada", notified: false } });
     const patch = dbMock.assignAppt.mock.calls[0][1] as { durationMinutes?: number };
     expect(patch.durationMinutes).toBe(60);
   });
@@ -83,7 +83,7 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
       { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 555 } },
       res,
     );
-    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "asignada" } });
+    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "confirmada", notified: false } });
     const patch = dbMock.assignAppt.mock.calls[0][1] as { durationMinutes?: number };
     expect(patch.durationMinutes).toBe(60);
   });
