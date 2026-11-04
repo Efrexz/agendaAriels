@@ -1,12 +1,9 @@
-import { test, expect } from "./fixtures";
+import { test, expect, proximaSemanaMedica } from "./fixtures";
 
 // Solicitud de PRÓXIMA semana (M2 B): la banda aparece, NO se consultan slots
 // del día futuro y el create devuelve `requested` con copy de solicitud.
 test("próxima semana: solicitud sin hora y aviso honesto", async ({ page }) => {
-  const hoyKey = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
-  const t = new Date(`${hoyKey}T12:00:00Z`);
-  const toSunday = 6 - ((t.getUTCDay() + 6) % 7);
-  const NEXT_DAY = new Date(t.getTime() + (toSunday + 11) * 86400_000).toISOString().slice(0, 10);
+  const { NEXT_DAY, needsNav } = proximaSemanaMedica();
 
   let slotsPedidos = 0;
   await page.route("**/api/availability", (route) => route.fulfill({ status: 200, contentType: "application/json", body: JSON.stringify({ ok: true, closures: [] }) }));
@@ -32,6 +29,7 @@ test("próxima semana: solicitud sin hora y aviso honesto", async ({ page }) => 
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Dr\. Lunes/ }).click();
 
+  if (needsNav) await page.getByRole("button", { name: "Mes siguiente" }).click();
   const dia = NEXT_DAY.slice(-2);
   const btnDia = page.locator("button:not([disabled])", { hasText: new RegExp(`^${Number(dia)}$`) });
   await btnDia.first().click();

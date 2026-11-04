@@ -265,17 +265,36 @@ export default function App() {
     }
   }
 
+  // HOTFIX V1.1 (carrera del dueño): elegir día en curso → llega TARDE la
+  // respuesta de slots tras elegir día de próxima semana → reaparecían horarios
+  // viejos bajo la banda. Patrón searchSeqRef del panel: contador por carga; al
+  // resolver se descarta si la secuencia cambió o si la fecha ya es próxima-semana.
+  const slotsSeqRef = useRef(0);
+
+  // Cualquier cambio de día que NO dispara carga nueva invalida los fetch en vuelo.
+  function cancelSlotLoad() {
+    slotsSeqRef.current += 1;
+    setSlots(null);
+    setSlotsLoading(false);
+  }
+
   async function loadSlots(date: string, doctorId: string) {
+    const mySeq = ++slotsSeqRef.current;
     await Promise.resolve();
     setSlotsLoading(true);
     setError(null);
     try {
-      setSlots(await fetchSlots(doctorId, date));
+      const result = await fetchSlots(doctorId, date);
+      // Respuesta obsoleta (elegiste otro día mientras volaba): no pintar nada.
+      if (slotsSeqRef.current !== mySeq || requestedNextWeek(date)) return;
+      setSlots(result);
     } catch (err) {
+      if (slotsSeqRef.current !== mySeq || requestedNextWeek(date)) return;
       setSlots([]);
       setError(err instanceof Error ? err.message : "Error de conexión");
     } finally {
-      setSlotsLoading(false);
+      // El fetch más reciente es el único dueño del spinner.
+      if (slotsSeqRef.current === mySeq) setSlotsLoading(false);
     }
   }
 
@@ -311,17 +330,26 @@ export default function App() {
   // evita guardar una hora desactualizada al volver desde "datos".
   useEffect(() => {
     if (step !== "agenda" || !form.date || !form.doctorId) return;
-    if (requestedNextWeek(form.date)) { setSlots(null); return; } // semana próxima: sin agenda todavía
     let active = true;
+    // Entrar al paso TAMBIÉN invalida cualquier carga en vuelo (su respuesta
+    // corresponde a otra intención): la secuencia nueva es la ganadora.
+    const mySeq = ++slotsSeqRef.current;
     (async () => {
+      // Frontera async: setState tras await (regla react-hooks).
+      await Promise.resolve();
+      if (!active) return;
+      if (requestedNextWeek(form.date!)) { setSlots(null); return; } // semana próxima: sin agenda todavía
       try {
         const fresh = await fetchSlots(form.doctorId!, form.date!);
-        if (active) {
+        // Cambió la secuencia mientras volaba: descartar (misma carrera de loadSlots).
+        if (active && slotsSeqRef.current === mySeq && !requestedNextWeek(form.date!)) {
           setSlots(fresh);
           setError(null);
         }
       } catch {
         /* conserva los slots ya cargados */
+      } finally {
+        if (active && slotsSeqRef.current === mySeq) setSlotsLoading(false);
       }
     })();
     return () => {
@@ -866,6 +894,7 @@ export default function App() {
                         update("startMinute", null);
                         setSlots(null); // el día cambia: los horarios anteriores no aplican
                         if (form.doctorId && !requestedNextWeek(d)) void loadSlots(d, form.doctorId);
+                        else cancelSlotLoad(); // banda semana-próxima: mata cualquier fetch en vuelo
                       }}
                     />
                     {!form.date && form.doctorId && (

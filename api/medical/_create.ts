@@ -22,7 +22,6 @@ interface Res {
   json(payload: unknown): Res;
 }
 
-const MAX_ADVANCE_DAYS = 30;
 const CODE_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"; // sin I/1/O/0 confusos
 
 /** Formato de BD igual al grooming: "917-104-426" (los avisos usan dígitos

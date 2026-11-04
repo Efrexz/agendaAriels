@@ -29,7 +29,10 @@ test("un horario ocupado al confirmar permite elegir otro sin perder los datos",
   await page.getByRole("button", { name: /Ver servicios disponibles/ }).click();
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Doctor Prueba/ }).click();
-  await page.locator(".grid.grid-cols-7").locator("button:not([disabled])").last().click();
+  // HOY es el único día habilitado garantizado en cualquier corrida: el "último
+  // día" puede caer en semana próxima (ahora abre la banda, no chips de hora).
+  const hoyKey = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Lima" }).format(new Date());
+  await page.locator("button:not([disabled])", { hasText: new RegExp(`^${Number(hoyKey.slice(-2))}$`) }).first().click();
   await page.getByRole("button", { name: "9:00 am" }).click();
   await page.getByPlaceholder("Ej: Manolo").fill("Mascota Prueba");
   await page.getByPlaceholder("Ej: Juan Pérez").fill("Cliente Prueba");

@@ -50,6 +50,24 @@ Producción: https://agenda-ariels-nu.vercel.app · migraciones 01–06 aplicada
 - Panel: chips por mascota en pasos baño/secado/corte/listo; /estado: tarjetitas por mascota
   bajo la cascada general. Maqueta visual aprueba antes de construir (patrón comité).
 
+## HOTFIX V1.1 — ✅ APLICADO (04/11/2026, esta sesión)
+
+- `src/medical/App.tsx`: `slotsSeqRef` (patrón `searchSeqRef` del panel) en `loadSlots` y el
+  effect de re-consulta; `cancelSlotLoad()` al elegir día de próxima semana. Respuestas en
+  vuelo se descartan si cambió la secuencia o la fecha es próxima-semana. `slotsLoading`
+  lo limpia solo el fetch más reciente (sin zombie-spinner).
+- Spec E2E `e2e/medical-slots-race.spec.ts`: respuesta LENTA 2s + clic rápido → banda sola,
+  0 slots pintados. **Control negativo verificado**: con el fix revertido, el spec FALLA.
+- Specs médicos reparados (todavía usaban `toSunday+11` = día post-ventana, rotos desde el
+  commit del calendario limitado): `proximaSemanaMedica()` en `e2e/fixtures.ts` (jueves de la
+  semana próxima, válido cualquier día de hoy, con nav de mes condicional);
+  `medical-conflict` ahora hace clic en HOY (siempre habilitado).
+- UX dueño en `CalendarCard.tsx`: leyenda dinámica "Agenda abierta hasta el {fecha bonita}" y
+  `title` en días >ventana con el motivo (se publica cada lunes). QA visual con capturas OK.
+- De paso: lint quedó arreglado (2 errores pre-existentes del commit anterior: constante
+  obsoleta `MAX_ADVANCE_DAYS` en `api/medical/_create.ts`, y setState síncrono en effect,
+  movido tras frontera async). Gates: lint · typecheck · 342 unitarias · build · 20/20 E2E.
+
 ## Infra / gotchas aprendidos (NO perder)
 
 - **Vercel Hobby: máximo 12 Serverless Functions** → cualquier archivo nuevo en

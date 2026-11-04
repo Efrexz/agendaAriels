@@ -27,6 +27,10 @@ export function CalendarCard({
   const todayDate = limaToday();
 
   const maxDay = useMemo(() => parseISO(maxDate), [maxDate]);
+  const maxPretty = useMemo(
+    () => format(maxDay, "EEEE d 'de' MMMM", { locale: es }),
+    [maxDay],
+  );
   const [currentMonth, setCurrentMonth] = useState(() => format(todayDate, "yyyy-MM-dd"));
   const [closures, setClosures] = useState<ClosureEntry[]>([]);
 
@@ -102,13 +106,15 @@ export function CalendarCard({
           const selected = date === dayStr;
           const closed = closureFor(closures, branch, dayStr);
           const disabled = isPast || isBeyondMax || closed.all;
+          // El dueño pidió que los días sin agenda digan POR QUÉ están inhabilitados.
+          const beyondTip = `Los horarios se publican cada lunes — agenda abierta hasta ${maxPretty}`;
 
           return (
             <button
               key={day.toISOString()}
               disabled={disabled}
               onClick={() => onSelect(dayStr)}
-              title={disabled && closed.all ? "Ocupado: sin turnos para esta sede" : undefined}
+              title={disabled ? (closed.all ? "Ocupado: sin turnos para esta sede" : isBeyondMax ? beyondTip : undefined) : undefined}
               className={`group relative flex flex-col items-center justify-center rounded-xl py-2 text-sm font-medium transition-all ${
                 disabled
                   ? closed.all
@@ -135,7 +141,7 @@ export function CalendarCard({
       </div>
 
       <p className="border-t border-[#DCEBFF] py-2.5 text-center text-[11px] text-[#8A97B1]">
-        Puedes reservar con hasta 30 días de anticipación.
+        Agenda abierta hasta el {maxPretty} — los horarios de más allá se publican cada lunes.
       </p>
     </div>
   );
