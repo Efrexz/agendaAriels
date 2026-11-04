@@ -26,17 +26,7 @@ Producción: https://agenda-ariels-nu.vercel.app · migraciones 01–06 aplicada
 
 ## Fases PENDIENTES (en orden)
 
-### V2 — Panel de confirmación (siguiente sesión)
-1. Título del box de pendientes: hoy dice "— especializadas" y mezcla flujo de pago con
-   solicitudes de próxima semana → renombrar a "📥 Citas por confirmar fecha y hora (N)" con
-   chip por fila: `🎓 Especializada · pago pendiente` / `🗓 Semana próxima · sin hora`.
-2. Botón del flujo general corregir copia: "Asignar y pasar a 'asignada'" → "✅ Confirmar
-   horario y avisar al cliente" (el backend ya confirma con WhatsApp).
-3. Hora manual del counter (Archivo `src/internal/ConsultasTab.tsx`, PendingRow):
-   reemplazar el input time suelto por chips cada 15 min dentro del horario real del doctor
-   + desplegable pequeño "⏱ Otra hora (excepcional)". El usuario lo pidió explícitamente.
-
-### M1 — Honestidad de WhatsApp en citas (después de V2)
+### M1 — Honestidad de WhatsApp en citas (siguiente)
 - `api/medical/_create.ts`: devolver `notified`/`whatsappDelivered` del `sendViaEvolution`
   (hoy se descarta). Wizard: verde solo si entregó; si no, ámbar "se registró tu cita,
   el aviso por WhatsApp no se pudo enviar — guarda tu código".
@@ -67,6 +57,22 @@ Producción: https://agenda-ariels-nu.vercel.app · migraciones 01–06 aplicada
 - De paso: lint quedó arreglado (2 errores pre-existentes del commit anterior: constante
   obsoleta `MAX_ADVANCE_DAYS` en `api/medical/_create.ts`, y setState síncrono en effect,
   movido tras frontera async). Gates: lint · typecheck · 342 unitarias · build · 20/20 E2E.
+
+## V2 — ✅ Panel de confirmación (04/11/2026, esta sesión)
+
+En `src/internal/ConsultasTab.tsx` (QA visual con login Supabase stub + APIs interceptadas en
+`/tmp/opencode/qa-v2.mjs`; capturas OK):
+1. Box renombrado "📥 Citas por confirmar fecha y hora (N)" (ya no "— especializadas") +
+   `PendingChip` por fila: `🎓 Especializada · pago pendiente` (ámbar) / `🎓 Especializada ·
+   por asignar` (sky) / `🗓 Semana próxima · sin hora` (azul).
+2. CTA del modal: "✅ Confirmar horario y avisar al cliente" (el backend ya confirma con WhatsApp).
+3. Grid V2 en `PendingRow`: chips cada 15 min DENTRO del horario real del doctor
+   (`GET /api/medical/schedules` + weekday de la fecha, duración inferida del paso de slots,
+   default 60). Estados: naranja = hora libre sugerida por availability; tachada/lock = otra
+   cita ese día (vía `fetchMedDay`); azul = libre en horario. Desplegable "⏱ Otra hora
+   (excepcional)" para fuera-de-horario (con aviso ⚠️ al usarlo). Sin horario registrado →
+   solo excepcional. El backend sigue validando solapamientos (409 amigable) por si acaso.
+- Deuda detectada al aplicar: 2 errores de lint pre-existentes arreglados en el hotfix V1.1.
 
 ## Infra / gotchas aprendidos (NO perder)
 

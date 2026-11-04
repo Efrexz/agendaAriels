@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
-  assignMedAppt, fetchMedDay, fetchMedPending, patchMedStatus, searchMedAppts,
-  type MedAppt,
+  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, searchMedAppts,
+  type MedAppt, type ScheduleWithDoctor,
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
@@ -308,7 +308,7 @@ function PendientesBox({ pendings, onChanged }: { pendings: MedAppt[]; onChanged
   if (pendings.length === 0) return null;
   return (
     <div className="mb-5 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
-      <p className="mb-2 text-sm font-bold text-amber-800">📥 Pendientes de asignar ({pendings.length}) — especializadas</p>
+      <p className="mb-2 text-sm font-bold text-amber-800">📥 Citas por confirmar fecha y hora ({pendings.length})</p>
       <div className="flex flex-col gap-2">
         {pendings.map((a) => <PendingRow key={a.id} a={a} onChanged={onChanged} />)}
       </div>
@@ -316,13 +316,38 @@ function PendientesBox({ pendings, onChanged }: { pendings: MedAppt[]; onChanged
   );
 }
 
+// Chip V2: distingue el flujo de cada fila pendiente (antes el título del box
+// mezclaba pago de especializadas con solicitudes de próxima semana).
+function PendingChip({ a }: { a: MedAppt }) {
+  if (a.serviceType === "especializada") {
+    return a.status === "solicitud" ? (
+      <span className="inline-flex w-fit items-center rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200">
+        🎓 Especializada · pago pendiente
+      </span>
+    ) : (
+      <span className="inline-flex w-fit items-center rounded-full bg-sky-100 px-2 py-0.5 text-[10px] font-semibold text-sky-800 ring-1 ring-sky-200">
+        🎓 Especializada · por asignar
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-200">
+      🗓 Semana próxima · sin hora
+    </span>
+  );
+}
+
 function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
   const [open, setOpen] = useState(false);
   const [doctors, setDocList] = useState<MedDoctorLite[] | null>(null);
+  // Bloques semanales del doctor (horarios de ⚙ Config): base de los chips V2.
+  const [scheds, setSchedsList] = useState<ScheduleWithDoctor[] | null>(null);
   const [docId, setDocId] = useState("");
   const [date, setPicker] = useState("");
   const [startMin, setStart] = useState<number | null>(null);
   const [slots, setSlotsList] = useState<Array<{ startMinute: number; label: string }>>([]);
+  // Citas ocupadas de ese día del doctor (grid V2: chips tachadas).
+  const [busyAppts, setBusyList] = useState<Array<{ startMinute: number; durationMinutes: number }>>([]);
   const [busy, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -342,11 +367,16 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
       try {
         // Especializadas: SOLO especialistas. Solicitudes de próxima semana
         // (general/rayos/eco): cualquier doctor activo, con el pedido preseleccionado.
-        const todos = await fetchDoctors(a.branch as MedBranch);
+        // Los horarios van en paralelo: si fallan, los chips V2 no aparecen y
+        // queda la vía de "Otra hora (excepcional)" — la asignación no se bloquea.
+        const [todos, schedRes] = await Promise.all([
+          fetchDoctors(a.branch as MedBranch),
+          fetchSchedules().catch(() => ({ schedules: [] as ScheduleWithDoctor[] })),
+        ]);
         const docs = a.serviceType === "especializada" ? todos.filter((d) => d.kind !== "general") : todos;
         setDocList(docs);
-        if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) setDocId(a.doctorId);
-        else if (docs.length > 0) setDocId(docs[0].id);
+        setSchedsList(schedRes.schedules ?? []);
+        if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) setDocId(a.doctorId);        else if (docs.length > 0) setDocId(docs[0].id);
         else setError(a.serviceType === "especializada" ? "No hay especialistas disponibles en esta sede." : "No hay doctores disponibles en esta sede.");
       } catch (err) { setError(err instanceof Error ? err.message : "Error"); }
       finally { setPending(false); }
@@ -372,19 +402,65 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
   }
 
   async function cargarSlots(d: string) {
-    setPicker(d); setStart(null); setSlotsList([]);
+    setPicker(d); setStart(null); setSlotsList([]); setBusyList([]);
     if (!docId) return;
     try {
-      const loadedSlots = await fetchSlots(docId, d);
+      // Slots libres (API pública, mismos datos del wizard) + citas del día
+      // del staff: las ocupadas se pintan en el grid V2 como inhabilitadas.
+      const [loadedSlots, dayRes] = await Promise.all([
+        fetchSlots(docId, d),
+        fetchMedDay(d, "all"),
+      ]);
       setSlotsList(loadedSlots);
+      setBusyList(
+        (dayRes.appointments ?? [])
+          .filter((x) => x.doctorId === docId && x.startMinute !== null)
+          .map((x) => ({ startMinute: x.startMinute!, durationMinutes: x.durationMinutes })),
+      );
     } catch { setSlotsList([]); }
   }
+
+  // Chip V2 (pedido del dueño): rejilla cada 15 min dentro del HORARIO REAL
+  // del doctor (bloques de ⚙ Config para el weekday de la fecha). Naranja =
+  // hora libre sugerida por la API de disponibilidad; tachada = colisión con
+  // otra cita (no clicable); azul = dentro del horario y libre. Fuera del
+  // horario solo se puede vía el desplegable "Otra hora (excepcional)".
+  const docBlocks = date && docId
+    ? (scheds ?? []).filter((s) => s.doctorId === docId && s.weekday === weekdayOfDate(date))
+    : [];
+  const chipsGrid: Array<{ min: number; label: string; suggested: boolean; taken: boolean }> = [];
+  if (date && docId && docBlocks.length > 0) {
+    // Duración de cita inferida del paso real de la grilla de slots (Config
+    // "duración cita"); sin slots se asume 60 min.
+    let dur = 60;
+    for (let i = 1; i < slots.length; i++) {
+      const paso = slots[i].startMinute - slots[i - 1].startMinute;
+      if (paso > 0) dur = Math.min(dur, paso);
+    }
+    const seen = new Set<number>();
+    for (const b of docBlocks) {
+      for (let m = b.startMinute; m + dur <= b.endMinute; m += 15) {
+        if (seen.has(m)) continue;
+        seen.add(m);
+        chipsGrid.push({
+          min: m,
+          label: horaCorta(m),
+          suggested: slots.some((s) => s.startMinute === m),
+          taken: busyAppts.some((x) => m < x.startMinute + x.durationMinutes && m + dur > x.startMinute),
+        });
+      }
+    }
+  }
+  const chipsManaña = chipsGrid.filter((c) => c.min < 720);
+  const chipsTarde = chipsGrid.filter((c) => c.min >= 720);
 
   return (
     <div className="rounded-xl bg-white p-3 ring-1 ring-amber-100">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="text-sm">
-          <b className="font-mono text-brand-blue">{a.appointmentCode}</b> · {a.specialtyName} · {a.petName} ({a.petType}) · {a.ownerName} · {a.ownerPhone}
+        <div className="text-sm flex flex-wrap items-center gap-2">
+          <b className="font-mono text-brand-blue">{a.appointmentCode}</b>
+          <PendingChip a={a} />
+          <span>{a.specialtyName} · {a.petName} ({a.petType}) · {a.ownerName} · {a.ownerPhone}</span>
         </div>
         <div className="flex gap-2">
           {esSolicitud && a.serviceType === "especializada" ? (
@@ -411,36 +487,56 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
             </select>
             <input type="date" value={date} onChange={(e) => void cargarSlots(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
           </div>
-          {date && slots.length === 0 && (
-            <p className="mt-2 text-xs text-slate-400">Sin horas sugeridas: usa la hora manual abajo.</p>
+          {date && slots.length === 0 && docBlocks.length === 0 && (
+            <p className="mt-2 text-xs text-slate-400">
+              El doctor no tiene horario registrado {docId && "para ese día"} — usa otra hora excepcional abajo.
+            </p>
           )}
-          {slots.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {slots.map((s) => (
-                <button
-                  key={s.startMinute}
-                  onClick={() => { setStart(s.startMinute); setManualTime(""); }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${startMin === s.startMinute && !manualTime ? "bg-brand-orange text-white" : "bg-slate-100 text-slate-700"}`}
-                >
-                  {s.label}
-                </button>
-              ))}
+          {chipsManaña.length > 0 && (
+            <div className="mt-2 flex flex-col gap-2">
+              <ChipGroup titulo="☀️ Mañana" grupo={chipsManaña} startMin={startMin} manualTime={manualTime}
+                onPick={(min) => { setStart(min); setManualTime(""); }} />
+              <ChipGroup titulo="🌇 Tarde" grupo={chipsTarde} startMin={startMin} manualTime={manualTime}
+                onPick={(min) => { setStart(min); setManualTime(""); }} />
             </div>
           )}
-          <div className="mt-2 flex items-center gap-2">
-            <span className="text-xs font-medium text-slate-600">Hora manual:</span>
-            <input
-              type="time"
-              step={60}
-              value={manualTime}
-              onChange={(e) => setManualHour(e.target.value)}
-              className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
-            />
-            <span className="text-xs text-slate-400">(ej. 9:15, respetando el horario del doctor)</span>
-          </div>
+          {/* Desplegable pequeño: la excepción, no la regla (ask explícito del dueño). */}
+          {docBlocks.length > 0 || slots.length > 0 ? (
+            <details className="mt-2 w-fit">
+              <summary className="w-fit cursor-pointer select-none rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50">
+                ⏱ Otra hora (excepcional)
+              </summary>
+              <div className="mt-2 flex items-center gap-2">
+                <input
+                  type="time"
+                  step={60}
+                  value={manualTime}
+                  onChange={(e) => setManualHour(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                />
+                <span className="text-xs text-slate-400">(fuera del horario regular, ej. 9:15)</span>
+              </div>
+            </details>
+          ) : (
+            <div className="mt-2 flex items-center gap-2">
+              <span className="text-xs font-medium text-slate-600">Hora:</span>
+              <input
+                type="time"
+                step={60}
+                value={manualTime}
+                onChange={(e) => setManualHour(e.target.value)}
+                className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+              />
+            </div>
+          )}
+          {startMin !== null && manualTime && (
+            <p className="mt-2 text-xs text-amber-700">
+              ⚠️ Hora excepcional ({manualTime}) fuera del horario regular del doctor.
+            </p>
+          )}
           {startMin !== null && (
             <button onClick={() => void asignar()} disabled={busy} className="mt-3 w-full rounded-lg bg-brand-blue py-2 text-sm font-semibold text-white disabled:opacity-50">
-              Asignar y pasar a 'asignada'
+              ✅ Confirmar horario y avisar al cliente
             </button>
           )}
         </div>
@@ -452,6 +548,71 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
 }
 
 interface MedDoctorLite { id: string; name: string; kind: string; specialty: string | null }
+
+// Hora compacta del grid V2: 690 → "8:30a" (mismo formato 12h del sistema).
+function horaCorta(min: number): string {
+  const h = Math.floor(min / 60);
+  const m = min % 60;
+  const hh = ((h + 11) % 12) + 1;
+  return `${hh}:${String(m).padStart(2, "0")}${h < 12 ? "a" : "p"}m`;
+}
+
+// Weekday (0=domingo) de una fecha yyyy-mm-dd — MISMA convención que
+// weekdayOf en api/medical/slots.ts, de donde vienen los bloques de ⚙ Config.
+function weekdayOfDate(dateKey: string): number {
+  const [y, m, d] = dateKey.split("-").map(Number);
+  return new Date(y, (m ?? 1) - 1, d ?? 1).getDay();
+}
+
+// Grupos de chips con separador mañana/tarde (mismo lenguaje del wizard).
+function ChipGroup({ titulo, grupo, startMin, manualTime, onPick }: {
+  titulo: string;
+  grupo: Array<{ min: number; label: string; suggested: boolean; taken: boolean }>;
+  startMin: number | null;
+  manualTime: string;
+  onPick: (min: number) => void;
+}) {
+  if (grupo.length === 0) return null;
+  return (
+    <div>
+      <span className="text-[10px] font-bold uppercase tracking-wide text-[#8A97B1]">{titulo}</span>
+      <div className="mt-1 flex flex-wrap gap-1.5">
+        {grupo.map((c) => {
+          const sel = startMin === c.min && !manualTime;
+          if (c.taken) {
+            return (
+              <button
+                key={c.min}
+                disabled
+                aria-disabled="true"
+                title="Ocupada: hay otra cita en esta hora"
+                className="cursor-not-allowed rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-300 line-through ring-1 ring-red-100"
+              >
+                {c.label}
+              </button>
+            );
+          }
+          return (
+            <button
+              key={c.min}
+              onClick={() => onPick(c.min)}
+              title={c.suggested ? undefined : "Libre dentro del horario del doctor"}
+              className={`rounded-lg px-2.5 py-1 text-xs font-semibold transition ${
+                sel
+                  ? "bg-brand-orange text-white shadow-sm"
+                  : c.suggested
+                    ? "bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100"
+                    : "bg-slate-100 text-slate-600 ring-1 ring-slate-200 hover:bg-blue-50 hover:text-blue-700"
+              }`}
+            >
+              {c.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
 
 // Borde de color por estado (mismo semáforo que las cards de grooming).
 const MED_BORDER: Record<string, string> = {
