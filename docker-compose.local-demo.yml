@@ -59,9 +59,11 @@ services:
       CACHE_REDIS_PREFIX_KEY: ariels_demo
       CACHE_REDIS_SAVE_INSTANCES: "false"
 
-      # Esta API key es la que va en .env.local como EVOLUTION_API_KEY
-      # (valor de demo local, no secreto de producción).
-      AUTHENTICATION_API_KEY: ariels-demo-key
+      # La API key ya NO vive en este archivo: docker compose la toma de una
+      # variable EVUL_API_KEY definida en el .env (archivo ignorado por git,
+      # con una clave aleatoria generada localmente). Rueda con ella también
+      # EVOLUTION_API_KEY en Vercel cuando esta PC/instancia sirve producción.
+      AUTHENTICATION_API_KEY: ${EVUL_API_KEY:?falta EVUL_API_KEY en el archivo .env}
       AUTHENTICATION_EXPOSE_IN_FETCH_INSTANCES: "true"
 
       CORS_ORIGIN: "*"

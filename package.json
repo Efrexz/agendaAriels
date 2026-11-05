@@ -15,7 +15,9 @@
     "demo:up": "docker compose -f docker-compose.local-demo.yml up -d",
     "demo:down": "docker compose -f docker-compose.local-demo.yml down",
     "demo:logs": "docker logs -f ariels_demo_evolution",
-    "generate:og": "node scripts/generate-og.mjs"
+    "generate:og": "node scripts/generate-og.mjs",
+    "evo:prod-up": "bash scripts/evo-prod-up.sh",
+    "evo:prod-down": "bash scripts/evo-prod-down.sh"
   },
   "dependencies": {
     "@react-google-maps/api": "^2.20.8",

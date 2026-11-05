@@ -102,14 +102,14 @@ npm run demo:up       # Evolution API en http://localhost:8080 + Postgres + Redi
 **2. Crear la instancia de demo y conectar un WhatsApp:**
 
 Opción UI: abre el manager en `http://localhost:8080/manager`
-(API Base URL: `http://localhost:8080`, Global API key: `ariels-demo-key`) → **Create Instance** → nombre `ariels-demo` → conecta escaneando el QR con el celular.
+(API Base URL: `http://localhost:8080`, Global API key: `EVUL_API_KEY` del `.env` de este proyecto (rociada, valor no público)) → **Create Instance** → nombre `ariels-demo` → conecta escaneando el QR con el celular.
 
 Opción CLI:
 
 ```bash
 curl -X POST http://localhost:8080/instance/create \
   -H "Content-Type: application/json" \
-  -H "apikey: ariels-demo-key" \
+  -H "apikey: $EVUL_API_KEY"  # de .env (rociada; ver .env.example) \
   -d '{"instanceName": "ariels-demo", "qrcode": true}'
 # Imprime un QR/pairing code: vincula el celular allí
 ```
@@ -122,7 +122,7 @@ para que `/api/booking` reciba la reserva):
 
 ```bash
 EVOLUTION_API_URL=http://127.0.0.1:8080
-EVOLUTION_API_KEY=ariels-demo-key
+EVOLUTION_API_KEY=<EVUL_API_KEY del .env>
 EVOLUTION_INSTANCE=ariels-demo
 WHATSAPP_DESTINO=51XXXXXXXXX   # número que recibe la "reserva de la clínica"
 ```
