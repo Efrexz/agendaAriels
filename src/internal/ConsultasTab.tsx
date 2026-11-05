@@ -705,12 +705,19 @@ function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
   // M1 honestidad: reenvío del aviso de WhatsApp cuando falló y no se entregó después.
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+  // Marcas locales de reenvío (p.ej. en resultados de búsqueda la lista no se
+  // refresca sola): se fusionan con el timeline del servidor para que el ⚠
+  // responda al instante.
+  const [waLocal, setWaLocal] = useState<Array<{ status: string; createdBy: string; createdAt: string }>>([]);
   const meta = medStatusMeta(a.status);
+
+  const waGreens = (a.timeline ?? []).filter((t) => t.status !== "wa_fallado" && t.status !== "wa_entregado");
+  const timeline = [...waGreens, ...waLocal];
 
   // ⚠ vivo: hay un "wa_fallado" SIN un "wa_entregado" posterior en el historial.
   const avisoFallado = (() => {
     let failed = false;
-    for (const ev of a.timeline ?? []) {
+    for (const ev of timeline) {
       if (ev.status === "wa_fallado") failed = true;
       else if (ev.status === "wa_entregado") failed = false;
     }
@@ -721,6 +728,7 @@ function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
     setResendBusy(true); setResendMsg(null);
     try {
       const out = await resendMedNotice(a.id);
+      setWaLocal((prev) => [...prev, { status: out.sent ? "wa_entregado" : "wa_fallado", createdBy: "sistema", createdAt: new Date().toISOString() }]);
       setResendMsg(out.sent ? "✓ Aviso reenviado por WhatsApp." : "⚠ No se pudo enviar — intenta de nuevo o avisa al cliente por llamada.");
       onUpdate();
     } catch (err) {
@@ -745,8 +753,8 @@ function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
   })();
 
   const timeChip = MED_TIME_CHIP[a.status] ?? "bg-slate-100 text-slate-600";
-  // Último evento del timeline: línea visible al pie (mock).
-  const ultimo = a.timeline?.length ? a.timeline[a.timeline.length - 1] : null;
+  // Último evento del timeline fusionado: línea visible al pie (mock).
+  const ultimo = timeline.length > 0 ? timeline[timeline.length - 1] : null;
 
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${MED_BORDER[a.status] ?? "border-l-slate-300"}`}>
@@ -865,13 +873,13 @@ function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
               </button>
             )}
             {resendMsg && <span className="w-full text-[11px] font-medium text-[#3B5178]">{resendMsg}</span>}
-            {a.timeline && a.timeline.length > 0 && (
+            {timeline.length > 0 && (
               <details className="ml-auto">
                 <summary className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
-                  <History className="h-3.5 w-3.5" /> Historial ({a.timeline.length})
+                  <History className="h-3.5 w-3.5" /> Historial ({timeline.length})
                 </summary>
                 <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
-                  {a.timeline.map((t, i) => (
+                  {timeline.map((t, i) => (
                     <li key={i}>{new Date(t.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[t.status]?.label ?? WA_EVENT_META[t.status] ?? t.status} ({t.createdBy})</li>
                   ))}
                 </ul>
