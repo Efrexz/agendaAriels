@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
-  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, searchMedAppts,
+  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, searchMedAppts,
   type MedAppt, type ScheduleWithDoctor,
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
@@ -260,7 +260,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
               Sin resultados para "{query}".
             </p>
           )}
-          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} />)}
+          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onUpdate={() => setTick((t) => t + 1)} />)}
         </div>
       )}
 
@@ -285,7 +285,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
                 </span>
               </h3>
               <div className="flex flex-col gap-2">
-                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} />)}
+                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onUpdate={() => setTick((t) => t + 1)} />)}
               </div>
             </section>
           ))}
@@ -578,6 +578,12 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
 
 interface MedDoctorLite { id: string; name: string; kind: string; specialty: string | null }
 
+// Etiquetas humanas de los eventos M1 de WhatsApp en el historial de citas.
+const WA_EVENT_META: Record<string, string> = {
+  wa_fallado: "⚠ Aviso por WhatsApp no entregado",
+  wa_entregado: "✓ Aviso por WhatsApp entregado",
+};
+
 // Hora compacta del grid V2: 690 → "8:30a" (mismo formato 12h del sistema).
 function horaCorta(min: number): string {
   const h = Math.floor(min / 60);
@@ -687,15 +693,42 @@ function InfoCell({ icon: Icon, tint, label, children }: {
   );
 }
 
-function ApptCard({ a, onStatus, onReagendar }: {
+function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
   a: MedAppt;
   onStatus: (a: MedAppt, status: string) => void;
   onReagendar: (a: MedAppt) => void;
+  onUpdate: () => void;
 }) {
   const [open, setOpen] = useState(false);
   // Confirmación de cancelación con modal propio (adiós window.confirm)
   const [confirmCancel, setConfirmCancel] = useState(false);
+  // M1 honestidad: reenvío del aviso de WhatsApp cuando falló y no se entregó después.
+  const [resendBusy, setResendBusy] = useState(false);
+  const [resendMsg, setResendMsg] = useState<string | null>(null);
   const meta = medStatusMeta(a.status);
+
+  // ⚠ vivo: hay un "wa_fallado" SIN un "wa_entregado" posterior en el historial.
+  const avisoFallado = (() => {
+    let failed = false;
+    for (const ev of a.timeline ?? []) {
+      if (ev.status === "wa_fallado") failed = true;
+      else if (ev.status === "wa_entregado") failed = false;
+    }
+    return failed;
+  })();
+
+  async function reenviarAviso() {
+    setResendBusy(true); setResendMsg(null);
+    try {
+      const out = await resendMedNotice(a.id);
+      setResendMsg(out.sent ? "✓ Aviso reenviado por WhatsApp." : "⚠ No se pudo enviar — intenta de nuevo o avisa al cliente por llamada.");
+      onUpdate();
+    } catch (err) {
+      setResendMsg(err instanceof Error ? err.message : "Error al reenviar el aviso");
+    } finally {
+      setResendBusy(false);
+    }
+  }
 
   const nextActions: Array<[string, string]> = [];
   if (a.status === "confirmada") nextActions.push(["en_consulta", "🏥 Entró"], ["no_llego", "⏰ No llegó"], ["cancelado", "❌ Cancelar"]);
@@ -739,6 +772,14 @@ function ApptCard({ a, onStatus, onReagendar }: {
               {a.petName} <span className="font-medium text-slate-500">({a.petType})</span>
             </p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+            {avisoFallado && (
+              <span
+                title="El aviso por WhatsApp no se entregó al cliente"
+                className="rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-bold text-red-600 ring-1 ring-red-200"
+              >
+                ⚠ WhatsApp
+              </span>
+            )}
             <span className="text-xs text-slate-500">{MED_SERVICE_LABELS[a.serviceType]}{a.specialtyName ? ` · ${a.specialtyName}` : ""}</span>
           </div>
           <p className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 truncate text-xs text-slate-500">
@@ -813,6 +854,17 @@ function ApptCard({ a, onStatus, onReagendar }: {
                 🔁 Reagendar como nueva cita
               </button>
             )}
+            {avisoFallado && (
+              <button
+                onClick={() => void reenviarAviso()}
+                disabled={resendBusy}
+                title="Reenvía el aviso de WhatsApp de esta cita (con su estado actual)"
+                className="rounded-lg bg-orange-100 px-3 py-1.5 text-xs font-semibold text-orange-800 ring-1 ring-orange-200 transition hover:bg-orange-200 disabled:opacity-50"
+              >
+                🔁 Reenviar aviso
+              </button>
+            )}
+            {resendMsg && <span className="w-full text-[11px] font-medium text-[#3B5178]">{resendMsg}</span>}
             {a.timeline && a.timeline.length > 0 && (
               <details className="ml-auto">
                 <summary className="flex cursor-pointer items-center gap-1.5 rounded-lg bg-slate-50 px-2.5 py-1.5 text-xs font-semibold text-slate-500 ring-1 ring-slate-200 hover:bg-slate-100">
@@ -820,7 +872,7 @@ function ApptCard({ a, onStatus, onReagendar }: {
                 </summary>
                 <ul className="mt-1 flex flex-col gap-0.5 text-xs text-slate-400">
                   {a.timeline.map((t, i) => (
-                    <li key={i}>{new Date(t.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[t.status]?.label ?? t.status} ({t.createdBy})</li>
+                    <li key={i}>{new Date(t.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[t.status]?.label ?? WA_EVENT_META[t.status] ?? t.status} ({t.createdBy})</li>
                   ))}
                 </ul>
               </details>
@@ -831,7 +883,7 @@ function ApptCard({ a, onStatus, onReagendar }: {
           {ultimo && (
             <p className="mt-2.5 flex items-center gap-1.5 text-[11px] text-slate-400">
               <Clock className="h-3 w-3 shrink-0" />
-              {new Date(ultimo.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[ultimo.status]?.label ?? ultimo.status} ({ultimo.createdBy})
+              {new Date(ultimo.createdAt).toLocaleString("es-PE", { timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })} — {MED_STATUS_META[ultimo.status]?.label ?? WA_EVENT_META[ultimo.status] ?? ultimo.status} ({ultimo.createdBy})
             </p>
           )}
         </div>

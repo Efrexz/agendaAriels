@@ -536,6 +536,17 @@ export class MedicalDb {
     if (error) throw new Error(`recordApptStatus insert: ${error.message}`);
   }
 
+  /** Marca del aviso de WhatsApp en el historial (NO cambia el estado de la
+   *  cita): "wa_fallado" prende el ⚠ del panel y habilita el reenvío;
+   *  "wa_entregado" (creación o reenvío exitoso) lo apaga. El panel decide por
+   *  orden temporal (fallado después del último entregado). */
+  async recordWhatsappNotice(apptId: string, delivered: boolean): Promise<void> {
+    const { error } = await this.client
+      .from("medical_status_updates")
+      .insert({ appointment_id: apptId, status: delivered ? "wa_entregado" : "wa_fallado", created_by: "sistema" });
+    if (error) throw new Error(`recordWhatsappNotice insert: ${error.message}`);
+  }
+
   /** Estado e historial se confirman juntos; la exclusión conserva el 409. */
   async transitionApptStatus(apptId: string, from: string, to: string, createdBy: string): Promise<boolean> {
     const { data, error } = await this.client.rpc("api_medical_transition", { p_id: apptId, p_from: from, p_to: to, p_actor: createdBy });

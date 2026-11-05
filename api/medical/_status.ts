@@ -127,6 +127,11 @@ export default async function handler(req: Req, res: Res) {
         });
         const sent = await sendViaEvolution([text], env, fetch, dest);
         notified = sent.ok;
+        // Marca del aviso en el historial (⚠ + reenvío en el panel). Best-effort
+        // y solo con Evolution de verdad configurada (el dry-run no marca).
+        if (evoReady) {
+          try { await db.recordWhatsappNotice(id, sent.ok); } catch { /* best-effort */ }
+        }
       }
     }
 

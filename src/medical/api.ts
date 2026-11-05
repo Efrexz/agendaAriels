@@ -88,7 +88,7 @@ export async function fetchSlots(doctorId: string, date: string): Promise<MedSlo
 
 export async function createAppointment(
   payload: CreateApptPayload,
-): Promise<{ appointmentCode: string; requested?: boolean }> {
+): Promise<{ appointmentCode: string; requested?: boolean; whatsappDelivered?: boolean }> {
   return jsonFetch<{ appointmentCode: string; requested?: boolean }>("/api/medical/create", {
     method: "POST",
     headers: { "Content-Type": "application/json" },

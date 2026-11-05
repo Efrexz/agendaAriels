@@ -171,6 +171,10 @@ export default async function handler(req: Req, res: Res) {
           dest,
         );
         notified = sent.ok;
+        // Marca del aviso en el historial (⚠ + reenvío en el panel). Best-effort.
+        if (evoReady && !dryRun) {
+          try { await db.recordWhatsappNotice(id, sent.ok); } catch { /* best-effort */ }
+        }
       }
     }
     res.status(200).json({ ok: true, status: "confirmada", notified });

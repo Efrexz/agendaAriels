@@ -421,12 +421,21 @@ export async function handleMedicalCreate(opts: {
         config.payment_info,
       );
   const clientDest = normalizePhoneDest(p.ownerPhone);
+  // M1 honestidad: flag en la respuesta (null/descartado solo en dedupe de
+  // reenvíos, donde el wizard muestra "no pudimos confirmar" en lugar del verde).
+  let clientDelivered: boolean | null = null;
   if ((evoReady || dryRun) && clientDest) {
-    await sendViaEvolution([clientMsg], env, fetch, clientDest);
+    const delivery = await sendViaEvolution([clientMsg], env, fetch, clientDest);
+    clientDelivered = delivery.ok;
+    // La marca va solo cuando Evolution está realmente configurada (dry-run/
+    // antes del go-live no marcaría todo), best-effort al historial.
+    if (!dryRun && evoReady) {
+      try { await db.recordWhatsappNotice(newApptId!, delivery.ok); } catch { /* best-effort */ }
+    }
   }
 
   rememberDedupe(p, code, nowMs);
-  return { status: 200, body: { ok: true, appointmentCode: code, requested: requestedNextWeek } };
+  return { status: 200, body: { ok: true, appointmentCode: code, requested: requestedNextWeek, whatsappDelivered: clientDelivered } };
 }
 
 export default async function handler(req: Req, res: Res) {

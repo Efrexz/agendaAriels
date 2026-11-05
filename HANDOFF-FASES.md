@@ -24,9 +24,35 @@ Producción: https://agenda-ariels-nu.vercel.app · migraciones 01–06 aplicada
   Se eliminó el cajón ámbar bajo el calendario.
 - **"Volver al inicio de citas"** reinicia el wizard médico (ya no manda a grooming).
 
+## M1 — Honestidad de WhatsApp en citas — ✅ CÓDIGO (05/11/2026) · prueba real pendiente
+
+Qué cambiaron (todo sin migraciones nuevas: las marcas viven en `medical_status_updates`):
+- `api/medical/_create.ts`: el resultado de `sendViaEvolution` ya no se descarta → la
+  respuesta incluye `whatsappDelivered` (true/false; null solo en dedupe de reenvíos). Si
+  Evolution está configurada y falla, registra `wa_fallado` en el historial (best-effort).
+- `_status.ts` y `_assign.ts` (confirmaciones del counter): mismas marcas `wa_entregado/
+  wa_fallado` server-side (solo con Evolution configurada; el dry-run no marca).
+- NUEVO `POST /internal/medical/resend-notice` (`api/medical/_resend_notice.ts`, prefijo _
+  → cero funciones serverless extra; ruta en `api/index.ts`): reenvía el aviso con el
+  MENSAJE DEL ESTADO ACTUAL (recibo para pendiente / solicitud, confirmación para
+  asignada/confirmada, pagos para especializada inicial) y marca en el historial.
+- Wizard (`src/medical/App.tsx`): verde solo si `whatsappDelivered === true`; si no, ámbar
+  "El aviso por WhatsApp no se pudo enviar — guarda tu código" (especializada: aviso extra
+  sobre métodos de pago). Sin reintentar → cero duplicados.
+- Panel (`ConsultasTab`): badge rojo **⚠ WhatsApp** en la card (fallado sin entrega
+  posterior según timeline) + botón **🔁 Reenviar aviso** (usa el endpoint nuevo; muestra
+  resultado); historial con etiquetas humanas (`WA_EVENT_META`: "⚠ Aviso por WhatsApp no
+  entregado" / "✓ Aviso por WhatsApp entregado").
+- Tests: `api/medical/_create.delivery.test.ts` (5) + `_resend_notice.test.ts` (4) +
+  E2E `e2e/medical-wa-pendiente.spec.ts` (wizard ámbar, sin verde). **351 unitarias**,
+  **21/21 E2E**, lint, typecheck×2, build. QA visual del panel con badge+reenvío OK.
+- PENDIENTE (requiere Docker/Evolution real): prueba de reenvío con teléfono de prueba
+  (mismo patrón LAB-T87WZ). El 502 de Evolution PRODUCCIÓN es fase W del usuario (M1 no
+  lo revive: solo deja de mentir y da la vía de reenvío).
+
 ## Fases PENDIENTES (en orden)
 
-### M1 — Honestidad de WhatsApp en citas (siguiente)
+### M1 — Honestidad de WhatsApp en citas (CÓDIGO HECHO 05/11; falta prueba real con Docker/Evolution)
 - `api/medical/_create.ts`: devolver `notified`/`whatsappDelivered` del `sendViaEvolution`
   (hoy se descarta). Wizard: verde solo si entregó; si no, ámbar "se registró tu cita,
   el aviso por WhatsApp no se pudo enviar — guarda tu código".

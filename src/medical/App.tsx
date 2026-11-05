@@ -193,6 +193,9 @@ export default function App() {
   const [slots, setSlots] = useState<MedSlot[] | null>(null);
   // Solicitud de próxima semana (sin hora): cambia el mensaje de confirmación.
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
+  // M1 honestidad: ¿Evolution entregó el aviso? true=verde, false=ámbar
+  // "no se pudo enviar", null=no confirmado (reenvío viejo) — el verde GANA solo con true.
+  const [whatsAppOk, setWhatsAppOk] = useState<boolean | null>(null);
   const [slotsLoading, setSlotsLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
@@ -423,6 +426,7 @@ export default function App() {
       });
       setCode(result.appointmentCode);
       setSolicitudEnviada(result.requested === true);
+      setWhatsAppOk(result.whatsappDelivered === true);
       go("enviado");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar la cita");
@@ -1213,6 +1217,19 @@ export default function App() {
                   </div>
                   <Resumen form={form} />
                   {form.serviceType === "especializada" ? (
+                    <>
+                    {/* M1: si el aviso con los métodos de pago no se pudo entregar
+                        (o no lo pudimos confirmar), se dice — el verde no miente. */}
+                    {whatsAppOk !== true && (
+                      <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <span className="text-base leading-none">📤</span>
+                        <p className="text-xs leading-relaxed text-amber-800">
+                          {whatsAppOk === false
+                            ? <><b>El aviso por WhatsApp con los métodos de pago no se pudo enviar.</b> Tu solicitud SÍ está registrada — guarda tu código; en cuanto el servicio restablezca te lo mandamos.</>
+                            : <>Guarda tu <b>código</b>: no pudimos confirmar que el aviso con los <b>métodos de pago</b> te haya llegado por WhatsApp.</>}
+                        </p>
+                      </div>
+                    )}
                     <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
                       <img
                         src={MASCOT.pago}
@@ -1225,6 +1242,7 @@ export default function App() {
                         WhatsApp de la sede y te confirmamos fecha, hora y doctor.
                       </p>
                     </div>
+                    </>
                   ) : solicitudEnviada ? (
                     <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
                       <p className="text-xs leading-relaxed text-amber-800">
@@ -1233,7 +1251,7 @@ export default function App() {
                         horario garantizado hasta esa confirmación.
                       </p>
                     </div>
-                  ) : (
+                  ) : whatsAppOk === true ? (
                     <div className="flex max-w-md items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
                         <MessageCircle className="h-5 w-5" />
@@ -1243,9 +1261,18 @@ export default function App() {
                         tolerancia de 10 minutos, luego atendemos al siguiente 🐾.
                       </p>
                     </div>
+                  ) : (
+                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                      <span className="text-base leading-none">📤</span>
+                      <p className="text-xs leading-relaxed text-amber-800">
+                        {whatsAppOk === false
+                          ? <><b>El aviso por WhatsApp no se pudo enviar</b> (probablemente temporal). Tu cita SÍ está registrada: <b>guarda tu código</b> y si no llega en unos minutos, escríbenos al WhatsApp de la sede.</>
+                          : <>No pudimos confirmar que el aviso haya salido por WhatsApp. Tu cita SÍ está registrada: <b>guarda tu código</b>.</>}
+                      </p>
+                    </div>
                   )}
                   <button
-                    onClick={() => { setForm(INITIAL); go("sede"); }}
+                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
                     className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
                   >
                     <CalendarDays className="h-5 w-5" />
@@ -1253,7 +1280,7 @@ export default function App() {
                     <ChevronRight className="h-4 w-4" />
                   </button>
                   <button
-                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); go("sede"); }}
+                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
                     className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
                   >
                     <ChevronLeft className="h-4 w-4" />

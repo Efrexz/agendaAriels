@@ -129,6 +129,16 @@ export async function fetchSchedules(): Promise<{ schedules: ScheduleWithDoctor[
   return authedFetch("/api/medical/schedules");
 }
 
+// M1 honestidad: reenvío del aviso de WhatsApp al cliente de una cita.
+export async function resendMedNotice(
+  apptId: string,
+): Promise<{ ok: boolean; sent: boolean }> {
+  return authedFetch("/api/internal/medical/resend-notice", {
+    method: "POST",
+    body: JSON.stringify({ id: apptId }),
+  });
+}
+
 export async function createSchedule(input: {
   doctorId: string;
   weekday: number;
