@@ -487,10 +487,38 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
             </select>
             <input type="date" value={date} onChange={(e) => void cargarSlots(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
           </div>
-          {date && slots.length === 0 && docBlocks.length === 0 && (
-            <p className="mt-2 text-xs text-slate-400">
-              El doctor no tiene horario registrado {docId && "para ese día"} — usa otra hora excepcional abajo.
+          {/* Estado inicial: sin fecha aún no hay horas que mostrar — guía el
+              flujo (antes quedaba un input de hora suelto sin contexto). */}
+          {!date && (
+            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+              <Clock className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+              Elige una fecha para ver las horas del doctor.
             </p>
+          )}
+          {date && slots.length === 0 && docBlocks.length === 0 && (
+            <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-100">
+              Sin horas en el horario semanal de ⚙ Config para ese día — usa una
+              hora excepcional, o pide configurar el horario del doctor.
+            </div>
+          )}
+          {/* Slots librados sin horario semanal en memoria local (ej. la API de
+              horarios falló): no perder las horas sugeridas — chips simples. */}
+          {date && docBlocks.length === 0 && slots.length > 0 && (
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {slots.map((s) => (
+                <button
+                  key={s.startMinute}
+                  onClick={() => { setStart(s.startMinute); setManualTime(""); }}
+                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                    startMin === s.startMinute && !manualTime
+                      ? "bg-brand-orange text-white"
+                      : "bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100"
+                  }`}
+                >
+                  {s.label}
+                </button>
+              ))}
+            </div>
           )}
           {chipsManaña.length > 0 && (
             <div className="mt-2 flex flex-col gap-2">
@@ -500,8 +528,9 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
                 onPick={(min) => { setStart(min); setManualTime(""); }} />
             </div>
           )}
-          {/* Desplegable pequeño: la excepción, no la regla (ask explícito del dueño). */}
-          {docBlocks.length > 0 || slots.length > 0 ? (
+          {/* La excepción, no la regla (pedido explícito del dueño): desplegable
+              cuando hay grid; input directo solo en el fallback sin grid. */}
+          {chipsManaña.length > 0 ? (
             <details className="mt-2 w-fit">
               <summary className="w-fit cursor-pointer select-none rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50">
                 ⏱ Otra hora (excepcional)
@@ -517,9 +546,9 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
                 <span className="text-xs text-slate-400">(fuera del horario regular, ej. 9:15)</span>
               </div>
             </details>
-          ) : (
+          ) : date ? (
             <div className="mt-2 flex items-center gap-2">
-              <span className="text-xs font-medium text-slate-600">Hora:</span>
+              <span className="text-xs font-medium text-slate-600">Hora (excepcional):</span>
               <input
                 type="time"
                 step={60}
@@ -528,7 +557,7 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
                 className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
             </div>
-          )}
+          ) : null}
           {startMin !== null && manualTime && (
             <p className="mt-2 text-xs text-amber-700">
               ⚠️ Hora excepcional ({manualTime}) fuera del horario regular del doctor.

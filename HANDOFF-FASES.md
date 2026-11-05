@@ -73,6 +73,12 @@ En `src/internal/ConsultasTab.tsx` (QA visual con login Supabase stub + APIs int
    (excepcional)" para fuera-de-horario (con aviso ⚠️ al usarlo). Sin horario registrado →
    solo excepcional. El backend sigue validando solapamientos (409 amigable) por si acaso.
 - Deuda detectada al aplicar: 2 errores de lint pre-existentes arreglados en el hotfix V1.1.
+- PULIDO 05/11 (probado por el dueño): modal inicial ya no muestra el input de hora suelto
+  sin fecha (guía "Elige una fecha para ver las horas del doctor" con icono); doctor sin
+  horario en esa fecha → nota ámbar que menciona ⚙ Config + "Hora (excepcional)" directo;
+  y si la API de horarios falla pero hay slots, siguen las chips simples de slots (antes no
+  había vía para elegir horas sugeridas sin bloques). Se decidió MANTENER el date-picker
+  nativo (panel sobrio; el CalendarCard de marca es para el wizard del cliente).
 
 ## Infra / gotchas aprendidos (NO perder)
 
