@@ -45,12 +45,21 @@ export default async function handler(req: Req, res: Res) {
       if (digits.length >= 6) {
         results = await db.listApptsPatient(digits);
         if (results.length > 0) {
+          const updates = await db.listApptStatusUpdatesMany(results.map((a) => a.id));
+          results = results.map((a) => ({ ...a, timeline: updates[a.id] ?? [] }));
           res.status(200).json({ ok: true, results });
           return;
         }
       }
       // por nombre del dueño: server-side ilike con límite (no full-scan)
       results = await db.searchApptsByName(q);
+    }
+
+    // Timeline incluido: el badge de WhatsApp fallada y el botón de
+    // reenvío del panel dependen del historial.
+    if (results.length > 0) {
+      const updates = await db.listApptStatusUpdatesMany(results.map((a) => a.id));
+      results = results.map((a) => ({ ...a, timeline: updates[a.id] ?? [] }));
     }
 
     res.status(200).json({ ok: true, results });

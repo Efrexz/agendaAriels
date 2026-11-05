@@ -211,11 +211,16 @@ export default function App() {
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
 
-  // Candado anti doble-click (400ms): solo la primera transición pasa.
-  const transitionLock = useRef(0);
+  // Candado anti doble-click (400ms): SOLO bloquea repetir el MISMO destino en
+  // ese instante (doce clicks en una card). Destinos distintos seguidos pasan:
+  // antes, navegar rápido sede→servicio→doctor→agenda en <400ms descartaba el
+  // último go() en silencio y el wizard quedaba atascado en el paso anterior.
+  const transitionLock = useRef<{ at: number; to: Step | null }>({ at: 0, to: null });
   const go = useCallback((s: Step) => {
-    if (Date.now() - transitionLock.current < 400) return;
-    transitionLock.current = Date.now();
+    const now = Date.now();
+    const { at, to } = transitionLock.current;
+    if (now - at < 400 && to === s) return;
+    transitionLock.current = { at: now, to: s };
     setStep(s);
   }, []);
 
