@@ -75,6 +75,7 @@ export default async function handler(req: Req, res: Res) {
         ownerPhone: b.ownerPhone,
         status: b.status,
         whatsappDelivered: b.whatsappDelivered,
+        petStatus: b.petStatus ?? null,
         pets: b.pets,
         createdAt: b.createdAt,
         timeline: timelines[b.id] ?? [],

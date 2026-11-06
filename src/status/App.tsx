@@ -455,6 +455,9 @@ const PET_CHIP: Record<string, { label: string; cls: string }> = {
   entregado: { label: "🏠 Entregado", cls: "bg-slate-600 text-white" },
 };
 const PHASE_BAR = ["bano", "secado", "corte", "listo", "entregado"] as const;
+const CHIPS_TITLE: Record<string, string> = {
+  bano: "Baño", secado: "Secado", corte: "Corte", listo: "Listo", entregado: "Entrega",
+};
 
 function petEmoji(type: string): string {
   return type.toLowerCase().includes("gato") ? "🐱" : "🐶";
@@ -477,28 +480,46 @@ function PetStatusCards({ booking }: { booking: TrackingBooking }) {
         {booking.pets.map((pet, i) => {
           const s = booking.petStatus?.[String(i)]?.s ?? "";
           const chip = s ? PET_CHIP[s] : null;
-          const idxDone = PHASE_BAR.indexOf(s as (typeof PHASE_BAR)[number]);
+          const idxActive = PHASE_BAR.indexOf(s as (typeof PHASE_BAR)[number]);
           return (
-            <div key={i} className="rounded-2xl border border-slate-100 bg-[#FCFDFF] p-4 text-center ring-1 ring-[#DCEBFF]">
-              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF] text-2xl" aria-hidden>
+            <div
+              key={i}
+              className="rounded-2xl bg-white p-4 text-center shadow-sm ring-1 ring-[#DCEBFF] transition hover:shadow-md"
+            >
+              <div
+                className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-2xl shadow-sm ring-2 ring-orange-100"
+                aria-hidden
+              >
                 {petEmoji(pet.type)}
               </div>
-              <p className="mt-1.5 font-display text-sm font-bold text-slate-800">{pet.name}</p>
+              <p className="mt-2 font-display text-base font-bold text-slate-800">{pet.name}</p>
               {chip ? (
-                <span className={`mt-1.5 inline-block rounded-full px-3 py-1 text-xs font-bold ${chip.cls}`}>
+                <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${chip.cls}`}>
                   {chip.label}
                 </span>
               ) : (
-                <span className="mt-1.5 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                <span className="mt-2 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
                   Por comenzar
                 </span>
               )}
+              {/* Barra de 5 fases reales: pasado azul, ACTIVO naranja, futuro gris */}
               <div className="mt-3 flex items-center justify-center gap-1.5" aria-hidden>
                 {PHASE_BAR.map((ph, bi) => (
                   <span
                     key={ph}
-                    className={`h-1.5 w-7 rounded-full ${
-                      bi < idxDone ? "bg-blue-400" : bi === idxDone ? "bg-brand-orange" : "bg-slate-200"
+                    title={
+                      bi === idxActive
+                        ? CHIPS_TITLE[ph]
+                        : bi < idxActive
+                          ? `${CHIPS_TITLE[ph]} (completada)`
+                          : CHIPS_TITLE[ph]
+                    }
+                    className={`transition-all ${
+                      bi === idxActive
+                        ? "h-2.5 w-10 rounded-full bg-brand-orange"
+                        : bi < idxActive
+                          ? "h-2 w-full max-w-7 rounded-full bg-blue-400"
+                          : "h-2 w-full max-w-7 rounded-full bg-slate-200"
                     }`}
                   />
                 ))}

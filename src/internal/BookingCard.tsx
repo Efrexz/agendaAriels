@@ -153,13 +153,30 @@ export function BookingCard({
 
   // G1: estado por mascota. Chips clicables; el siguiente natural va resaltado.
   const showPetChips = (booking.pets?.length ?? 0) >= 2;
+  // Respuesta optimista: 05/11 comité pidió que el chip refleje el clic
+  // INMEDIATAMENTE (el refetch del panel llega confirmado después).
+  const [petOptimistic, setPetOptimistic] = useState<Record<string, string>>({});
+  const petStateOf = (i: number): string =>
+    petOptimistic[String(i)] ?? booking.petStatus?.[String(i)]?.s ?? "";
   async function movePet(i: number, to: PetPhase | "") {
     setBusy(true);
     setError(null);
+    setPetOptimistic((prev) => {
+      const next = { ...prev };
+      if (to === "") delete next[String(i)];
+      else next[String(i)] = to;
+      return next;
+    });
     try {
       await setPetStatus(booking.id, i, to);
       onChanged();
     } catch (err) {
+      // Revierte el optimista si la escritura falló (offline/migración pendiente).
+      setPetOptimistic((prev) => {
+        const next = { ...prev };
+        delete next[String(i)];
+        return next;
+      });
       setError(err instanceof Error ? err.message : "Error al actualizar la mascota");
     } finally {
       setBusy(false);
@@ -280,9 +297,9 @@ export function BookingCard({
           {/* Mascotas */}
           <div className="mb-3 flex flex-col gap-2">
             {booking.pets.map((pet, i) => {
-              const curPhase = booking.petStatus?.[String(i)]?.s ?? "";
-              const curIdx = PET_PHASES.indexOf(curPhase as PetPhase);
-              const doneIdx = curIdx >= 0 ? curIdx : -1;
+              const effCur0 = petStateOf(i);
+              const effIdx0 = PET_PHASES.indexOf(effCur0 as PetPhase);
+              const started0 = effIdx0 >= 0;
               return (
               <div key={i} className="rounded-xl bg-slate-50 p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
@@ -315,8 +332,12 @@ export function BookingCard({
                   <div className="no-print mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2">
                     <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Estado</span>
                     {PET_PHASES.map((ph) => {
-                      const isCurrent = curPhase === ph;
-                      const isNext = PET_PHASES.indexOf(ph) === doneIdx + 1;
+                      const effCur = petStateOf(i);
+                      const effIdx = PET_PHASES.indexOf(effCur as PetPhase);
+                      const started = effIdx >= 0;
+                      const isCurrent = effCur === ph;
+                      const isPast = started && PET_PHASES.indexOf(ph) < effIdx;
+                      const isNext = started && PET_PHASES.indexOf(ph) === effIdx + 1;
                       return (
                         <button
                           key={ph}
@@ -325,23 +346,28 @@ export function BookingCard({
                           title={
                             isCurrent
                               ? `${pet.name} está en ${PET_PHASE_LABEL[ph].toLowerCase()}`
-                              : isNext
-                                ? `Pasa a ${PET_PHASE_LABEL[ph].toLowerCase()}`
-                                : `Fijar ${PET_PHASE_LABEL[ph].toLowerCase()}`
+                              : isPast
+                                ? `${PET_PHASE_LABEL[ph]} completada — clic para volver`
+                                : isNext
+                                  ? `Pasa a ${PET_PHASE_LABEL[ph].toLowerCase()}`
+                                  : `Fijar ${PET_PHASE_LABEL[ph].toLowerCase()}`
                           }
-                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-default disabled:opacity-100 ${
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-default ${
                             isCurrent
                               ? "bg-brand-orange text-white shadow-sm"
-                              : isNext
-                                ? "bg-brand-orange/15 text-brand-orange ring-1 ring-brand-orange/40 hover:bg-brand-orange hover:text-white"
-                                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                              : isPast
+                                ? "bg-[#EFF6FF] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:bg-blue-100"
+                                : isNext
+                                  ? "bg-brand-orange/15 text-brand-orange ring-1 ring-brand-orange/40 hover:bg-brand-orange hover:text-white"
+                                  : "bg-slate-100 text-slate-500 hover:bg-slate-200"
                           }`}
                         >
+                          {isPast ? "✓ " : ""}
                           {PET_PHASE_LABEL[ph]}
                         </button>
                       );
                     })}
-                    {curPhase && (
+                    {started0 && (
                       <button
                         onClick={() => void movePet(i, "")}
                         className="ml-auto text-[11px] text-slate-400 transition hover:text-red-600"
