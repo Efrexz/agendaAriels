@@ -3,6 +3,13 @@
 Estado actual del repo: **todo committeado y desplegado a producción vía push a main** (Vercel auto-deploy).
 Producción: https://agenda-ariels-nu.vercel.app · migraciones 01–06 aplicadas en Supabase.
 
+## Cierre 05/11 (tarde) — M1 + WhatsApp de producción funcionando de VERDAD
+- **M1 honestidad WhatsApp: completo y probado en producción real**. El dueño creó una cita y llegó el mensaje desde su línea; commits: `d488beb` (backend flags + marcas + endpoint resend-notice + wizard honesto + panel ⚠/reenviar), `1e665d2` (fix candado go() que atascaba wizard con navegación rápida — esa era la flake E2E), `938f034` (badge actualiza al instante en búsqueda).
+- **Fase W temporal**: esta PC ES el servidor WhatsApp de producción vía ngrok (dominio reservado `shorter-disjoin-habitant.ngrok-free.dev`) — rutina automática al encender el PC + manual `npm run evo:prod-up|down`. **TODOS los detalles y diagnóstico en `AGENTS.md` (sección "WhatsApp de producción TEMPORAL")**. Key API local rotada (`.env` EVUL_API_KEY). `VET_MESSAGE_MODE=short` ya en Production. Cuando paguen: VPS mismo compose + cambiar solo API_URL/INSTANCE en Vercel.
+- Pruebas hechas con datos reales: wizard producción entrega ✓ · QA reenvío (CM-WL5FX) entrega ✓ badge se apaga ✓ · demo instancia conectada al teléfono del dueño ✓.
+
+## Siguiente fase PENDIENTE: G1 — estado por mascota (MAQUETA PRIMERO, comité)
+
 ## Qué hacer en un NUEVO CHAT
 
 1. Leer `AGENTS.md` + `HANDOFF-AUDITORIA.md` + este archivo (los dos primeros son la base; este da el punto exacto).
@@ -51,6 +58,17 @@ Qué cambiaron (todo sin migraciones nuevas: las marcas viven en `medical_status
   lo revive: solo deja de mentir y da la vía de reenvío).
 
 ## Fases PENDIENTES (en orden)
+
+### G1 — Estado por mascota (multi-mascota) — MAQUETA primero
+- BD propuesta: `bookings.pet_status jsonb` (clave = índice del array `pets`).
+- Panel: chips por mascota en pasos baño/secado/corte/listo; /estado: tarjetitas por mascota
+  bajo la cascada general. Maqueta visual aprueba antes de construir (patrón comité).
+- NOTA M1: las notas de transición (grooming) registran quién/cuándo; el estado por mascota
+  NO debe perder el historial global (`status_updates` sigue como está; pet_status es complemento).
+- Contexto: el wizard grooming admite varias mascotas por reserva (demo "3 mascotas"); hoy
+  el estatus avanza UNO para todas.
+
+### M2 — (cola previa de fases resueltas 05/11: ver cierre arriba)
 
 ### M1 — Honestidad de WhatsApp en citas (CÓDIGO HECHO 05/11; falta prueba real con Docker/Evolution)
 - `api/medical/_create.ts`: devolver `notified`/`whatsappDelivered` del `sendViaEvolution`

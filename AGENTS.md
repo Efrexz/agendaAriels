@@ -58,8 +58,16 @@ SUPABASE_URL/ANON/SERVICE_ROLE · TRACKING_ENABLED=true · VET_MESSAGE_MODE (sho
 ## BD y migraciones (aplicado del 30–31/10 vía Management API, sin schema_migrations remoto)
 `supabase/migrations/`: 01 prevención solapamientos (constraint exclusión por doctor/fecha; el backend devuelve 409 amigable) · 02 `lab_orders.result_access_hash` (huella del enlace privado) · 03 tabla `staff_users` (personal activo; alta manual por SQL) · 04 policy Storage con check de membresía · 05 funciones `api_*_transition`/`api_medical_assign` (estado+historial atómicos, solo service_role). Cambios de estado van por estas funciones (código local=deployado tras 03/11). QA remotos: VA-C42S8 · CM-TVPKV · CM-WL5FX · LAB-T87WZ (marcados QA, no borrar sin acordar).
 
+## WhatsApp de producción TEMPORAL — esta PC sirve la línea (hasta que paguen → VPS)
+- Mapeo Vercel (aplicado 05/11, Production): `EVOLUTION_API_URL = https://shorter-disjoin-habitant.ngrok-free.dev` (dominio RESERVADO de la cuenta ngrok del dueño; free ≈4 meses de crédito) · `EVOLUTION_API_KEY = EVUL_API_KEY` (valor en `.env` local, never commit) · `EVOLUTION_INSTANCE = ariels-demo` (la línea de PRUEBA del dueño sirve temporalmente; cuando den el OK: crear instancia `ariels-prod` con el QR de la línea de la veterinaria y cambiar SOLO este env en Vercel). `EVOLUTION_DRY_RUN` NO existe en Production (envía real). `VET_MESSAGE_MODE=short` ya aplicado en Production (deuda 1 cerrada).
+- **Rutina al encender el PC (AUTOMATICA)**: `.bat` de autoarranque en `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\evo-whatsapp-produccion.bat` espera 60s y corre `npm run evo:prod-up` (Docker + túnel ngrok dominio fijo + health-check). Requiere Docker Desktop "Start Docker Desktop when you sign in" ✓.
+- **Si WhatsApp falla ("no entregado" en wizard/panel) / diagnóstico para cualquier agente**: 1) Docker Desktop "Engine running"? y el setting de autostart; 2) terminal del proyecto: `npm run evo:prod-up` → debe imprimir `"state":"open"`; 3) si `"close"` → `http://localhost:8080/manager` (Global API key = `EVUL_API_KEY` del `.env`) → re-escanear QR; 4) PC apagado = wizard muestra ámbar honesta — NO es bug.
+- Manual: `scripts/evo-prod-up.sh` / `evo-prod-down.sh` (up respeta dominio fijo y apaga el stack abandonado `agenda_server_*`, que NO es producción y está vacío). Túnel log: `/tmp/opencode/ngrok-prod.log` · panel ngrok: dashboard → Endpoints.
+- Migración futura a VPS: mismo compose, escanear QR del negocio en `ariels-prod`, cambiar SOLO `EVOLUTION_API_URL` + `EVOLUTION_INSTANCE` en Vercel, apagar el .bat.
+- Seguridad: la API key local fue ROTADA fuera del repo después de que la vieja `ariels-demo-key` quedó pública en README/docs (ahora 401). Compose usa `${EVUL_API_KEY:?...}` del `.env` (gitignored).
+
 ## Deuda conocida (pendiente del usuario, no del código)
-1. VET_MESSAGE_MODE=short en Production+Preview (hoy solo Development) + redeploy.
+1. ~~VET_MESSAGE_MODE=short~~ RESUELTO 05/11 (Production). Preview queda SIN envs de Evolution ni message-mode **a propósito**: los jefes prueban en el dominio de Production; preview no envía WhatsApp (honesto) y no duplica mantenimiento.
 2. QZ Tray física: instalar en PC del mostrador y probar TM-T20II.
 3. Cambiar contraseña de vet_ariel@hotmail.com (quedó compartida por chat).
 4. Cuentas reales del staff por correo (+ altas en `staff_users`).
