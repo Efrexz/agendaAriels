@@ -59,16 +59,16 @@ Qué cambiaron (todo sin migraciones nuevas: las marcas viven en `medical_status
 
 ## Fases PENDIENTES (en orden)
 
-### G1 — Estado por mascota (multi-mascota) — MAQUETA primero
-- BD propuesta: `bookings.pet_status jsonb` (clave = índice del array `pets`).
-- Panel: chips por mascota en pasos baño/secado/corte/listo; /estado: tarjetitas por mascota
-  bajo la cascada general. Maqueta visual aprueba antes de construir (patrón comité).
-- NOTA M1: las notas de transición (grooming) registran quién/cuándo; el estado por mascota
-  NO debe perder el historial global (`status_updates` sigue como está; pet_status es complemento).
-- Contexto: el wizard grooming admite varias mascotas por reserva (demo "3 mascotas"); hoy
-  el estatus avanza UNO para todas.
-
-### M2 — (cola previa de fases resueltas 05/11: ver cierre arriba)
+### ✅ G1 — estado por mascota: CONSTRUIDO 05/11/2026 (commit 7dca0ca, deployado)
+- Migración `20261105120000_grooming_pet_status.sql` aplicada en Supabase con pre/post-check.
+- Panel: chips por mascota (cards multi-mascota), siguiente fase resaltada, "quitar estado".
+- Server: `/api/internal/pet-status` (staff-only) con derivación automática de la cascada
+  general (todas las fases iniciadas → mínimo; todas ≥ listo → estado "listo" con el ÚNICO
+  WhatsApp final — decisión del comité: sin aviso por mascota). Nunca retrocede.
+- /estado: sección "Cada mascota, su estado" con tarjetitas; petStatus público SIN email staff.
+- QA visual aprobado (capturas panel + derivación + /estado). El maqueta visual viejo queda
+  en /tmp (no commitear por regla del comité).
+- Reserva vieja sin pet_status (reservas pre-G1): chips ocultos y /estado tal como antes.
 
 ### M1 — Honestidad de WhatsApp en citas (CÓDIGO HECHO 05/11; falta prueba real con Docker/Evolution)
 - `api/medical/_create.ts`: devolver `notified`/`whatsappDelivered` del `sendViaEvolution`
