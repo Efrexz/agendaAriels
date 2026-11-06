@@ -39,6 +39,9 @@ export interface BookingRecord extends BookingRowInput {
   status: string;
   createdAt: string;
   whatsappDelivered: boolean;
+  /** G1: estado por mascota. Clave = índice en `pets`; valor {s,by,at}.
+   *  Null/ausente = reserva vieja (solo flujo global, sin cambios en su UI). */
+  petStatus: Record<string, { s: string; by: string; at: string }> | null;
 }
 
 export interface DayClosureRecord {
@@ -78,6 +81,12 @@ export interface BookingDb {
   transitionStatus(bookingId: string, from: string, to: string, createdBy: string): Promise<boolean>;
   countBookingsFor(branch: string, date: string, timeSlot: string | null): Promise<number>;
   setWhatsappDelivered(bookingId: string, delivered: boolean): Promise<void>;
+  setPetStatus(
+    bookingId: string,
+    petIndex: number,
+    entry: { s: string; by: string; at: string },
+    current: Record<string, { s: string; by: string; at: string }> | null,
+  ): Promise<void>;
   listStatusUpdates(bookingId: string): Promise<StatusUpdateRecord[]>;
   listUpdatesForBookings(bookingIds: string[]): Promise<Record<string, StatusUpdateRecord[]>>;
   findById(bookingId: string): Promise<BookingRecord | null>;
@@ -122,6 +131,7 @@ function rowToRecord(row: Record<string, unknown>): BookingRecord {
     status: String(row.status),
     createdAt: String(row.created_at),
     whatsappDelivered: Boolean(row.whatsapp_delivered),
+    petStatus: (row.pet_status as Record<string, { s: string; by: string; at: string }> | null) ?? null,
   };
 }
 
@@ -249,6 +259,29 @@ export class SupabaseBookingDb implements BookingDb {
       .update({ whatsapp_delivered: delivered })
       .eq("id", bookingId);
     if (error) throw new Error(`setWhatsappDelivered falló: ${error.message}`);
+  }
+
+  /** G1 estado por mascota: fusiona una entrada en `pet_status` jsonb
+   *  (status "" = reset de esa mascota). Requiere la migración aplicada. */
+  async setPetStatus(
+    bookingId: string,
+    petIndex: number,
+    entry: { s: string; by: string; at: string },
+    current: Record<string, { s: string; by: string; at: string }> | null,
+  ): Promise<void> {
+    const next = { ...(current ?? {}) };
+    if (entry.s === "") {
+      delete next[String(petIndex)]; // vacío = sin estado particular (reset)
+    } else {
+      next[String(petIndex)] = entry;
+    }
+    const { data, error } = await this.client
+      .from("bookings")
+      .update({ pet_status: next })
+      .eq("id", bookingId)
+      .select("id");
+    if (error) throw ({ code: "PET_STATUS_WRITE", message: error.message } as { code: string; message: string });
+    if (!data || data.length === 0) throw new Error("setPetStatus: booking no encontrado");
   }
 
   async listStatusUpdates(bookingId: string): Promise<StatusUpdateRecord[]> {

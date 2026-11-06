@@ -18,7 +18,7 @@ import {
   Wind,
   type LucideIcon,
 } from "lucide-react";
-import { updateStatus, resendWhatsapp, type PanelBooking } from "./api";
+import { updateStatus, resendWhatsapp, PET_PHASES, setPetStatus, type PanelBooking, type PetPhase } from "./api";
 import { printViaQz } from "./qz";
 import { ConfirmModal } from "./ConfirmModal";
 import { NOTIFIABLE_STATUSES, SLOT_LABELS, STATUS_ORDER, statusMeta } from "../statuses";
@@ -68,6 +68,16 @@ const STATE_ICON: Record<string, LucideIcon> = {
   listo: CheckCircle2,
   en_camino_entrega: Truck,
   entregado: PackageCheck,
+};
+
+// G1: chips por mascota (visible solo en reservas con 2+ mascotas; en una
+// sola, la cascada general ya es el per-mascota). Etiquetas simples.
+const PET_PHASE_LABEL: Record<PetPhase, string> = {
+  bano: "Baño",
+  secado: "Secado",
+  corte: "Corte",
+  listo: "Listo",
+  entregado: "Entregado",
 };
 
 export function BookingCard({
@@ -138,6 +148,21 @@ export function BookingCard({
       setResendMsg(err instanceof Error ? err.message : "No se pudo reenviar");
     } finally {
       setResendBusy(false);
+    }
+  }
+
+  // G1: estado por mascota. Chips clicables; el siguiente natural va resaltado.
+  const showPetChips = (booking.pets?.length ?? 0) >= 2;
+  async function movePet(i: number, to: PetPhase | "") {
+    setBusy(true);
+    setError(null);
+    try {
+      await setPetStatus(booking.id, i, to);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al actualizar la mascota");
+    } finally {
+      setBusy(false);
     }
   }
 
@@ -254,7 +279,11 @@ export function BookingCard({
 
           {/* Mascotas */}
           <div className="mb-3 flex flex-col gap-2">
-            {booking.pets.map((pet, i) => (
+            {booking.pets.map((pet, i) => {
+              const curPhase = booking.petStatus?.[String(i)]?.s ?? "";
+              const curIdx = PET_PHASES.indexOf(curPhase as PetPhase);
+              const doneIdx = curIdx >= 0 ? curIdx : -1;
+              return (
               <div key={i} className="rounded-xl bg-slate-50 p-3 text-sm">
                 <div className="flex items-start justify-between gap-3">
                   <div>
@@ -282,8 +311,49 @@ export function BookingCard({
                     </a>
                   )}
                 </div>
+                {showPetChips && (
+                  <div className="no-print mt-2 flex flex-wrap items-center gap-1.5 border-t border-slate-200/70 pt-2">
+                    <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Estado</span>
+                    {PET_PHASES.map((ph) => {
+                      const isCurrent = curPhase === ph;
+                      const isNext = PET_PHASES.indexOf(ph) === doneIdx + 1;
+                      return (
+                        <button
+                          key={ph}
+                          disabled={busy || isCurrent}
+                          onClick={() => void movePet(i, ph)}
+                          title={
+                            isCurrent
+                              ? `${pet.name} está en ${PET_PHASE_LABEL[ph].toLowerCase()}`
+                              : isNext
+                                ? `Pasa a ${PET_PHASE_LABEL[ph].toLowerCase()}`
+                                : `Fijar ${PET_PHASE_LABEL[ph].toLowerCase()}`
+                          }
+                          className={`rounded-full px-2.5 py-1 text-[11px] font-semibold transition disabled:cursor-default disabled:opacity-100 ${
+                            isCurrent
+                              ? "bg-brand-orange text-white shadow-sm"
+                              : isNext
+                                ? "bg-brand-orange/15 text-brand-orange ring-1 ring-brand-orange/40 hover:bg-brand-orange hover:text-white"
+                                : "bg-slate-100 text-slate-500 hover:bg-slate-200"
+                          }`}
+                        >
+                          {PET_PHASE_LABEL[ph]}
+                        </button>
+                      );
+                    })}
+                    {curPhase && (
+                      <button
+                        onClick={() => void movePet(i, "")}
+                        className="ml-auto text-[11px] text-slate-400 transition hover:text-red-600"
+                      >
+                        quitar estado
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Acciones de estado */}

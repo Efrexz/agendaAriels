@@ -6,6 +6,8 @@ export interface TrackingBooking {
   branchLabel: string;
   createdAt: string;
   pets: Array<{ name: string; type: string; service: string }>;
+  /** G1: {"<índice>": {s}} — null/ausente en reservas viejas. */
+  petStatus?: Record<string, { s: string }> | null;
   timeline: Array<{ status: string; createdAt: string }>;
 }
 

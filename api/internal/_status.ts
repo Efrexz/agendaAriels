@@ -42,7 +42,7 @@ interface Res {
   json(payload: unknown): Res;
 }
 
-const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) => string> = {
+export const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) => string> = {
   en_camino_recojo: (nombre) =>
     `🚐 *¡En camino!*\n\nLa movilidad de Veterinaria Ariel va hacia tu domicilio para recoger a *${nombre}*.\n\n¡Nos vemos en un momento! 🐶`,
   listo: (nombre, branchLabel) =>
@@ -51,7 +51,7 @@ const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) => string
     `🚐 *¡De regreso a casa!*\n\nLa movilidad va camino a llevarte a *${nombre}*. ¡Gracias por tu confianza! 🐶✨`,
 };
 
-function petNames(pets: Array<{ name: string }>): string {
+export function petNames(pets: Array<{ name: string }>): string {
   const names = pets.map((p) => p.name);
   return names.length <= 1 ? (names[0] ?? "") : `${names.slice(0, -1).join(", ")} y ${names[names.length - 1]}`;
 }

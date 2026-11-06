@@ -60,6 +60,10 @@ export async function buildStatusResponse(
         branchLabel: record.branchLabel,
         createdAt: record.createdAt,
         pets: record.pets.map((pet) => ({ name: pet.name, type: pet.type, service: pet.service })),
+        // G1: estado por mascota SIN el "by" (el email del staff no va al público).
+        petStatus: record.petStatus
+          ? Object.fromEntries(Object.entries(record.petStatus).map(([k, v]) => [k, { s: v.s }]))
+          : null,
         // Sin createdBy: el email del staff no va al público (el panel interno sí lo ve).
         timeline: timeline.map((t) => ({ status: t.status, createdAt: t.createdAt })),
       },

@@ -30,8 +30,24 @@ export interface PanelBooking {
   status: string;
   whatsappDelivered?: boolean;
   pets: PanelPet[];
+  /** G1 estado por mascota: { "<índice>": {s, by, at} } (null = reserva vieja). */
+  petStatus?: Record<string, { s: string; by: string; at: string }> | null;
   createdAt: string;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
+}
+
+export const PET_PHASES = ["bano", "secado", "corte", "listo", "entregado"] as const;
+export type PetPhase = (typeof PET_PHASES)[number];
+
+export async function setPetStatus(
+  bookingId: string,
+  petIndex: number,
+  status: PetPhase | "",
+): Promise<void> {
+  await authedFetch("/api/internal/pet-status", {
+    method: "POST",
+    body: JSON.stringify({ bookingId, petIndex, status }),
+  });
 }
 
 export interface PanelClosure {

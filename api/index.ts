@@ -31,6 +31,7 @@ import gSearchHandler from "./internal/_search.js";
 import gStatusHandler from "./internal/_status.js";
 import gClosuresHandler from "./internal/_closures.js";
 import gResendHandler from "./internal/_resend.js";
+import gPetStatusHandler from "./internal/_pet_status.js";
 import gHistoryHandler from "./internal/_history.js";
 import mDoctorsHandler from "./medical/_doctors.js";
 import mSpecialtiesHandler from "./medical/_specialties.js";
@@ -75,6 +76,7 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /internal/closures": { handler: gClosuresHandler as Handler },
   "DELETE /internal/closures": { handler: gClosuresHandler as Handler },
   "POST /internal/resend": { handler: gResendHandler as Handler },
+  "POST /internal/pet-status": { handler: gPetStatusHandler as Handler },
   "GET /internal/history": { handler: gHistoryHandler as Handler },
 
   "GET /medical/doctors": { handler: mDoctorsHandler as Handler },

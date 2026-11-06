@@ -443,6 +443,74 @@ export default function App() {
 
 // Estado "código no encontrado / sin conexión": card con la mascota de error
 // del catálogo visual + CTA WhatsApp de la clínica (en vez del texto rojo plano).
+/** G1: tarjetitas de estado por mascota — respetan la regla de estilo del
+ *  proyecto: verde solo como "Listo"; activo en naranja de marca. Solo se
+ *  muestran en reservas multi-mascota con algún estado iniciado; las viejas
+ *  (petStatus null) siguen viéndose como siempre. */
+const PET_CHIP: Record<string, { label: string; cls: string }> = {
+  bano: { label: "🛁 En baño", cls: "bg-brand-orange text-white" },
+  secado: { label: "💨 Secado", cls: "bg-brand-orange text-white" },
+  corte: { label: "✂️ En corte", cls: "bg-brand-orange text-white" },
+  listo: { label: "✅ Listo", cls: "bg-green-600 text-white" },
+  entregado: { label: "🏠 Entregado", cls: "bg-slate-600 text-white" },
+};
+const PHASE_BAR = ["bano", "secado", "corte", "listo", "entregado"] as const;
+
+function petEmoji(type: string): string {
+  return type.toLowerCase().includes("gato") ? "🐱" : "🐶";
+}
+
+function PetStatusCards({ booking }: { booking: TrackingBooking }) {
+  const entries = booking.petStatus
+    ? Object.entries(booking.petStatus).map(([k, v]) => [Number(k), v.s] as const)
+    : [];
+  if ((booking.pets?.length ?? 0) < 2 || entries.length === 0) return null;
+  return (
+    <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+      <div className="mb-4 flex items-center gap-2.5">
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-orange-50 text-brand-orange">
+          <PawPrint className="h-5 w-5" />
+        </div>
+        <h3 className="font-display text-lg font-semibold text-slate-900">Cada mascota, su estado</h3>
+      </div>
+      <div className="grid gap-3 sm:grid-cols-3">
+        {booking.pets.map((pet, i) => {
+          const s = booking.petStatus?.[String(i)]?.s ?? "";
+          const chip = s ? PET_CHIP[s] : null;
+          const idxDone = PHASE_BAR.indexOf(s as (typeof PHASE_BAR)[number]);
+          return (
+            <div key={i} className="rounded-2xl border border-slate-100 bg-[#FCFDFF] p-4 text-center ring-1 ring-[#DCEBFF]">
+              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-[#EFF6FF] text-2xl" aria-hidden>
+                {petEmoji(pet.type)}
+              </div>
+              <p className="mt-1.5 font-display text-sm font-bold text-slate-800">{pet.name}</p>
+              {chip ? (
+                <span className={`mt-1.5 inline-block rounded-full px-3 py-1 text-xs font-bold ${chip.cls}`}>
+                  {chip.label}
+                </span>
+              ) : (
+                <span className="mt-1.5 inline-block rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-500">
+                  Por comenzar
+                </span>
+              )}
+              <div className="mt-3 flex items-center justify-center gap-1.5" aria-hidden>
+                {PHASE_BAR.map((ph, bi) => (
+                  <span
+                    key={ph}
+                    className={`h-1.5 w-7 rounded-full ${
+                      bi < idxDone ? "bg-blue-400" : bi === idxDone ? "bg-brand-orange" : "bg-slate-200"
+                    }`}
+                  />
+                ))}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function ErrorView({ message }: { message: string }) {
   return (
     <section className="mt-2 rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-slate-200">
@@ -595,6 +663,9 @@ function BookingView({
           <ProcessStep status="entregado" active={booking.status} timeline={booking.timeline} reduceMotion={reduceMotion} last />
         </section>
       </div>
+
+      {/* G1: tarjetitas por mascota (solo multi-mascota con estado iniciado) */}
+      <PetStatusCards booking={booking} />
 
       <EstadoFooter code={booking.bookingCode}>
         <HeartHandshake className="h-3.5 w-3.5 shrink-0 text-brand-blue" />
