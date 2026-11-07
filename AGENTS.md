@@ -1,74 +1,54 @@
-# AGENTS.md — Contexto del proyecto (sustituye a PLAN.md, que vive solo en el historial de git)
+# AGENTS.md — Veterinaria Ariel (contexto ÚNICO de continuidad)
 
-Veterinaria Ariel: sistema digital de la veterinaria (antes todo era WhatsApp + cuadernos).
-Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/internal` · tracking `/estado` · citas médicas `/medical`. Local dev: `npm run dev` (5173). Supabase: ref `hflqbiqcpkpdczcvakyy`, RLS deny-all (existe solo la anon key en el cliente; TODO dato via /api con service_role o JWT del staff).
+Veterinaria de 3 sedes en Lima (SPM/LO/SM). Sistema digital de grooming + citas + laboratorio.
+Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/internal` · tracking `/estado` · citas `/medical`. Local: `npm run dev` (5173). Supabase ref `hflqbiqcpkpdczcvakyy`, RLS deny-all (solo anon key en el cliente; TODO dato vía /api con service_role o JWT del staff).
+**Este archivo es el ÚNICO documento de continuidad.** (Los HANDOFF viejos se consolidaron aquí y se eliminaron; el histórico vive en Git.) Al empezar: `git status --short` limpio + leer la sección "Estado vivo".
 
 ## Stack + reglas no negociables
-- React 19 + TS strict + Vite 8 multi-entry (`build.rollupOptions.input`: index/internal/status/medical/preview.html) + Tailwind 4 + framer-motion + vitest + Playwright + lucide-react.
-- `America/Lima` SIEMPRE para horas (helpers `src/utils/limaTime`, `api/lib-lima`; nunca toISOString directo para lógica).
-- Endpoints públicos: SOLO campos seguros (nunca teléfono, dirección, DNI del dueño).
-- API = Vercel serverless en `api/` (service_role solo ahí). Búsqueda de estados/labels centralizada en catálogos: `src/statuses.ts` (grooming), `src/labStatuses.ts`, `src/medicalStatuses.ts` (+ `medStatusMeta` fallback `❔`).
-- Gates obligatorios antes de commit: `npm run lint` · `typecheck` (doble: root + api/) · `test` (268 tests) · `build` · `test:e2e` (Playwright 10). QA visual: scripts ad-hoc playwright en /tmp/opencode con APIs interceptadas por `ctx.route`.
+- React 19 + TS strict + Vite 8 multi-entry (index/internal/status/medical/preview.html) + Tailwind 4 + framer-motion + vitest + Playwright + lucide-react.
+- `America/Lima` SIEMPRE para horas (`src/utils/limaTime`, `api/lib-lima`; nunca toISOString para lógica).
+- Endpoints públicos: SOLO campos seguros (nunca teléfono/dirección/DNI del dueño ni email del staff).
+- API = Vercel catch-all: `api/[...path].ts` enruta todo vía `api/index.ts` (ROUTES). Archivos nuevos en `api/` con prefijo `_` (Vercel Hobby: máx 12 funciones; los `_x` no cuentan). Tests con `_x.test.ts`.
+- **Gates antes de commit (en SECUENCIA)**: `npm run lint` · `tsc -b --force` + `tsc -p api/tsconfig.json` · `npm test` · `build` con `VITE_*` vacías · `test:e2e` (~21; hoy: azul, ej. X; liberar puerto 5173 antes). QA visual: scripts ad-hoc playwright en `/tmp/opencode` con APIs interceptadas (login stub de Supabase si el panel). NO commitear maquetas/screenshots.
+- Cambios de estructura BD: Management API (SQL en transacción con query PRE y POST de verificación; NO hay `schema_migrations` remoto). No inventar/aplicar migraciones históricas a ciegas.
 
-## Módulo 1 — Grooming (VA-XXXXX, el original)
-- Wizard `/` (src/components/BookingWizard + steps/) → `POST /api/booking`: INSERT en Supabase ANTES de WhatsApp (si falla BD, igual sale por WhatsApp), dedupe por UNIQUE booking_code. SIFALLA el WhatsApp con BD-OK → responde 200 `whatsappDelivered:false` y el wizard muestra "¡Reserva registrada!" ámbar (sin "Reintentar" → cero duplicados; el panel marca ⚠️ WhatsApp con reenvío). Recordatorio automático día-antes: cron 23:00 UTC ya en vercel.json (2° crons gratis de Hobby queda para grooming si se activa).
-- Estados: pendiente→en_camino_recojo→recibido→en_bano→en_secado→en_corte→listo→en_camino_entrega→entregado (+cancelado). Cada cambio registra quién/cuándo (`status_updates`).
-- WhatsApp al cliente en `en_camino_recojo`/`listo`/`en_camino_entrega` (Evolution API). Panel imprime boleta 80mm (Epson TM-T20II) vía QZ Tray (`src/internal/qz.ts`, builder ESC/POS) con fallback window.print; auto-impresión OFF por defecto (solo reservas nuevas post-apertura).
-- Panel marca "Auto", días cerrados por sede/franja (`day_closures`), búsqueda por código/teléfono/nombre.
+## Módulos
+### Grooming (VA-XXXXX)
+- Wizard `/` (BookingWizard + steps/) → `POST /api/booking`: INSERT ANTES de WhatsApp; falla WA con BD ok → 200 `whatsappDelivered:false` y wizard muestra "¡Reserva registrada!" ámbar (cero duplicados); dedupe por UNIQUE booking_code.
+- Estados: pendiente→en_camino_recojo→recibido→en_bano→en_secado→en_corte→listo→en_camino_entrega→entregado (+cancelado). WhatsApp al cliente en en_camino_recojo/listo/en_camino_entrega (Evolution).
+- **G1 estado por mascota (05/11)**: `bookings.pet_status` jsonb `{"<idx>":{"s":"bano|secado|corte|listo|entregado","by","at"}}`. Endpoint `POST /api/internal/pet-status` (staff; valida índice; registra quién/cuándo; sin historial global extra). **Derivación server-side**: todas las mascotas con fase → el estado general avanza al mínimo (no retrocede; entregado/cancelado no se tocan); todas ≥ listo → general "listo" = **ÚNICO WhatsApp final** (decisión del comité: sin aviso por mascota). Panel: chips por mascota (multi-mascota) con respuesta optimista; fases pasadas azul con ✓; SIN resaltado naranja hasta que exista estado. `/estado`: "Cada mascota, su estado" con tarjetitas (petStatus proyectado SIN datos staff). Reservas viejas sin pet_status: intachables (fallback visual global).
+- Boleta 80mm vía QZ Tray (`src/internal/qz.ts`, ESC/POS) con fallback window.print; auto-impresión OFF por defecto.
+### Citas médicas (CM-XXXXX)
+- Wizard `/medical`: sede→servicio(general/rayos/eco/especializada; rayos/eco preguntan orden sellada)→especialidad/doctor→agenda→datos→copiable.
+- **Especializada** (interconsulta): sin calendario, fecha/hora la fija el counter tras verificar pago (`pagado` → asignación → `confirmada` con fecha/hora/doctor **y WhatsApp automático al cliente — incluye especializadas (hueco cerrado 06/11)**; marca wa_entregado). Solapamientos prohibidos en BD (RPC `api_*_transition`/`api_medical_assign`; 409 amigable). Solicitudes de PRÓXIMA semana sin hora → banda de panel "Citas por confirmación" → confirmación de horario envía WhatsApp. Especialistas deben existir por sede: **sin filas kind=especialista el modal del counter falla con mensaje orientativo a ⚙ Config → Doctores**.
+- Recordatorios día-antes cron 23:00 UTC (`api/medical/_reminders.ts`, CRON_SECRET).
+### Laboratorio (LAB-XXXXX)
+- Órdenes cross-sede (origen/responsable): recibida→en_laboratorio→resultado_listo→entregada. Resultado privado: PDF/JPG + token 256-bit (`result_access_hash`), descarga en `/estado` sin cuenta; ventana 20 días + purge (`api/lab/_purge.ts`); reenvío de enlace con endpoint propio. Storage exige staff activo (policy única aplicada).
+### Panel interno (`/internal`)
+- Tabs: Grooming · Consultas · Laboratorio · Historial · Config (doctores/especialidades/horarios/redactar McNuevas).
+- Auto-refresh visible (useVisibleRefresh 30s/60s, pausado en búsquedas/modales/peticiones) · toast de llegadas · reagendar 1 clic · guía "?" · MiniWhatsApp.
+- **M1 honestidad WhatsApp (05/11)**: TODO envío exito/fallo regist перечень marcas `wa_entregado`/`wa_fallado` suele ofrecer en el historial (`recordWhatsappNotice`). Cards de citas/grooming muestran badge roja **⚠ WhatsApp** cuando un aviso falló sin entrega posterior + botón **🔁 Reenviar aviso** (endpoint propio; el reenvío usa el mensaje del estado ACTUAL). Badges/label actualizados al sinc. Wizards con estado konkrete reversible: asaciliord `whatsappDelivered` en creación (verde SOLO con entregado; amPerl a guarda código si es cual falla).
 
-## Módulo 2 — Citas médicas (CM-XXXXX, `/medical`)
-- Wizard: sede→servicio(general/rayos/eco/especializada)→(rayos/eco: pregunta orden sellada)→doctor general o especialidad→agenda→datos→código copiable.
-- FLUJO ESPECIALIZADA ("interconsulta"): NO pasa por calendario; `date/doctorId/startMinute = null` y el Resumen jamás muestra doctor/fecha — "La especialista confirma fecha y hora" (los asigna el counter tras verificar el pago en "📥 Pendientes de asignar"). Flujo: solicitud→pagado→asignada→confirmada→en_consulta→atendida (+no_llego).
-- `chooseService` limpia el estado del flujo anterior al cambiar de tipo (no heredar doctor/fecha/especialidad).
-- Estados/flow: `src/medicalStatuses.ts` (`MED_FLOW_NORMAL`, `MED_FLOW_ESPECIALIZADA`). Cita dura `appt_duration_minutes` (config en panel ⚙).
-- Panel: `api/medical/slots.ts` deriva disponibilidad desde horarios de doctor + duración; recordatorios WhatsApp día-antes vía cron Vercel 23:00 UTC (18:00 Lima, `api/medical/_reminders.ts`, CRON_SECRET pendiente de registrar).
+## Sistema visual (aprobado por el dueño — no rediseñar sin maqueta)
+- Estilo pastel del wizard de mockup: card top degradado azul→naranja; progreso actives naranja con halo;SERVICE_TINT por servicio; mascotas webp `public/images/vetMascot/`; avatares por especie; verde solo semántico de éxito. Cambios visuales: captura + aprobación (comité). Nada de dashboards/agresivos.
 
-## Módulo 3 — Laboratorio (LAB-XXXXX)
-- Órdenes cross-sede: `sede_origen` (registró) vs `sede_responsable` (atiende). Estados: recibida→en_laboratorio→resultado_listo→entregada (+cancelado); vencimiento >7 días dispara anillo ámbar.
-- Resultado: PDF/JPG subido en panel → cliente lo recibe por WhatsApp con ENLACE PRIVADO (token 256-bit, huella en `lab_orders.result_access_hash`) y descarga en `/estado` sin cuenta; el código corto solo muestra ESTADO (nunca el archivo). Ventana 20 días, purge `api/lab/_purge.ts`; reemplazo/borrado/rotación de enlace los mata al instante. Panel: botón "↗ Reenviar enlace" (con modal de advertencia) si el WhatsApp falla o el cliente pierde el enlace. Endpoints: `POST /api/lab-download` (token→URL firmada 60s) · `POST /api/internal/lab/resend-result`. Catálogo persistente de labs/exámenes (combobox con ➕ en vivo).
+## Estado vivo (REVISAR ANTES DE TOCAR NADA)
+- **WhatsApp de producción TEMPORAL vive en ESTA PC** (hasta que paguen → VPS): Vercel Production `EVOLUTION_API_URL = https://shorter-disjoin-habitant.ngrok-free.dev` (dominio reservado del dueño) · `EVOLUTION_API_KEY = EVUL_API_KEY` (en `.env`, no en repo; compose la interpola `${EVUL_API_KEY:?}`) · `EVOLUTION_INSTANCE = ariels-demo` (teléfono de PRUEBA del dueño sirve mientras; línea del negocio después: instancia `ariels-prod` + QR del negocio + cambiar SOLO este env). `EVOLUTION_DRY_RUN` NO existe en Production (envía real). Preview SIN envs de Evolution (a propósito).
+- **Rutina de encendido (automática)**: `.bat` en Startup de Windows espera 60s y corre `npm run evo:prod-up` (compose + ngrok con dominio fijo + health-check `"state":"open"`); manual: scripts/evo-prod-up.sh · down: evo:prod-down. **Diagnóstico si "no entregado"**: 1) Docker "Engine running" (más autostart "Start Docker Desktop when you sign in"), 2) `npm run evo:prod-up`, 3) state close → manager `localhost:8080/manager` (KEY global = EVUL_API_KEY) → re-escanear QR. PC apagado = wizard ámbar honesto — NO es bug. VPS futuro: mismo compose; cambian 2 envs.
+- **Doctores especialistas FICTICIOS en producción** (06/11, para demo hasta el pago real): 5 especialistas × 3 sedes (Nolasco/Neuro, Uchiyama/Cardio, Ccahuana/Odont, Quiroz/Nutri, Palomino/Trauma) + horarios demo Lun 9–13 y Jue 15–19 (emails `.local`, tel 999000000). **Reemplazar por reales pre go-live** (Config ⚙ → baja + alta real; /tmp/opencode/seed-especialistas.mjs para regenerar).
+- Cron pendiente de 1.ª prueba en la realtà real con Docker alto (recordatorio 18:00 Lima); sin purgas reales sin consentimiento.
+- Citas QA — NO borrar sin acuerdo: VA-C42S8 · CM-TVPKV · CM-WL5FX (reenvío pruebas) · LAB-T87WZ · CM-WEEK1.
 
-## Panel interno (`/internal`, src/internal/)
-- Pestañas: Grooming · Consultas · Laboratorio · Historial · Config. (Horarios médicos viven como sección desplegable dentro de ⚙ Config desde 2026-10-27 — tarea de baja frecuencia).
-- Historial (HistoryTab) separa por tipo, rango ≤1 mes, agrupado por día y SALTA a la pestaña destino con el código buscado (prop `jumpSearch`; Consultas/Lab auto-buscan al montar).
-- Cards acordeón accesibles (role=button, aria-expanded, Enter/Espacio). Creación CTAs = `bg-brand-blue`; verde reservado a semántica de éxito. Acento de pestaña activa: grooming azul / consultas sky / laboratorio naranja. Guardas defensivas `?? []` en todos los fetch (una API malformada no debe tumbar el panel).
-- ⚙ Config médica: duración cita, texto métodos de pago, doctores (activate/baja) y especialidades (precio + sedes por botón SPA/LO/SM).
-- MINI WHATSAPP (2026-10-27): botón verde junto al teléfono en cards de Consultas/Lab → `wa.me` normalizado `src/internal/waLink.ts` (helper con test) + `MiniWhatsApp.tsx` (mensaje pre-armado con código).
-- AUTO-REFRESH VISIBLE (2026-10-31): `src/internal/useVisibleRefresh.ts` — Consultas/Laboratorio se reconsultan cada 30s (semana médica 60s) SOLO pestaña visible y sin búsqueda/modal/petición en curso.
-- ACCESO DE STAFF (2026-10-31): las APIs `/api/internal/*` y `/api/medical/*` exigen sesión válida Y fila `active` en `staff_users` (RLS: cada usuario lee solo su fila). Dar de alta personal = `INSERT INTO staff_users (user_id) SELECT id FROM auth.users WHERE email='...';`. Subida de resultados LAB al bucket también exige miembros activos (policy "staff upload lab results").
-- TOAST de llegadas (`NewArrivalsToast.tsx`): si el panel está abierto y entra reserva/cita/orden creada después (sessionStart/seen por pestaña; en consultas solo Hoy/Mañana), toast azul abajo-derecha "clic para ver" → refresca y oculta 8s. Patrón anti-dismissed (visible = count ∉ dismissed).
-- REAGENDAR 1 clic: en cards de Consultas con `no_llego/cancelado` → botón "🔁 Reagendar como nueva cita" abre el modal manual con prefill (dueño/mascota/tipo/sede/notas); el guard dirty compara contra el prefill (no pregunta si no se tocó nada).
-- GUÍA "?" (`HelpGuide.tsx`): botón flotante abajo-izquierda → modal con pasos por pestaña en lenguaje de mostrador (onboarding del staff).
-- Login pulido al nivel del wizard (pastel + huellitas + botón degradado de marca).
+## Deuda / cola (nada bloquea la demo a los jefes)
+1. Pre go-live: reemplazar doctores ficticios por reales + limpiar citas QA (visto bueno del jefe).
+2. Cuentas staff reales (altas `INSERT INTO staff_users SELECT id FROM auth.users WHERE email=...`) + cambiar contraseña expuesta de `vet_ariel@hotmail.com`.
+3. QZ Tray física en el PC del mostrador + prueba TM-T20II.
+4. VPS cuando paguen (misma routine) + QR de la línea del negocio. Entretanto ametralladora los benigno del dueño sirven las demos.
+5. Ideas apuntadas (maqueta/plan antes de construir): doctores con sede "todas" (evita duplicar al especialista por sede) · búsqueda por teléfono normalizada/paginación (auditoría ítem 9) · actualizar dependencias menores.
 
-## Sistema visual del wizard médico (≈ 2026-10-26/27, estilo mockup del usuario)
-- Card top con degradado azul→naranja. Progreso: completado=azul, ACTIVO=naranja con halo, label "Paso X de 4" naranja.
-- Paso servicio: cards horizontales pastel por servicio (`SERVICE_TINT`: general azul, rayos cyan, eco naranja, especializada verde semántico) — foto circular con HALO desplazado detrás + ola grande inferior + rayitas "¡" ancladas al círculo de la foto + pill "📄 Requiere orden" (solo rayos/eco) + badge "El más solicitado" en general (flag `popular`).
-- Paso especialidad: cards 2col con icono por palabra clave (`ESPECIALIDAD_REGEX_ICONS`, fallback birrete) + collage de 4 especialidades a la derecha (`especializada.webp`, RGB enmarcado con `EspecialidadCollage`). Paso doctor/orden: 2 col con mascota webp. Mascotas: webp en `public/images/vetMascot/` (listo=spaListo, entregado=entregado "Gracias por su preferencia", cancelado VA+LAB=cancelado.webp, LAB entregada=resultadoListo.webp (reuso pedido por el usuario), recogida/entrega comparten camino.webp; resultadoListo con alpha real; card "Consulta Especializada" del paso servicio usa especializadas.webp). Pago/copy comparten imagen INTENCIONAL (bulldog clipboard; no pedir arte). Pendiente de arte único: fotos reales de doctores en `public/images/doctores/` (no existe; cards muestran estetoscopio fallback).
-- /estado: tracking con tinte por estado (`STATUS_TINT` en src/status/mascots.ts), métricas en fila 3-col, skeleton, card de error con mascota + CTA WhatsApp, botón copiar-enlace, document.title dinámico. LAB: el resultado aparece "disponible"; la descarga SOLO por enlace privado (sin fragmento `#resultado=` se explica cómo pedirlo). `no-referrer` y sin cachear al documento.
+## Env vars (Vercel) resumen
+SUPABASE_URL/ANON/SERVICE_ROLE · VITE_SUPABASE_URL/ANON_KEY · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short en Production) · EVOLUTION_API_URL/INSTANCE/KEY (temporal = esta PC vía ngrok; VER arriba) · EVOLUTION_DRY_RUN (solo dev) · WHATSAPP_DESTINO (número counter) · CRON_SECRET (no rotar sin necesidad) · LAB_RESULT_PUBLIC_ORIGIN opcional. Vercel Hobby: ≤12 funciones + crons gratis.
 
-## Comité de estilos (el usuario confirma ideas antes de construir)
-Usuarios finales = recepcionistas (panel) y dueños de mascotas. Todo cambio visual del wizard/panel se verifica con capturas antes de commitear; el usuario revisa y el jefe aprueba los cambios estéticos grandes (mockup del paso servicio aprobado). NO versionar maquetas de guía (patrón 83477a6).
-
-## Descartado explícitamente (NO volver a proponer sin preguntar)
-Ficha por mascota e historial clínico (usan VetPraxis) · notas internas por cliente · métricas/estadísticas ni export CSV (descartado por el jefe) · foto/video del staff al cliente · foto de referencia y "cómo llegar" en la página del cliente.
-
-## Env vars (Vercel prod+preview+dev)
-SUPABASE_URL/ANON/SERVICE_ROLE · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short: activo en Development; falta Production+Preview + redeploy) · EVOLUTION_API_URL/INSTANCE/KEY (WhatsApp) · EVOLUTION_DRY_RUN · WHATSAPP_DESTINO · CRON_SECRET (verificado en Production/Preview/Development el 30/10; NO rotar sin necesidad) · LAB_RESULT_PUBLIC_ORIGIN (opcional: solo para probar enlaces LAB contra dominio distinto a producción; debe ser https:// raíz) · VITE_SUPABASE_URL/ANON_KEY (panel).
-
-## BD y migraciones (aplicado del 30–31/10 vía Management API, sin schema_migrations remoto)
-`supabase/migrations/`: 01 prevención solapamientos (constraint exclusión por doctor/fecha; el backend devuelve 409 amigable) · 02 `lab_orders.result_access_hash` (huella del enlace privado) · 03 tabla `staff_users` (personal activo; alta manual por SQL) · 04 policy Storage con check de membresía · 05 funciones `api_*_transition`/`api_medical_assign` (estado+historial atómicos, solo service_role). Cambios de estado van por estas funciones (código local=deployado tras 03/11). QA remotos: VA-C42S8 · CM-TVPKV · CM-WL5FX · LAB-T87WZ (marcados QA, no borrar sin acordar).
-
-## WhatsApp de producción TEMPORAL — esta PC sirve la línea (hasta que paguen → VPS)
-- Mapeo Vercel (aplicado 05/11, Production): `EVOLUTION_API_URL = https://shorter-disjoin-habitant.ngrok-free.dev` (dominio RESERVADO de la cuenta ngrok del dueño; free ≈4 meses de crédito) · `EVOLUTION_API_KEY = EVUL_API_KEY` (valor en `.env` local, never commit) · `EVOLUTION_INSTANCE = ariels-demo` (la línea de PRUEBA del dueño sirve temporalmente; cuando den el OK: crear instancia `ariels-prod` con el QR de la línea de la veterinaria y cambiar SOLO este env en Vercel). `EVOLUTION_DRY_RUN` NO existe en Production (envía real). `VET_MESSAGE_MODE=short` ya aplicado en Production (deuda 1 cerrada).
-- **Rutina al encender el PC (AUTOMATICA)**: `.bat` de autoarranque en `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Startup\evo-whatsapp-produccion.bat` espera 60s y corre `npm run evo:prod-up` (Docker + túnel ngrok dominio fijo + health-check). Requiere Docker Desktop "Start Docker Desktop when you sign in" ✓.
-- **Si WhatsApp falla ("no entregado" en wizard/panel) / diagnóstico para cualquier agente**: 1) Docker Desktop "Engine running"? y el setting de autostart; 2) terminal del proyecto: `npm run evo:prod-up` → debe imprimir `"state":"open"`; 3) si `"close"` → `http://localhost:8080/manager` (Global API key = `EVUL_API_KEY` del `.env`) → re-escanear QR; 4) PC apagado = wizard muestra ámbar honesta — NO es bug.
-- Manual: `scripts/evo-prod-up.sh` / `evo-prod-down.sh` (up respeta dominio fijo y apaga el stack abandonado `agenda_server_*`, que NO es producción y está vacío). Túnel log: `/tmp/opencode/ngrok-prod.log` · panel ngrok: dashboard → Endpoints.
-- Migración futura a VPS: mismo compose, escanear QR del negocio en `ariels-prod`, cambiar SOLO `EVOLUTION_API_URL` + `EVOLUTION_INSTANCE` en Vercel, apagar el .bat.
-- Seguridad: la API key local fue ROTADA fuera del repo después de que la vieja `ariels-demo-key` quedó pública en README/docs (ahora 401). Compose usa `${EVUL_API_KEY:?...}` del `.env` (gitignored).
-
-## Deuda conocida (pendiente del usuario, no del código)
-1. ~~VET_MESSAGE_MODE=short~~ RESUELTO 05/11 (Production). Preview queda SIN envs de Evolution ni message-mode **a propósito**: los jefes prueban en el dominio de Production; preview no envía WhatsApp (honesto) y no duplica mantenimiento.
-2. QZ Tray física: instalar en PC del mostrador y probar TM-T20II.
-3. Cambiar contraseña de vet_ariel@hotmail.com (quedó compartida por chat).
-4. Cuentas reales del staff por correo (+ altas en `staff_users`).
-5. Grooming: faltan artes recibido/camino/corte (la cascada muestra placeholder DogAndCat).
+## Comite de estilos + descartado
+- Usuarios finales: recepcionistas + dueño mascotas. Toda mejora visual: maqueta/captura y confirmación (deck) por el jefe grandes cambios.
+- Descartado NO re-proponer: ficha por mascota/historial clínico (usan VetPraxis) · notas internas · métricas/export CSV · foto/video del staff al cliente · foto de referencia y "cómo llegar" · hora de recogida en /estado (movilidad siempre lleva de vuelta).
