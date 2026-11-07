@@ -137,3 +137,14 @@ En `src/internal/ConsultasTab.tsx` (QA visual con login Supabase stub + APIs int
   en SECUENCIA; variables `VITE_*` vacías al correr e2e/build.
 - QA remotos en Supabase pendientes de limpieza (con OK del dueño): VA-C42S8, CM-TVPKV,
   CM-WL5FX, LAB-T87WZ y la orden CM-WEEK1/CM-QAW1 la dejó el dueño en pruebas.
+
+## ⚠️ DATO FICTICIO EN PRODUCCIÓN — doctores especialistas (06/11)
+- Se crearon 5 especialistas FICTICIOS × 3 sedes (15 filas en medical_doctors) + 30 bloques
+  de horario demo (Lun 9–13 y Jue 15–19): Nolasco (Neuro), Uchiyama (Cardio), Ccahuana
+  (Odonto), Quiroz (Nutrición), Palomino (Trauma). Emails @veterinaria-ariel.local y teléfono
+  999000000 = placeholders. **El dueño DEBE reemplazarlos por los reales antes del go-live**:
+  desactivarlos (Config ⚙ → Doctores → baja) y crear los reales, O re-lanzar
+  /tmp/opencode/seed-especialistas.mjs con datos reales. Sin no borrar sin acordar.
+- Contexto: la cita especializada pide especialidad al cliente; el counter asigna doctor de
+  kind=especialista en ESA sede (error "No hay especialistas" sin filas). La especialidad
+  NO filtra la lista de doctores del modal (solo sede+tipo).
