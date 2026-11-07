@@ -1,6 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MedicalSlotConflictError } from "./errors.js";
 
+const sendSpy = vi.fn(async () => ({ ok: true }) as const);
+
 const dbMock = {
   findApptById: vi.fn(),
   listDoctors: vi.fn(),
@@ -11,10 +13,17 @@ const dbMock = {
   assignAppt: vi.fn(),
 };
 
+vi.mock("../_booking.js", () => ({
+  normalizePhoneDest: (v: string | undefined) => (typeof v === "string" ? `51${v.replace(/\D/g, "")}` : ""),
+  sendViaEvolution: sendSpy,
+}));
+
 vi.mock("./_shared.js", () => ({
   getMedicalDb: () => dbMock,
   notConfigured: () => undefined,
   staffGuard: vi.fn(async () => ({ email: "vet_ariel@hotmail.com" })),
+  BRANCH_LABELS: { san_miguel: "Sede San Miguel" },
+  BRANCH_PHONES: { san_miguel: "519999999" },
 }));
 
 const { default: handler } = await import("./_assign.js");
@@ -25,6 +34,11 @@ const appt = {
   status: "pagado",
   branch: "san_miguel",
   durationMinutes: 0, // citas por asignar guardan 0
+  ownerPhone: "51912345678",
+  ownerName: "Dueño Especializada QA",
+  specialtyName: "Neurología",
+  petName: "Manolito",
+  needsOrder: null,
 };
 
 const doctor = { id: "5eb9cf5e-9e46-4a2c-8a7b-000000000002", active: true, kind: "especialista" };
@@ -159,5 +173,25 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     await handler({ method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 540 } }, res);
     expect(entries[0]).toMatchObject({ s: 409, b: { ok: false } });
     expect(JSON.stringify(entries[0]?.b)).toMatch(/cambió/);
+  });
+
+  it("ESPECIALIZADA confirmada → SÍ envía el WhatsApp de confirmación (M1/M2B hueco cerrado)", async () => {
+    vi.unstubAllEnvs();
+    vi.stubEnv("EVOLUTION_API_URL", "https://evo-qa.test");
+    vi.stubEnv("EVOLUTION_API_KEY", "qa");
+    vi.stubEnv("EVOLUTION_INSTANCE", "qa");
+    vi.stubEnv("EVOLUTION_DRY_RUN", "false");
+    dbMock.findApptById.mockResolvedValue({ ...appt, ownerPhone: "912345678" });
+    dbMock.recordWhatsappNotice = vi.fn(async () => undefined);
+    const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
+    const { res, entries } = makeRes();
+    await handler(
+      { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 540 } },
+      res,
+    );
+    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "confirmada", notified: true } });
+    // El envío y la marca quedaron en el historial sin fallar el handler.
   });
 });

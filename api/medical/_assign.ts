@@ -145,11 +145,13 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    // La solicitud confirmada recibe el WhatsApp oficial con fecha/hora/doctor.
+    // La cita confirmada recibe el WhatsApp oficial con fecha/hora/doctor.
+    // G1/M1: YA INCLUYE ESPECIALIZADAS — antes se excluidas (hueco encontrado
+    // en pruebas del dueño: la especializada pagada confirmaba sin aviso).
     let notified = false;
-    if (appt.serviceType !== "especializada") {
+    {
       const env = process.env as BookingEnv;
-      const dest = normalizePhoneDest(appt.ownerPhone);
+      const dest = normalizePhoneDest(typeof appt.ownerPhone === "string" ? appt.ownerPhone : "");
       const evoReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE);
       const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
       if (dest && (evoReady || dryRun)) {
@@ -183,6 +185,8 @@ export default async function handler(req: Req, res: Res) {
       res.status(409).json({ ok: false, error: "El doctor ya tiene una cita en ese horario. Elige otro." });
       return;
     }
+        console.error("DBG-assign:", err instanceof Error ? `${err.name}: ${err.message}` : String(err));
     res.status(500).json({ ok: false, error: "Error inesperado del servidor." });
   }
 }
+
