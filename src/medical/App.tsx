@@ -54,6 +54,7 @@ const INITIAL: FormData = {
 // reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
 const MASCOT = {
   orden: "/images/vetMascot/orden.webp",
+  sinOrden: "/images/vetMascot/confirmacionOrden.webp",
   doctor: "/images/vetMascot/doctor.webp",
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
@@ -689,47 +690,87 @@ export default function App() {
                 </section>
               )}
 
-              {/* ── Sin orden: dos caminos (mismo aire que la maqueta) ── */}
+              {/* ── Sin orden: dos caminos (maqueta aprobada: 2 columnas espaldas a
+                      espaldas, mascota confirmacionOrden con saludo + burbujas
+                      calendario/orden — mismo lenguaje que el paso orden) ── */}
               {step === "sin_orden" && (
-                <section className="mx-auto max-w-2xl">
-                  <div className="mb-1.5 flex items-center gap-2.5">
-                    <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
-                    <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Sin orden médica</p>
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  {/* Columna izquierda: título + opciones */}
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Sin orden médica</p>
+                    </div>
+                    <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Primero toca</span>
+                      <span className="block">
+                        <span className="text-orange-500">consulta general</span>
+                      </span>
+                    </h2>
+                    <p className="mb-5 text-sm leading-relaxed text-[#546A8E]">
+                      El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
+                      radiografía o ecografía el mismo día.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      <motion.button
+                        onClick={() => { update("serviceType", "general"); update("hasOrder", null); go("doctor"); }}
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.3 }}
+                        className="group flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-2 ring-blue-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
+                          <Stethoscope className="h-6 w-6" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-display text-xl font-bold leading-tight text-[#475AAB]">Agendar consulta general ahora</span>
+                          <span className="block text-xs leading-relaxed text-[#546A8E]">Un médico veterinario evaluará a tu mascota.</span>
+                        </span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                          <ArrowRight className="h-5 w-5" />
+                        </span>
+                      </motion.button>
+                      <motion.a
+                        href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.4 }}
+                        className="group flex items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
+                          <Phone className="h-6 w-6" />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block font-display text-xl font-bold leading-tight text-green-800">Hablar con la sede por WhatsApp</span>
+                          <span className="block text-xs leading-relaxed text-green-700/80">Puedes resolver tus dudas o recibir orientación.</span>
+                        </span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                          <ArrowRight className="h-5 w-5" />
+                        </span>
+                      </motion.a>
+                    </div>
                   </div>
-                  <h2 className="mb-3 font-display text-3xl font-bold leading-[1.15] tracking-tight text-[#475AAB] sm:text-4xl">
-                    Primero toca <span className="text-orange-500">consulta general</span>
-                  </h2>
-                  <p className="mb-5 text-sm leading-relaxed text-[#546A8E]">
-                    El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
-                    radiografía o ecografía el mismo día.
-                  </p>
-                  <div className="flex flex-col gap-3">
-                    <button
-                      onClick={() => { update("serviceType", "general"); update("hasOrder", null); go("doctor"); }}
-                      className="group flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-1 ring-slate-200 shadow-sm transition-all hover:-translate-y-1 hover:shadow-lg hover:shadow-blue-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
-                    >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
-                        <Stethoscope className="h-6 w-6" />
-                      </span>
-                      <span className="flex-1 font-display text-xl font-bold text-[#475AAB]">Agendar consulta general ahora</span>
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-gradient-to-r from-blue-600 to-orange-400 text-white shadow-md transition-transform group-hover:translate-x-1">
-                        <ArrowRight className="h-5 w-5" />
-                      </span>
-                    </button>
-                    <a
-                      href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="group flex items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
-                    >
-                      <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
-                        <Phone className="h-6 w-6" />
-                      </span>
-                      <span className="flex-1 font-display text-xl font-bold text-green-800">Hablar con la sede por WhatsApp</span>
-                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition-transform group-hover:translate-x-1">
-                        <ArrowRight className="h-5 w-5" />
-                      </span>
-                    </a>
+
+                  {/* Columna derecha: mascota confirmacionOrden (la webp ya trae
+                      blobs, bandanas, burbujas de calendario/orden y huellitas dentro) */}
+                  <div className="relative mx-auto flex w-full justify-center">
+                    <motion.img
+                      src={MASCOT.sinOrden}
+                      alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
+                      className="h-48 w-auto select-none object-contain sm:h-64 lg:h-80"
+                      draggable={false}
+                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
+                      animate={{ opacity: 1, scale: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
+                    />
+                    {/* Fundido blanco abajo: disimula el corte brusco del arte
+                        (mismo patrón que el paso orden y WelcomeBackStep) */}
+                    <div
+                      aria-hidden
+                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
+                    />
                   </div>
                 </section>
               )}
