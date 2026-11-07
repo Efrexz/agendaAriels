@@ -9,7 +9,7 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 - `America/Lima` SIEMPRE para horas (`src/utils/limaTime`, `api/lib-lima`; nunca toISOString para lógica).
 - Endpoints públicos: SOLO campos seguros (nunca teléfono/dirección/DNI del dueño ni email del staff).
 - API = Vercel catch-all: `api/[...path].ts` enruta todo vía `api/index.ts` (ROUTES). Archivos nuevos en `api/` con prefijo `_` (Vercel Hobby: máx 12 funciones; los `_x` no cuentan). Tests con `_x.test.ts`.
-- **Gates antes de commit (en SECUENCIA)**: `npm run lint` · `tsc -b --force` + `tsc -p api/tsconfig.json` · `npm test` · `build` con `VITE_*` vacías · `test:e2e` (~21; hoy: azul, ej. X; liberar puerto 5173 antes). QA visual: scripts ad-hoc playwright en `/tmp/opencode` con APIs interceptadas (login stub de Supabase si el panel). NO commitear maquetas/screenshots.
+- **Gates antes de commit (en SECUENCIA)**: `npm run lint` · `tsc -b --force` + `tsc -p api/tsconfig.json` · `npm test` · `build` con `VITE_*` vacías · `test:e2e` (21 specs; liberar puerto 5173 antes). QA visual: scripts ad-hoc playwright en `/tmp/opencode` con APIs interceptadas (login stub de Supabase si es el panel). NO commitear maquetas/screenshots.
 - Cambios de estructura BD: Management API (SQL en transacción con query PRE y POST de verificación; NO hay `schema_migrations` remoto). No inventar/aplicar migraciones históricas a ciegas.
 
 ## Módulos
@@ -25,12 +25,12 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 ### Laboratorio (LAB-XXXXX)
 - Órdenes cross-sede (origen/responsable): recibida→en_laboratorio→resultado_listo→entregada. Resultado privado: PDF/JPG + token 256-bit (`result_access_hash`), descarga en `/estado` sin cuenta; ventana 20 días + purge (`api/lab/_purge.ts`); reenvío de enlace con endpoint propio. Storage exige staff activo (policy única aplicada).
 ### Panel interno (`/internal`)
-- Tabs: Grooming · Consultas · Laboratorio · Historial · Config (doctores/especialidades/horarios/redactar McNuevas).
-- Auto-refresh visible (useVisibleRefresh 30s/60s, pausado en búsquedas/modales/peticiones) · toast de llegadas · reagendar 1 clic · guía "?" · MiniWhatsApp.
-- **M1 honestidad WhatsApp (05/11)**: TODO envío exito/fallo regist перечень marcas `wa_entregado`/`wa_fallado` suele ofrecer en el historial (`recordWhatsappNotice`). Cards de citas/grooming muestran badge roja **⚠ WhatsApp** cuando un aviso falló sin entrega posterior + botón **🔁 Reenviar aviso** (endpoint propio; el reenvío usa el mensaje del estado ACTUAL). Badges/label actualizados al sinc. Wizards con estado konkrete reversible: asaciliord `whatsappDelivered` en creación (verde SOLO con entregado; amPerl a guarda código si es cual falla).
+- Tabs: Grooming · Consultas · Laboratorio · Historial · Config (doctores/especialidades/horarios).
+- Auto-refresh visible (`useVisibleRefresh` 30s/60s, pausado en búsquedas/modales/peticiones) · toast de llegadas · reagendar 1 clic · guía "?" · MiniWhatsApp.
+- **M1 honestidad WhatsApp (05/11)**: cada envío registra su entrega en el historial (`recordWhatsappNotice` → `wa_entregado`/`wa_fallado`). Las cards muestran badge roja **⚠ WhatsApp** cuando un aviso falló sin entrega posterior + botón **🔁 Reenviar aviso** (endpoint propio; usa el mensaje del estado ACTUAL). Wizards: verde SOLO con entrega confirmada; ámbar honesta con el código si falló o no se pudo confirmar.
 
 ## Sistema visual (aprobado por el dueño — no rediseñar sin maqueta)
-- Estilo pastel del wizard de mockup: card top degradado azul→naranja; progreso actives naranja con halo;SERVICE_TINT por servicio; mascotas webp `public/images/vetMascot/`; avatares por especie; verde solo semántico de éxito. Cambios visuales: captura + aprobación (comité). Nada de dashboards/agresivos.
+- Estilo pastel del wizard (mockup del dueño): card top degradado azul→naranja; progreso con paso ACTIVO naranja y halo; `SERVICE_TINT` por servicio; mascotas webp en `public/images/vetMascot/`; avatares por especie; verde reservado a semántica de éxito. Cambios visuales: captura + aprobación (comité). Sin rediseños agresivos.
 
 ## Estado vivo (REVISAR ANTES DE TOCAR NADA)
 - **WhatsApp de producción TEMPORAL vive en ESTA PC** (hasta que paguen → VPS): Vercel Production `EVOLUTION_API_URL = https://shorter-disjoin-habitant.ngrok-free.dev` (dominio reservado del dueño) · `EVOLUTION_API_KEY = EVUL_API_KEY` (en `.env`, no en repo; compose la interpola `${EVUL_API_KEY:?}`) · `EVOLUTION_INSTANCE = ariels-demo` (teléfono de PRUEBA del dueño sirve mientras; línea del negocio después: instancia `ariels-prod` + QR del negocio + cambiar SOLO este env). `EVOLUTION_DRY_RUN` NO existe en Production (envía real). Preview SIN envs de Evolution (a propósito).
@@ -43,12 +43,12 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 1. Pre go-live: reemplazar doctores ficticios por reales + limpiar citas QA (visto bueno del jefe).
 2. Cuentas staff reales (altas `INSERT INTO staff_users SELECT id FROM auth.users WHERE email=...`) + cambiar contraseña expuesta de `vet_ariel@hotmail.com`.
 3. QZ Tray física en el PC del mostrador + prueba TM-T20II.
-4. VPS cuando paguen (misma routine) + QR de la línea del negocio. Entretanto ametralladora los benigno del dueño sirven las demos.
+4. VPS cuando paguen (misma rutina) + QR de la línea del negocio. Entretanto, el teléfono del dueño sirve para las demos (los jefes ponen su número como cliente).
 5. Ideas apuntadas (maqueta/plan antes de construir): doctores con sede "todas" (evita duplicar al especialista por sede) · búsqueda por teléfono normalizada/paginación (auditoría ítem 9) · actualizar dependencias menores.
 
 ## Env vars (Vercel) resumen
 SUPABASE_URL/ANON/SERVICE_ROLE · VITE_SUPABASE_URL/ANON_KEY · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short en Production) · EVOLUTION_API_URL/INSTANCE/KEY (temporal = esta PC vía ngrok; VER arriba) · EVOLUTION_DRY_RUN (solo dev) · WHATSAPP_DESTINO (número counter) · CRON_SECRET (no rotar sin necesidad) · LAB_RESULT_PUBLIC_ORIGIN opcional. Vercel Hobby: ≤12 funciones + crons gratis.
 
 ## Comite de estilos + descartado
-- Usuarios finales: recepcionistas + dueño mascotas. Toda mejora visual: maqueta/captura y confirmación (deck) por el jefe grandes cambios.
+- Usuarios finales: recepcionistas + dueño de mascotas. Toda mejora visual: maqueta/captura y confirmación (el jefe aprueba los cambios grandes).
 - Descartado NO re-proponer: ficha por mascota/historial clínico (usan VetPraxis) · notas internas · métricas/export CSV · foto/video del staff al cliente · foto de referencia y "cómo llegar" · hora de recogida en /estado (movilidad siempre lleva de vuelta).
