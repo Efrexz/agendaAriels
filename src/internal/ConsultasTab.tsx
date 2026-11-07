@@ -377,7 +377,11 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
         setDocList(docs);
         setSchedsList(schedRes.schedules ?? []);
         if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) setDocId(a.doctorId);        else if (docs.length > 0) setDocId(docs[0].id);
-        else setError(a.serviceType === "especializada" ? "No hay especialistas disponibles en esta sede." : "No hay doctores disponibles en esta sede.");
+        else setError(
+          a.serviceType === "especializada"
+            ? "No hay doctores especialistas activos para esta sede — agrégalos en ⚙ Config → Doctores (tipo «Especialista», con especialidad y sede)."
+            : "No hay doctores generales activos para esta sede — agrégalos en ⚙ Config → Doctores.",
+        );
       } catch (err) { setError(err instanceof Error ? err.message : "Error"); }
       finally { setPending(false); }
     }
