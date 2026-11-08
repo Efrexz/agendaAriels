@@ -1,13 +1,14 @@
 // Calendario mensual del wizard médico — port del ScheduleStep del grooming
 // (misma API de días cerrados: fetchClosuresPublic + closureFor; cero APIs nuevas).
-// Solo presentación: el seleccionado va en naranja de marca; los días ocupados
-// en rojo tachado; fuera de rango inhabilitado.
+// Solo presentación (maqueta 07/11): el día elegido va AZUL con puntito naranja
+// (naranja reservado a lo activo del proceso); los días ocupados en rojo tachado;
+// fuera de rango inhabilitado. Pendiente en cola: espejo en grooming (mini-maqueta).
 import { useEffect, useMemo, useState } from "react";
 import {
   addMonths, eachDayOfInterval, endOfMonth, format, getDay, isAfter, isBefore, isSameDay, parseISO, startOfMonth, subMonths,
 } from "date-fns";
 import { es } from "date-fns/locale";
-import { ChevronLeft, ChevronRight, PawPrint, XCircle } from "lucide-react";
+import { ChevronLeft, ChevronRight, CalendarDays, PawPrint, XCircle } from "lucide-react";
 import { closureFor, fetchClosuresPublic, type ClosureEntry } from "../services/availability";
 import { limaToday } from "../utils/limaTime";
 
@@ -88,7 +89,7 @@ export function CalendarCard({
       </div>
 
       {/* Días de la semana */}
-      <div className="grid grid-cols-7 gap-1 px-4 pb-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#8A97B1]">
+      <div className="grid grid-cols-7 gap-1 px-4 pb-3 text-center text-[11px] font-bold uppercase tracking-wide text-[#3B5178]">
         {dayNames.map((d) => (
           <div key={d} className="py-1">{d}</div>
         ))}
@@ -121,17 +122,20 @@ export function CalendarCard({
                     ? "cursor-not-allowed bg-red-50 font-semibold text-red-300 line-through"
                     : "cursor-not-allowed text-gray-300"
                   : selected
-                    ? "bg-brand-orange text-white shadow-md shadow-orange-200"
+                    ? "bg-blue-600 text-white shadow-md shadow-blue-200"
                     : "text-[#1A2238] hover:-translate-y-0.5 hover:bg-[#EFF6FF]"
               }`}
             >
               <span>{format(day, "d")}</span>
               {disabled && closed.all && <XCircle className="mt-0.5 h-2.5 w-2.5 text-red-400" aria-hidden />}
-              {!disabled && (
+              {selected && !disabled && (
+                // Puntito naranja bajo el número (maqueta): el día elegido
+                // va azul y el naranja queda para lo activo del proceso.
+                <span aria-hidden className="mt-1 h-1.5 w-1.5 rounded-full bg-orange-400" />
+              )}
+              {!selected && !disabled && (
                 <PawPrint
-                  className={`mt-0.5 h-2.5 w-2.5 transition-opacity duration-200 ${
-                    selected ? "text-white/80 opacity-100" : "text-orange-400 opacity-0 group-hover:opacity-70"
-                  }`}
+                  className={`mt-0.5 h-2.5 w-2.5 text-orange-400 opacity-0 transition-opacity duration-200 group-hover:opacity-70`}
                   aria-hidden
                 />
               )}
@@ -140,9 +144,16 @@ export function CalendarCard({
         })}
       </div>
 
-      <p className="border-t border-[#DCEBFF] py-2.5 text-center text-[11px] text-[#8A97B1]">
-        Agenda abierta hasta el {maxPretty} — los horarios de más allá se publican cada lunes.
-      </p>
+      {/* Pill informativa (maqueta, con el dato real: semana en curso + próxima) */}
+      <div className="border-t border-[#DCEBFF] px-4 py-3">
+        <div className="flex items-start gap-2.5 rounded-xl bg-[#EFF6FF] px-3.5 py-2.5 text-left">
+          <CalendarDays className="h-4 w-4 shrink-0 text-blue-600 sm:mt-0.5" aria-hidden />
+          <p className="text-[11px] leading-relaxed text-[#3B5178]">
+            Reserva hasta el <b>{maxPretty}</b> — los horarios de más allá se
+            publican <b>cada lunes</b>.
+          </p>
+        </div>
+      </div>
     </div>
   );
 }

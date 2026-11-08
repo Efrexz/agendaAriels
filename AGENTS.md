@@ -44,7 +44,7 @@ Producción: https://agenda-ariels-nu.vercel.app — grooming `/` · panel `/int
 2. Cuentas staff reales (altas `INSERT INTO staff_users SELECT id FROM auth.users WHERE email=...`) + cambiar contraseña expuesta de `vet_ariel@hotmail.com`.
 3. QZ Tray física en el PC del mostrador + prueba TM-T20II.
 4. VPS cuando paguen (misma rutina) + QR de la línea del negocio. Entretanto, el teléfono del dueño sirve para las demos (los jefes ponen su número como cliente).
-5. Ideas apuntadas (maqueta/plan antes de construir): doctores con sede "todas" (evita duplicar al especialista por sede) · búsqueda por teléfono normalizada/paginación (auditoría ítem 9) · actualizar dependencias menores.
+5. Ideas apuntadas (maqueta/plan antes de construir): doctores con sede "todas" (evita duplicar al especialista por sede) · búsqueda por teléfono normalizada/paginación (auditoría ítem 9) · actualizar dependencias menores · ESPEJO del calendario grooming: día elegido azul + puntito naranja (el médico ya va así por maqueta 07/11; al grooming darle su mini-maqueta primero).
 
 ## Env vars (Vercel) resumen
 SUPABASE_URL/ANON/SERVICE_ROLE · VITE_SUPABASE_URL/ANON_KEY · TRACKING_ENABLED=true · VET_MESSAGE_MODE (short en Production) · EVOLUTION_API_URL/INSTANCE/KEY (temporal = esta PC vía ngrok; VER arriba) · EVOLUTION_DRY_RUN (solo dev) · WHATSAPP_DESTINO (número counter) · CRON_SECRET (no rotar sin necesidad) · LAB_RESULT_PUBLIC_ORIGIN opcional. Vercel Hobby: ≤12 funciones + crons gratis.

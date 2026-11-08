@@ -55,6 +55,9 @@ const INITIAL: FormData = {
 const MASCOT = {
   orden: "/images/vetMascot/orden.webp",
   sinOrden: "/images/vetMascot/confirmacionOrden.webp",
+  diaDoctor: "/images/vetMascot/diaDoctor.webp",
+  // esperando.webp retirada del paso agenda (05/11 → maqueta diaDoctor);
+  // el archivo sigue en public/images/vetMascot/ por si se reusa después.
   doctor: "/images/vetMascot/doctor.webp",
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
@@ -954,13 +957,16 @@ export default function App() {
                     )}
                   </div>
 
-                  {/* Horas del doctor: aparecen al elegir fecha (antes: mascota con calendario) */}
-                  <div>
+                  {/* Horas del doctor: aparecen al elegir fecha (maqueta aprobada:
+                      sin fecha → frenchie doctor; OJO: la webp diaDoctor YA TRAE el
+                      panel "¡Agenda fácil y rápido!" con sus 3 pills dibujadas,
+                      no se duplica en código. Con fecha → tarjetas de horarios) */}
+                  <div className={!form.date ? "lg:self-center" : undefined}>
                     {!form.date && (
                       <motion.img
-                        src={MASCOT.esperando}
-                        alt="Mascota revisando el calendario"
-                        className="mx-auto h-auto w-48 object-contain sm:w-56 lg:w-64"
+                        src={MASCOT.diaDoctor}
+                        alt="Doctor veterinario con el panel: agenda fácil y rápida — elige el día y la hora, disponibilidad en tiempo real, tu mascota en las mejores manos"
+                        className="mx-auto h-auto w-52 object-contain sm:w-60 lg:w-72"
                         draggable={false}
                         initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
