@@ -65,9 +65,9 @@ const MASCOT = {  orden: "/images/vetMascot/orden.webp",
   errorAgenda: "/images/vetMascot/errorAgenda.webp",
 };
 
-// Tarjeta ilustrada: contenedor de las mascotas del wizard (maqueta 07/11):
-// esquinas redondeadas, ring azul suave, sombra leve y margen interior —
-// la mascota se lee "montada" en una tarjeta de la propia página, no sticker pegado.
+// MascotaCard: wrapper de las mascotas del wizard (patrón maqueta, SIN marco):
+// animación + fundido blanco inferior para despegar el arte; la ilustración flota
+// con su fondo propio — sin aro ni padding (se revirtió el marco tras feedback 08/11).
 function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }: {
   src: string;
   alt: string;
@@ -84,7 +84,7 @@ function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }:
       animate={{ opacity: 1, scale: 1, y: 0 }}
       transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay }}
     >
-      <div className="relative overflow-hidden rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-[#DCEBFF] sm:p-3">
+      <div className="relative overflow-hidden">
         <img
           src={src}
           alt={alt}
@@ -92,10 +92,10 @@ function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }:
           draggable={false}
           onError={onError}
         />
-        {/* Fundido abajo: disimula el corte brusco del arte dentro de la tarjeta */}
+        {/* Fundido abajo: despega el arte del borde inferior (patrón maqueta) */}
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-x-2 bottom-2 h-10 rounded-b-[1.4rem] bg-gradient-to-t from-white via-white/60 to-transparent sm:inset-x-3 sm:h-14"
+          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/60 to-transparent sm:h-16"
         />
       </div>
     </motion.div>
@@ -785,7 +785,7 @@ export default function App() {
                   <MascotaCard
                     src={MASCOT.sinOrden}
                     alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
-                    imgClass="h-48 w-auto sm:h-64 lg:h-80"
+                    imgClass="h-56 w-auto sm:h-72 lg:h-96"
                   />
                 </section>
               )}
@@ -978,7 +978,7 @@ export default function App() {
                       <MascotaCard
                         src={MASCOT.diaDoctor}
                         alt="Doctor veterinario con el panel: agenda fácil y rápida — elige el día y la hora, disponibilidad en tiempo real, tu mascota en las mejores manos"
-                        imgClass="h-auto w-64 sm:w-72 lg:w-[30rem]"
+                        imgClass="h-auto w-64 sm:w-72 lg:w-full lg:max-w-[32rem]"
                       />
                     )}
                     {form.date && slotsLoading && <Loading />}
@@ -1250,39 +1250,45 @@ export default function App() {
                         <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200">
                           <Check className="h-6 w-6" strokeWidth={3} />
                         </span>
-                        <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#1A2238] sm:text-4xl">
+                        <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#475AAB] sm:text-4xl">
                           ¡Cita <span className="text-orange-500">registrada!</span>
                         </h2>
                       </div>
                     )}
 
-                    <div className="w-full rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-8 py-5">
-                      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
-                      <div className="mt-1 flex items-center justify-center gap-2">
-                        <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                    <div className="flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-6 py-5">
+                      {/* Tile calendario (patrón maqueta grooming) */}
+                      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-brand-blue shadow-sm ring-1 ring-blue-200">
+                        <CalendarDays className="h-6 w-6" />
+                      </span>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
+                        <div className="mt-1 flex items-center justify-center gap-2">
+                          <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                          <button
+                            title="Copiar código"
+                            onClick={() => {
+                              void navigator.clipboard?.writeText(code);
+                              setCopia(true);
+                              setTimeout(() => setCopia(false), 2000);
+                            }}
+                            className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                          >
+                            {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                          </button>
+                        </div>
                         <button
-                          title="Copiar código"
                           onClick={() => {
                             void navigator.clipboard?.writeText(code);
                             setCopia(true);
                             setTimeout(() => setCopia(false), 2000);
                           }}
-                          className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
                         >
-                          {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                          {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                          {copia ? "¡Copiado!" : "Copiar código"}
                         </button>
                       </div>
-                      <button
-                        onClick={() => {
-                          void navigator.clipboard?.writeText(code);
-                          setCopia(true);
-                          setTimeout(() => setCopia(false), 2000);
-                        }}
-                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
-                      >
-                        {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                        {copia ? "¡Copiado!" : "Copiar código"}
-                      </button>
                     </div>
                     <Resumen form={form} />
                     {form.serviceType === "especializada" ? (

@@ -10,6 +10,7 @@ import {
   PhoneCall,
   Calendar,
   CalendarClock,
+  CalendarDays,
   Clock,
   LockKeyholeOpen,
   User,
@@ -314,18 +315,18 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
     const esRegistro = waNotDelivered; // sin entrega de WhatsApp: "¡Reserva registrada!"
     return (
       <div className="py-4">
-        <section className="mx-auto grid max-w-2xl items-center gap-5 sm:grid-cols-[0.7fr_1.3fr] sm:gap-6">
+        <section className="mx-auto grid max-w-3xl items-center gap-5 sm:grid-cols-[0.75fr_1.25fr] sm:gap-8">
           <motion.img
             src="/images/vetMascot/agendado.webp"
             alt="Van de movilidad de Ariels Clinic con nuestro asistente mascota"
-            className="mx-auto h-auto w-56 object-contain sm:w-64"
+            className="mx-auto h-auto w-72 object-contain sm:w-80"
             draggable={false}
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}
           />
           <div className="flex flex-col items-center gap-3.5 text-center sm:items-start sm:text-left">
-            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-[#EFF5FC] px-3.5 py-2 text-sm font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF]">
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-[#E4EEFF] px-3.5 py-2 text-sm font-bold text-[#3756B5] ring-1 ring-blue-200">
               <PawPrint className="h-4 w-4 text-blue-600" />
               Servicio de {serviciosLabel}
             </span>
@@ -333,7 +334,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
               <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200">
                 <CircleCheck className="h-6 w-6" strokeWidth={2.5} />
               </span>
-              <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#1A2238] sm:text-4xl">
+              <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#475AAB] sm:text-4xl">
                 {esRegistro ? (
                   <>¡Reserva <span className="text-orange-500">registrada!</span></>
                 ) : (
@@ -371,8 +372,12 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
             initial={{ opacity: 0, y: 8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.35, ease: "easeOut", delay: 0.15 }}
-            className="mx-auto mt-5 flex max-w-2xl flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-6 py-5 text-center sm:flex-row sm:py-6"
+            className="mx-auto mt-5 flex max-w-3xl flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-6 py-5 text-center sm:flex-row sm:py-6"
           >
+            {/* Tile calendario (maqueta): el código es un hito con fecha futura */}
+            <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-green-600 shadow-sm ring-1 ring-green-200">
+              <CalendarDays className="h-6 w-6" />
+            </span>
             <div className="min-w-0 flex-1">
               <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
               <p className="mt-1 font-mono text-3xl font-bold tracking-wider text-green-800">{bookingCode}</p>
@@ -394,7 +399,7 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
           initial={{ opacity: 0, y: 8 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.35, ease: "easeOut", delay: 0.25 }}
-          className="mx-auto mt-4 max-w-2xl rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DCEBFF] sm:p-6"
+          className="mx-auto mt-4 max-w-3xl rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DCEBFF] sm:p-6"
         >
           <div className="mb-4 flex items-center gap-2.5">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
