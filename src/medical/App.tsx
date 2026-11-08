@@ -966,7 +966,7 @@ export default function App() {
                       <motion.img
                         src={MASCOT.diaDoctor}
                         alt="Doctor veterinario con el panel: agenda fácil y rápida — elige el día y la hora, disponibilidad en tiempo real, tu mascota en las mejores manos"
-                        className="mx-auto h-auto w-52 object-contain sm:w-60 lg:w-72"
+                        className="mx-auto h-auto w-64 object-contain sm:w-72 lg:w-full lg:max-w-[32rem]"
                         draggable={false}
                         initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 8 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
