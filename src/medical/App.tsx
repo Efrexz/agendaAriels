@@ -52,8 +52,7 @@ const INITIAL: FormData = {
 
 // Rutas FINALES de imágenes (placeholders actuales = copias de vetMascot/grooming;
 // reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
-const MASCOT = {
-  orden: "/images/vetMascot/orden.webp",
+const MASCOT = {  orden: "/images/vetMascot/orden.webp",
   sinOrden: "/images/vetMascot/confirmacionOrden.webp",
   diaDoctor: "/images/vetMascot/diaDoctor.webp",
   // esperando.webp retirada del paso agenda (05/11 → maqueta diaDoctor);
@@ -65,6 +64,43 @@ const MASCOT = {
   citaRegistrada: "/images/vetMascot/citaRegistrada.webp",
   errorAgenda: "/images/vetMascot/errorAgenda.webp",
 };
+
+// Tarjeta ilustrada: contenedor de las mascotas del wizard (maqueta 07/11):
+// esquinas redondeadas, ring azul suave, sombra leve y margen interior —
+// la mascota se lee "montada" en una tarjeta de la propia página, no sticker pegado.
+function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }: {
+  src: string;
+  alt: string;
+  imgClass: string;
+  mix?: boolean;
+  delay?: number;
+  onError?: () => void;
+}) {
+  const reduceMotion = useReducedMotion() ?? false;
+  return (
+    <motion.div
+      className="relative mx-auto w-fit"
+      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.92, y: reduceMotion ? 0 : 10 }}
+      animate={{ opacity: 1, scale: 1, y: 0 }}
+      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay }}
+    >
+      <div className="relative overflow-hidden rounded-[2rem] bg-white p-2 shadow-sm ring-1 ring-[#DCEBFF] sm:p-3">
+        <img
+          src={src}
+          alt={alt}
+          className={`${imgClass} select-none object-contain${mix ? " mix-blend-multiply" : ""}`}
+          draggable={false}
+          onError={onError}
+        />
+        {/* Fundido abajo: disimula el corte brusco del arte dentro de la tarjeta */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-x-2 bottom-2 h-10 rounded-b-[1.4rem] bg-gradient-to-t from-white via-white/60 to-transparent sm:inset-x-3 sm:h-14"
+        />
+      </div>
+    </motion.div>
+  );
+}
 
 const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
   general: { src: "/images/medical/servicio/general.webp", alt: "Consulta general veterinaria" },
@@ -671,25 +707,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Columna derecha: ilustración completa (orden2.webp ya trae
+                  {/* Columna derecha: tarjeta ilustrada (orden.webp ya trae
                       blobs, placa, eco, orden, huellitas y destellos dentro) */}
-                  <div className="relative mx-auto flex w-full justify-center">
-                    <motion.img
-                      src={MASCOT.orden}
-                      alt="Mascota con su orden médica, radiografía y ecografía"
-                      className="h-56 w-auto select-none object-contain sm:h-64 lg:h-80"
-                      draggable={false}
-                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
-                    />
-                    {/* Fundido blanco abajo: disimula el corte brusco del arte
-                        (mismo patrón que WelcomeBackStep en la agenda) */}
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
-                    />
-                  </div>
+                  <MascotaCard
+                    src={MASCOT.orden}
+                    alt="Mascota con su orden médica, radiografía y ecografía"
+                    imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                  />
                 </section>
               )}
 
@@ -756,25 +780,13 @@ export default function App() {
                     </div>
                   </div>
 
-                  {/* Columna derecha: mascota confirmacionOrden (la webp ya trae
+                  {/* Columna derecha: tarjeta ilustrada (confirmacionOrden ya trae
                       blobs, bandanas, burbujas de calendario/orden y huellitas dentro) */}
-                  <div className="relative mx-auto flex w-full justify-center">
-                    <motion.img
-                      src={MASCOT.sinOrden}
-                      alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
-                      className="h-48 w-auto select-none object-contain sm:h-64 lg:h-80"
-                      draggable={false}
-                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
-                    />
-                    {/* Fundido blanco abajo: disimula el corte brusco del arte
-                        (mismo patrón que el paso orden y WelcomeBackStep) */}
-                    <div
-                      aria-hidden
-                      className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
-                    />
-                  </div>
+                  <MascotaCard
+                    src={MASCOT.sinOrden}
+                    alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
+                    imgClass="h-48 w-auto sm:h-64 lg:h-80"
+                  />
                 </section>
               )}
 
@@ -963,14 +975,10 @@ export default function App() {
                       no se duplica en código. Con fecha → tarjetas de horarios) */}
                   <div className={!form.date ? "lg:self-center" : undefined}>
                     {!form.date && (
-                      <motion.img
+                      <MascotaCard
                         src={MASCOT.diaDoctor}
                         alt="Doctor veterinario con el panel: agenda fácil y rápida — elige el día y la hora, disponibilidad en tiempo real, tu mascota en las mejores manos"
-                        className="mx-auto h-auto w-64 object-contain sm:w-72 lg:w-full lg:max-w-[32rem]"
-                        draggable={false}
-                        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 8 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: reduceMotion ? 0.2 : 0.4, ease: "easeOut", delay: 0.15 }}
+                        imgClass="h-auto w-64 sm:w-72 lg:w-[30rem]"
                       />
                     )}
                     {form.date && slotsLoading && <Loading />}
@@ -1210,134 +1218,148 @@ export default function App() {
               {/* ── Enviado: éxito con mascota (arte con título integrado) +
                   código copiable + resumen en card + banner WhatsApp ── */}
               {step === "enviado" && (
-                <section className="mx-auto flex max-w-xl flex-col items-center gap-4 py-4 text-center">
-                  {form.serviceType === "especializada" ? (
-                    <>
-                      <motion.img
+                /* Confirmación estilo maqueta (misma tarjeta del grooming):
+                    mascota a la izquierda / código + resumen + avisos a la derecha.
+                    Cero lógica: mismos estados, mensajes y handlers que producción. */
+                <section className="mx-auto grid max-w-4xl gap-5 py-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start sm:gap-8">
+                  <div className="sm:self-center">
+                    {form.serviceType === "especializada" ? (
+                      // TODO: reemplazar por la ilustración de interconsulta
+                      // (frenchie junto al WhatsApp esperando confirmación) cuando llegue al repo.
+                      <MascotaCard
                         src={MASCOT.agendado}
-                        alt="Mascota celebrando su cita agendada"
-                        className="h-auto w-56 object-contain mix-blend-multiply sm:w-72"
-                        draggable={false}
-                        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.8, y: reduceMotion ? 0 : 10 }}
-                        animate={{ opacity: 1, scale: 1, y: 0 }}
-                        transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
+                        alt="Van de movilidad de Ariels Clinic con nuestro asistente"
+                        imgClass="h-auto w-56 sm:w-72"
+                        mix
                       />
-                      <h2 className="font-display text-3xl font-bold tracking-tight text-green-700 sm:text-4xl">
-                        ¡Cita registrada! 🎉
-                      </h2>
-                    </>
-                  ) : (
-                    // El arte trae integrado "¡Cita registrada!" + subtítulo,
-                    // igual que en el mockup; no conviene duplicar el h2.
-                    <motion.img
-                      src={MASCOT.citaRegistrada}
-                      alt="¡Cita registrada! Hemos agendado tu cita con éxito"
-                      className="h-auto w-80 object-contain mix-blend-multiply sm:w-[28rem]"
-                      draggable={false}
-                      initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.9, y: reduceMotion ? 0 : 10 }}
-                      animate={{ opacity: 1, scale: 1, y: 0 }}
-                      transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut" }}
-                    />
-                  )}
-                  <div className="w-full max-w-sm rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-8 py-5">
-                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
-                    <div className="mt-1 flex items-center justify-center gap-2">
-                      <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                    ) : (
+                      // El arte trae integrado "¡Cita registrada!" + subtítulo,
+                      // igual que en el mockup; no conviene duplicar el h2.
+                      <MascotaCard
+                        src={MASCOT.citaRegistrada}
+                        alt="¡Cita registrada! Hemos agendado tu cita con éxito"
+                        imgClass="h-auto w-72 sm:w-[26rem]"
+                        mix
+                      />
+                    )}
+                  </div>
+
+                  <div className="flex flex-col items-center gap-4 text-center">
+                    {form.serviceType === "especializada" && (
+                      <div className="flex items-center justify-center gap-2.5">
+                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200">
+                          <Check className="h-6 w-6" strokeWidth={3} />
+                        </span>
+                        <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#1A2238] sm:text-4xl">
+                          ¡Cita <span className="text-orange-500">registrada!</span>
+                        </h2>
+                      </div>
+                    )}
+
+                    <div className="w-full rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-8 py-5">
+                      <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
+                      <div className="mt-1 flex items-center justify-center gap-2">
+                        <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                        <button
+                          title="Copiar código"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(code);
+                            setCopia(true);
+                            setTimeout(() => setCopia(false), 2000);
+                          }}
+                          className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                        >
+                          {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                        </button>
+                      </div>
                       <button
-                        title="Copiar código"
                         onClick={() => {
                           void navigator.clipboard?.writeText(code);
                           setCopia(true);
                           setTimeout(() => setCopia(false), 2000);
                         }}
-                        className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                        className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
                       >
-                        {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                        {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                        {copia ? "¡Copiado!" : "Copiar código"}
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(code);
-                        setCopia(true);
-                        setTimeout(() => setCopia(false), 2000);
-                      }}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
-                    >
-                      {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copia ? "¡Copiado!" : "Copiar código"}
-                    </button>
-                  </div>
-                  <Resumen form={form} />
-                  {form.serviceType === "especializada" ? (
-                    <>
-                    {/* M1: si el aviso con los métodos de pago no se pudo entregar
-                        (o no lo pudimos confirmar), se dice — el verde no miente. */}
-                    {whatsAppOk !== true && (
-                      <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                        <span className="text-base leading-none">📤</span>
+                    <Resumen form={form} />
+                    {form.serviceType === "especializada" ? (
+                      <>
+                      {/* M1: si el aviso con los métodos de pago no se pudo entregar
+                          (o no lo pudimos confirmar), se dice — el verde no miente. */}
+                      {whatsAppOk !== true && (
+                        <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                            <MessageCircle className="h-4 w-4" />
+                          </span>
+                          <p className="text-xs leading-relaxed text-amber-800">
+                            {whatsAppOk === false
+                              ? <><b>El aviso por WhatsApp con los métodos de pago no se pudo enviar.</b> Tu solicitud SÍ está registrada — guarda tu código; en cuanto el servicio restablezca te lo mandamos.</>
+                              : <>Guarda tu <b>código</b>: no pudimos confirmar que el aviso con los <b>métodos de pago</b> te haya llegado por WhatsApp.</>}
+                          </p>
+                        </div>
+                      )}
+                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <img
+                          src={MASCOT.pago}
+                          alt=""
+                          aria-hidden="true"
+                          className="h-12 w-12 shrink-0 object-contain mix-blend-multiply"
+                        />
+                        <p className="text-xs leading-relaxed text-amber-800">
+                          Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
+                          WhatsApp de la sede y te confirmamos fecha, hora y doctor.
+                        </p>
+                      </div>
+                      </>
+                    ) : solicitudEnviada ? (
+                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <p className="text-xs leading-relaxed text-amber-800">
+                          <b>¡Solicitud registrada!</b> El personal confirma la <b>hora exacta</b> con la agenda
+                          publicada cada lunes y te avisamos por WhatsApp con fecha, hora y doctor — no es un
+                          horario garantizado hasta esa confirmación.
+                        </p>
+                      </div>
+                    ) : whatsAppOk === true ? (
+                      <div className="flex w-full items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
+                          <MessageCircle className="h-5 w-5" />
+                        </span>
+                        <p className="text-xs leading-relaxed text-green-900">
+                          Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
+                          tolerancia de 10 minutos, luego atendemos al siguiente 🐾.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
+                          <MessageCircle className="h-4 w-4" />
+                        </span>
                         <p className="text-xs leading-relaxed text-amber-800">
                           {whatsAppOk === false
-                            ? <><b>El aviso por WhatsApp con los métodos de pago no se pudo enviar.</b> Tu solicitud SÍ está registrada — guarda tu código; en cuanto el servicio restablezca te lo mandamos.</>
-                            : <>Guarda tu <b>código</b>: no pudimos confirmar que el aviso con los <b>métodos de pago</b> te haya llegado por WhatsApp.</>}
+                            ? <><b>El aviso por WhatsApp no se pudo enviar</b> (probablemente temporal). Tu cita SÍ está registrada: <b>guarda tu código</b> y si no llega en unos minutos, escríbenos al WhatsApp de la sede.</>
+                            : <>No pudimos confirmar que el aviso haya salido por WhatsApp. Tu cita SÍ está registrada: <b>guarda tu código</b>.</>}
                         </p>
                       </div>
                     )}
-                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                      <img
-                        src={MASCOT.pago}
-                        alt=""
-                        aria-hidden="true"
-                        className="h-12 w-12 shrink-0 object-contain mix-blend-multiply"
-                      />
-                      <p className="text-xs leading-relaxed text-amber-800">
-                        Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
-                        WhatsApp de la sede y te confirmamos fecha, hora y doctor.
-                      </p>
-                    </div>
-                    </>
-                  ) : solicitudEnviada ? (
-                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                      <p className="text-xs leading-relaxed text-amber-800">
-                        <b>¡Solicitud registrada!</b> El personal confirma la <b>hora exacta</b> con la agenda
-                        publicada cada lunes y te avisamos por WhatsApp con fecha, hora y doctor — no es un
-                        horario garantizado hasta esa confirmación.
-                      </p>
-                    </div>
-                  ) : whatsAppOk === true ? (
-                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
-                        <MessageCircle className="h-5 w-5" />
-                      </span>
-                      <p className="text-xs leading-relaxed text-green-900">
-                        Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
-                        tolerancia de 10 minutos, luego atendemos al siguiente 🐾.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="flex max-w-md items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                      <span className="text-base leading-none">📤</span>
-                      <p className="text-xs leading-relaxed text-amber-800">
-                        {whatsAppOk === false
-                          ? <><b>El aviso por WhatsApp no se pudo enviar</b> (probablemente temporal). Tu cita SÍ está registrada: <b>guarda tu código</b> y si no llega en unos minutos, escríbenos al WhatsApp de la sede.</>
-                          : <>No pudimos confirmar que el aviso haya salido por WhatsApp. Tu cita SÍ está registrada: <b>guarda tu código</b>.</>}
-                      </p>
-                    </div>
-                  )}
-                  <button
-                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
-                  >
-                    <CalendarDays className="h-5 w-5" />
-                    Agendar otra cita
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Volver al inicio de citas
-                  </button>
+                    <button
+                      onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
+                    >
+                      <CalendarDays className="h-5 w-5" />
+                      Agendar otra cita
+                      <ChevronRight className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
+                    >
+                      <ChevronLeft className="h-4 w-4" />
+                      Volver al inicio de citas
+                    </button>
+                  </div>
                 </section>
               )}
             </motion.div>
@@ -1626,24 +1648,16 @@ function EspecialidadCollage() {
 }
 
 function DoctorMascot() {
-  const reduceMotion = useReducedMotion() ?? false;
   const [hidden, setHidden] = useState(false);
   if (hidden) return null;
   return (
     <div className="relative mx-auto hidden w-full justify-center sm:flex">
-      <motion.img
+      <MascotaCard
         src={MASCOT.doctor}
         alt="Nuestro equipo médico te espera"
-        className="h-64 w-auto select-none self-center object-contain mix-blend-multiply lg:h-80"
-        draggable={false}
+        imgClass="h-64 w-auto self-center lg:h-80"
+        mix
         onError={() => setHidden(true)}
-        initial={{ opacity: 0, scale: reduceMotion ? 1 : 0.88, y: reduceMotion ? 0 : 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        transition={{ duration: reduceMotion ? 0.2 : 0.45, ease: "easeOut", delay: 0.15 }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-x-0 bottom-0 h-12 bg-gradient-to-t from-white via-white/70 to-transparent sm:h-16"
       />
     </div>
   );

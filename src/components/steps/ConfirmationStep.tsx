@@ -17,6 +17,8 @@ import {
   ShieldCheck,
   CircleCheck,
   MessageCircle,
+  TriangleAlert,
+  Users,
   Loader2,
   Scissors,
   Droplets,
@@ -305,54 +307,121 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   };
 
   if (submitState === "success") {
+    // Maqueta aprobada: ficha de confirmación en 2 columnas (mascota / datos),
+    // código + tracking destacados y guía "Qué sigue ahora". Textos honestos
+    // M1 intactos: cambia el título según si el WhatsApp se entregó o no.
+    const serviciosLabel = Array.from(new Set(formData.pets.map((p) => SERVICE_LABELS[p.service]))).join(" · ");
+    const esRegistro = waNotDelivered; // sin entrega de WhatsApp: "¡Reserva registrada!"
     return (
-      <div className="flex flex-col items-center gap-4 py-6">
-        <motion.img
-          src="/images/vetMascot/agendado.webp"
-          alt="Bulldog feliz manejando la movilidad"
-          className="h-auto w-72 object-contain sm:w-[28rem]"
-          initial={{ opacity: 0, scale: 0.8, y: 10 }}
-          animate={{ opacity: 1, scale: 1, y: 0 }}
-          transition={{ duration: 0.4, ease: "easeOut" }}
-        />
-        <h2 className={`text-center text-step-title font-display font-bold tracking-tight ${waNotDelivered ? "text-amber-700" : "text-green-700"}`}>
-          {waNotDelivered ? "¡Reserva registrada!" : "¡Solicitud enviada con éxito!"}
-        </h2>
-
-        {waNotDelivered && (
-          <div className="max-w-md rounded-2xl bg-amber-50 px-5 py-3 text-center ring-1 ring-amber-200">
-            <p className="text-xs leading-relaxed text-amber-800">
-              ⚠️ No pudimos entregar el aviso por WhatsApp a la veterinaria en este momento, pero{" "}
-              <b>tu reserva ya quedó registrada en su panel</b> — te confirmamos por WhatsApp o llamada en breve.
+      <div className="py-4">
+        <section className="mx-auto grid max-w-2xl items-center gap-5 sm:grid-cols-[0.7fr_1.3fr] sm:gap-6">
+          <motion.img
+            src="/images/vetMascot/agendado.webp"
+            alt="Van de movilidad de Ariels Clinic con nuestro asistente mascota"
+            className="mx-auto h-auto w-56 object-contain sm:w-64"
+            draggable={false}
+            initial={{ opacity: 0, scale: 0.8, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            transition={{ duration: 0.4, ease: "easeOut" }}
+          />
+          <div className="flex flex-col items-center gap-3.5 text-center sm:items-start sm:text-left">
+            <span className="inline-flex w-fit items-center gap-2 rounded-2xl bg-[#EFF5FC] px-3.5 py-2 text-sm font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF]">
+              <PawPrint className="h-4 w-4 text-blue-600" />
+              Servicio de {serviciosLabel}
+            </span>
+            <div className="flex items-center justify-center gap-2.5">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200">
+                <CircleCheck className="h-6 w-6" strokeWidth={2.5} />
+              </span>
+              <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#1A2238] sm:text-4xl">
+                {esRegistro ? (
+                  <>¡Reserva <span className="text-orange-500">registrada!</span></>
+                ) : (
+                  <>¡Solicitud enviada <span className="text-orange-500">con éxito!</span></>
+                )}
+              </h2>
+            </div>
+            <p className="text-sm leading-relaxed text-[#546A8E]">
+              Su mascotita ya fue <b>agendada</b>. Estaremos en contacto con usted cuando pasen
+              por su domicilio.
             </p>
+            {waNotDelivered && (
+              <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                <p className="text-xs leading-relaxed text-amber-800">
+                  <b>No pudimos entregar el aviso por WhatsApp a la veterinaria en este momento</b>, pero tu
+                  reserva ya quedó registrada en su panel. Te confirmaremos por WhatsApp o llamada en breve.
+                </p>
+              </div>
+            )}
+            {bookingStored === false && (
+              <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                <TriangleAlert className="mt-0.5 h-5 w-5 shrink-0 text-amber-500" />
+                <p className="text-xs leading-relaxed text-amber-800">
+                  Tu solicitud llegó por WhatsApp a la veterinaria, pero el seguimiento en línea no está
+                  disponible para esta reserva. La veterinaria se pondrá en contacto contigo.
+                </p>
+              </div>
+            )}
           </div>
-        )}
+        </section>
 
         {bookingCode && (
-          <div className="rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-8 py-4 text-center">
-            <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
-            <p className="mt-1 font-mono text-2xl font-bold tracking-wider text-green-800">{bookingCode}</p>
-            <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+          <motion.div
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.35, ease: "easeOut", delay: 0.15 }}
+            className="mx-auto mt-5 flex max-w-2xl flex-col items-center gap-5 rounded-2xl border-2 border-dashed border-green-200 bg-green-50 px-6 py-5 text-center sm:flex-row sm:py-6"
+          >
+            <div className="min-w-0 flex-1">
+              <p className="text-xs font-medium uppercase tracking-[0.15em] text-green-600">Código de reserva</p>
+              <p className="mt-1 font-mono text-3xl font-bold tracking-wider text-green-800">{bookingCode}</p>
+              <p className="mt-1.5 text-xs text-green-600">Guarda este código para cualquier consulta</p>
+            </div>
             {bookingStored !== false && (
               <a
                 href={`/estado?code=${bookingCode}`}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-4 py-2 text-xs font-semibold text-white transition hover:bg-green-700"
+                className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-base font-semibold text-white shadow-md shadow-green-200/60 transition-all hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg sm:w-auto"
               >
-                🔎 Seguir a tu mascota en tiempo real
+                <MessageCircle className="h-5 w-5" />
+                Seguir a tu mascota en tiempo real
               </a>
             )}
-          </div>
+          </motion.div>
         )}
 
-        <p className="text-center text-[#546A8E]">
-          {bookingStored === false
-            ? "Tu solicitud llegó por WhatsApp a la veterinaria, pero el seguimiento en línea no está disponible para esta reserva. La veterinaria se pondrá en contacto contigo."
-            : "Su mascotita ya fue agendada. Estaremos en contacto con usted cuando pasen por su domicilio. Recordarle que la movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada 🐾🐶🐱"}
-        </p>
-
-        <p className="text-center text-sm text-gray-400">
-          El tiempo de demora varía según la cantidad de mascotas del día, ya que se atiende por orden de llegada.
-        </p>
+        <motion.div
+          initial={{ opacity: 0, y: 8 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.35, ease: "easeOut", delay: 0.25 }}
+          className="mx-auto mt-4 max-w-2xl rounded-2xl bg-white p-5 shadow-sm ring-1 ring-[#DCEBFF] sm:p-6"
+        >
+          <div className="mb-4 flex items-center gap-2.5">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
+              <PawPrint className="h-5 w-5" />
+            </span>
+            <h3 className="font-display text-lg font-bold text-[#475AAB]">
+              Qué sigue <span className="text-orange-500">ahora</span>
+            </h3>
+          </div>
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:divide-x sm:divide-[#DCEBFF]">
+            {[
+              { icon: Phone, tint: "bg-[#EFF5FC] text-blue-600", title: "1. Te contactaremos", text: "Estaremos en contacto con usted cuando estemos por pasar a su domicilio." },
+              { icon: Clock, tint: "bg-[#FFF1E7] text-orange-500", title: "2. Tiempo de espera", text: "La movilidad sólo podrá esperar fuera de su domicilio 5 minutos luego de la primera llamada." },
+              { icon: Users, tint: "bg-[#EFF5FC] text-blue-600", title: "3. Tiempo de demora", text: "Varía según la cantidad de mascotas del día: se atiende por orden de llegada." },
+            ].map(({ icon: Icon, tint, title, text }) => (
+              <div key={title} className="flex items-start gap-3 px-0 sm:px-4">
+                <span className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-full ${tint}`}>
+                  <Icon className="h-5 w-5" />
+                </span>
+                <div className="min-w-0">
+                  <p className="flex items-center gap-1 text-sm font-bold text-[#475AAB]">{title}</p>
+                  <p className="mt-1 text-xs leading-relaxed text-[#546A8E]">{text}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        </motion.div>
       </div>
     );
   }
