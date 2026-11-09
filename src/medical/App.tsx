@@ -56,12 +56,15 @@ const MASCOT = {  orden: "/images/vetMascot/orden.webp",
   sinOrden: "/images/vetMascot/confirmacionOrden.webp",
   diaDoctor: "/images/vetMascot/diaDoctor.webp",
   sinDisponibilidad: "/images/vetMascot/sinDisponibilidad.webp",
+  interconsulta: "/images/vetMascot/interconsultaConfirmacion.webp",
   // esperando.webp retirada del paso agenda (05/11 → maqueta diaDoctor);
   // el archivo sigue en public/images/vetMascot/ por si se reusa después.
   doctor: "/images/vetMascot/doctor.webp",
   esperando: "/images/vetMascot/esperando.webp",
   pago: "/images/vetMascot/pago.webp",
-  agendado: "/images/vetMascot/agendado.webp",
+  // agendado.webp retirado del mapa (09/11): el éxito especializada usa
+  // interconsultaConfirmacion y el éxito grooming, movilidad. El archivo sigue
+  // en public/images/vetMascot/ por si se reusa después.
   citaRegistrada: "/images/vetMascot/citaRegistrada.webp",
   errorAgenda: "/images/vetMascot/errorAgenda.webp",
 };
@@ -1238,13 +1241,10 @@ export default function App() {
                   {/* Columna izquierda: mascota + código + avisos (lo que hay que GUARDAR) */}
                   <div className="flex flex-col items-center gap-4">
                     {form.serviceType === "especializada" ? (
-                      // TODO: reemplazar por la ilustración de interconsulta
-                      // (frenchie junto al WhatsApp esperando confirmación) cuando llegue al repo.
                       <MascotaCard
-                        src={MASCOT.agendado}
-                        alt="Van de movilidad de Ariels Clinic con nuestro asistente"
+                        src={MASCOT.interconsulta}
+                        alt="Doctor frenchie saludando con su clipboard registrado, aviso de WhatsApp enviado y calendario a confirmar"
                         imgClass="h-auto w-64 sm:w-80"
-                        mix
                         fade={false}
                       />
                     ) : (
