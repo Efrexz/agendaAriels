@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { ChevronDown, Clock, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
+import { CalendarDays, Cat, Check, ChevronDown, Clock, Dog, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, searchMedAppts,
   type MedAppt, type ScheduleWithDoctor,
@@ -8,7 +8,7 @@ import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRAN
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
-import { ModalShell } from "./ModalShell";
+import { ModalSection, ModalShell, FIELD_CLS } from "./ModalShell";
 import { ConfirmModal } from "./ConfirmModal";
 import { useVisibleRefresh } from "./useVisibleRefresh";
 
@@ -1009,73 +1009,110 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
   }
 
   return (
-    <ModalShell title={prefill ? `🔁 Reagendar cita de ${prefill.petName}` : "＋ Cita manual (teléfono / mostrador)"} dirty={dirty} onClose={onClose}>
+    <ModalShell
+      title={prefill ? `🔁 Reagendar cita de ${prefill.petName}` : "Cita manual (teléfono / mostrador)"}
+      dirty={dirty}
+      onClose={onClose}
+      wide
+    >
       {(maybeClose) => (
       <>
-        {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-        <div className="grid gap-3">
-          <Row label="Sede">
-            <select value={branch} onChange={(e) => setBranch(e.target.value as MedBranch)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-              {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
-            </select>
-          </Row>
-          <Row label="Servicio">
-            <select value={serviceType} onChange={(e) => setService(e.target.value as typeof serviceType)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-              <option value="general">Consulta General</option>
-              <option value="rayos">Radiografía</option>
-              <option value="eco">Ecografía</option>
-              <option value="especializada">Especializada</option>
-            </select>
-          </Row>
+        {error && (
+          <p className="mb-2 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-100">
+            <span className="font-bold">⚠️</span>
+            {error}
+          </p>
+        )}
+        <div className="flex flex-col gap-3">
+          <ModalSection title="La cita" icon={CalendarDays} />
+          <div className="flex gap-2">
+            <label className="grid min-w-0 flex-1 gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Sede</span>
+              <select value={branch} onChange={(e) => setBranch(e.target.value as MedBranch)} className={`${FIELD_CLS} w-full`}>
+                {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Servicio</span>
+              <select value={serviceType} onChange={(e) => setService(e.target.value as typeof serviceType)} className={`${FIELD_CLS} w-full`}>
+                <option value="general">Consulta General</option>
+                <option value="rayos">Radiografía</option>
+                <option value="eco">Ecografía</option>
+                <option value="especializada">Especializada</option>
+              </select>
+            </label>
+          </div>
           {serviceType === "especializada" ? (
-            <Row label="Especialidad">
-              <select value={specialtyId} onChange={(e) => setSpecialty(e.target.value)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+            <label className="grid gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Especialidad</span>
+              <select value={specialtyId} onChange={(e) => setSpecialty(e.target.value)} className={`${FIELD_CLS} w-full`}>
                 {(specialties ?? []).map((s) => <option key={s.id} value={s.id}>{s.name} — S/ {s.cost}</option>)}
               </select>
-            </Row>
+            </label>
           ) : (
             <>
-              <Row label="Doctor">
-                <select value={doctorId} onChange={(e) => setDoctor(e.target.value)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
-                  {(doctors ?? []).filter((d) => d.kind === "general").map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </select>
-              </Row>
-              <Row label="Fecha">
-                <input type="date" value={date} onChange={(e) => void loadSlots(e.target.value)} className="flex-1 rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
-              </Row>
+              <div className="flex gap-2">
+                <label className="grid min-w-0 flex-1 gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Doctor</span>
+                  <select value={doctorId} onChange={(e) => setDoctor(e.target.value)} className={`${FIELD_CLS} w-full`}>
+                    {(doctors ?? []).filter((d) => d.kind === "general").map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                  </select>
+                </label>
+                <label className="grid min-w-0 gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Fecha</span>
+                  <input type="date" value={date} onChange={(e) => void loadSlots(e.target.value)} className={`${FIELD_CLS} w-full`} />
+                </label>
+              </div>
               {slots.length > 0 && (
-                <Row label="Hora">
+                <div className="grid gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
                   <div className="flex flex-wrap gap-1.5">
                     {slots.map((s) => (
-                      <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${startMinute === s.startMinute ? "bg-brand-orange text-white" : "bg-slate-100 text-slate-700"}`}>
+                      <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${startMinute === s.startMinute ? "bg-brand-orange text-white shadow-sm shadow-orange-200" : "bg-[#EFF5FC] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:bg-blue-50"}`}>
                         {s.label}
                       </button>
                     ))}
                   </div>
-                </Row>
+                </div>
               )}
             </>
           )}
-          <input value={name.petName} onChange={(e) => setName((n) => ({ ...n, petName: e.target.value }))} placeholder="Mascota (nombre)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <div className="flex gap-2">
-            {["Perro", "Gato"].map((t) => (
-              <button key={t} onClick={() => setName((n) => ({ ...n, petType: t }))} className={`flex-1 rounded-lg py-2 text-sm font-semibold ${name.petType === t ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-700"}`}>{t}</button>
-            ))}
+
+          <ModalSection title="Mascota y dueño" icon={UserRound} tone="orange" />
+          <label className="block w-full">
+            <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Mascota</span>
+            <div className="flex w-full min-w-0 gap-2">
+              <input value={name.petName} onChange={(e) => setName((n) => ({ ...n, petName: e.target.value }))} placeholder="Nombre de la mascota" className={`${FIELD_CLS} min-w-0 flex-1`} />
+              <div className="flex gap-1">
+                {(["Perro", "Gato"] as const).map((t) => (
+                  <button key={t} onClick={() => setName((n) => ({ ...n, petType: t }))} className={`flex items-center gap-1 rounded-xl px-3 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${name.petType === t ? "bg-brand-blue text-white shadow-sm ring-1 ring-blue-300" : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-blue-50"}`}>
+                    {t === "Perro" ? <Dog className="h-4 w-4" /> : <Cat className="h-4 w-4" />}
+                    {t}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </label>
+          <input value={name.ownerName} onChange={(e) => setName((n) => ({ ...n, ownerName: e.target.value }))} placeholder="Nombre del dueño" className={`${FIELD_CLS} w-full`} />
+          <input value={name.ownerPhone} onChange={(e) => setName((n) => ({ ...n, ownerPhone: e.target.value }))} placeholder="Celular del dueño (WhatsApp)" inputMode="tel" className={`${FIELD_CLS} w-full`} />
+          <textarea value={name.petNotes} onChange={(e) => setName((n) => ({ ...n, petNotes: e.target.value }))} rows={2} placeholder="Motivo / notas (opcional)" className={`${FIELD_CLS} w-full`} />
+
+          <div className="border-t border-slate-100 pt-3">
+            <button
+              onClick={() => void guardar()}
+              disabled={
+                (serviceType !== "especializada" && (!date || startMinute === null)) ||
+                (serviceType === "especializada" && !specialtyId)
+              }
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 py-3 text-sm font-bold text-white shadow-md shadow-blue-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+            >
+              <Check className="h-4 w-4" />
+              {prefill ? "Guardar nueva fecha" : "Crear cita"}
+            </button>
+            <button onClick={() => maybeClose(false)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">
+              Cancelar
+            </button>
           </div>
-          <input value={name.ownerName} onChange={(e) => setName((n) => ({ ...n, ownerName: e.target.value }))} placeholder="Nombre del dueño" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <input value={name.ownerPhone} onChange={(e) => setName((n) => ({ ...n, ownerPhone: e.target.value }))} placeholder="Celular (WhatsApp)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <textarea value={name.petNotes} onChange={(e) => setName((n) => ({ ...n, petNotes: e.target.value }))} rows={2} placeholder="Motivo / notas (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <button
-            onClick={() => void guardar()}
-            disabled={
-              (serviceType !== "especializada" && (!date || startMinute === null)) ||
-              (serviceType === "especializada" && !specialtyId)
-            }
-            className="rounded-xl bg-brand-blue py-2.5 text-sm font-semibold text-white disabled:opacity-50"
-          >
-            Crear cita
-          </button>
-          <button onClick={() => maybeClose(false)} className="text-sm text-slate-400">Cancelar</button>
         </div>
       </>
       )}
@@ -1083,11 +1120,3 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
   );
 }
 
-function Row({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex items-center gap-3">
-      <span className="w-16 shrink-0 text-xs font-medium text-slate-600">{label}</span>
-      {children}
-    </label>
-  );
-}

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Check, ChevronDown, ClipboardList, Clock, Copy, FileText, FlaskConical, History, PlusCircle, Search, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";import {
+import { Cat, Check, ChevronDown, ClipboardList, Clock, Copy, Dog, FileText, FlaskConical, History, PlusCircle, Search, TriangleAlert, UserRound, Phone, Wallet, type LucideIcon } from "lucide-react";import {
   addLabCatalogItem, createLabOrder, deleteLabResult, fetchLabCatalog, fetchLabList,
   getLabResultUrl, patchLabStatus, publishLabResult, resendLabResult, uploadLabResultFile,
   type LabOrder, type LabView,
@@ -8,7 +8,7 @@ import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../m
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
-import { ModalShell } from "./ModalShell";
+import { ModalSection, ModalShell, FIELD_CLS } from "./ModalShell";
 import { ConfirmModal } from "./ConfirmModal";
 import { useVisibleRefresh } from "./useVisibleRefresh";
 
@@ -76,7 +76,7 @@ function SuggestField({ kind, value, onSelect, placeholder }: {
           onFocus={() => setFocused(true)}
           onBlur={() => setFocused(false)}
           placeholder={placeholder}
-          className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+          className={`${FIELD_CLS} min-w-0 flex-1`}
         />
       </div>
       {focused && (items ?? []).length > 0 && (
@@ -739,29 +739,40 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
     sedeOrigen !== "san_miguel" || sedeResponsable !== "san_miguel";
 
   return (
-    <ModalShell title={created ? "" : "🧪 Nueva orden de laboratorio"} dirty={dirty && !created} onClose={onClose} center={!!created}>
+    <ModalShell title={created ? "" : "Nueva orden de laboratorio"} dirty={dirty && !created} onClose={onClose} center={!!created} wide>
       {(maybeClose) =>
       created ? (
         <LabOrderSuccess code={created.code} notified={created.notified} onDone={() => maybeClose(true)} />
       ) : (
           <>
-            {error && <p className="mb-2 rounded-lg bg-red-50 px-3 py-2 text-xs text-red-700">{error}</p>}
-            <div className="grid gap-3">
+            {error && (
+              <p className="mb-2 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-100">
+                <span className="font-bold">⚠️</span>
+                {error}
+              </p>
+            )}
+            <div className="flex flex-col gap-3">
+              <ModalSection title="La orden" icon={ClipboardList} />
               <div className="grid grid-cols-2 gap-2">
-                <Row01 label="Sede que registra">
-                  <select value={sedeOrigen} onChange={(e) => setOrigen(e.target.value as MedBranch)} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                <label className="grid min-w-0 gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Sede que registra</span>
+                  <select value={sedeOrigen} onChange={(e) => setOrigen(e.target.value as MedBranch)} className={`${FIELD_CLS} w-full`}>
                     {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
                   </select>
-                </Row01>
-                <Row01 label="Sede responsable">
-                  <select value={sedeResponsable} onChange={(e) => setResponsable(e.target.value as MedBranch)} className="w-full rounded-lg border border-slate-300 px-2 py-1.5 text-sm">
+                </label>
+                <label className="grid min-w-0 flex-1 gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Sede responsable</span>
+                  <select value={sedeResponsable} onChange={(e) => setResponsable(e.target.value as MedBranch)} className={`${FIELD_CLS} w-full`}>
                     {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
                   </select>
-                </Row01>
+                </label>
               </div>
               {sedeOrigen !== sedeResponsable && (
-                <p className="rounded-lg bg-amber-50 px-3 py-1.5 text-xs text-amber-800">
-                  Cross-sede: la orden se verá tanto en {branchShort(sedeOrigen)} (origen) como en {branchShort(sedeResponsable)} (responsable).
+                <p className="flex items-start gap-2 rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
+                  <TriangleAlert className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+                  <span>
+                    <b>Cross-sede:</b> la orden se verá tanto en {branchShort(sedeOrigen)} (origen) como en {branchShort(sedeResponsable)} (responsable).
+                  </span>
                 </p>
               )}
               <SuggestField
@@ -776,46 +787,69 @@ function NewLabOrderModal({ onClose }: { onClose: (reload: boolean) => void }) {
                 onSelect={(v) => setForm((f) => ({ ...f, examType: v }))}
                 placeholder="Tipo de examen (escribe para filtrar o agrega uno nuevo)"
               />
-              <div className="flex gap-2">
-                <input value={form.petName} onChange={(e) => setForm((f) => ({ ...f, petName: e.target.value }))} placeholder="Mascota (nombre)" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                <div className="flex gap-1">
-                  {["Perro", "Gato"].map((t) => (
-                    <button key={t} onClick={() => setForm((f) => ({ ...f, petType: t }))} className={`rounded-lg px-2.5 text-sm font-semibold ${form.petType === t ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-700"}`}>{t === "Perro" ? "🐶" : "🐱"}</button>
-                  ))}
+            </div>
+
+            <div className="mt-3">
+              <ModalSection title="Mascota y dueño" icon={UserRound} tone="orange" />
+              <div className="grid gap-3">
+                <label className="block w-full">
+                  <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Mascota</span>
+                  <div className="flex w-full min-w-0 gap-2">
+                    <input value={form.petName} onChange={(e) => setForm((f) => ({ ...f, petName: e.target.value }))} placeholder="Nombre de la mascota" className={`${FIELD_CLS} min-w-0 flex-1`} />
+                    <div className="flex gap-1">
+                      {["Perro", "Gato"].map((t) => (
+                        <button key={t} onClick={() => setForm((f) => ({ ...f, petType: t }))} className={`flex items-center gap-1 rounded-xl px-3 text-sm font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-blue-300 ${form.petType === t ? "bg-brand-blue text-white shadow-sm ring-1 ring-blue-300" : "bg-slate-50 text-slate-600 ring-1 ring-slate-200 hover:bg-blue-50"}`}>
+                          {t === "Perro" ? <Dog className="h-4 w-4" /> : <Cat className="h-4 w-4" />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                </label>
+                <div className="flex gap-2">
+                  <input value={form.historyCode} onChange={(e) => setForm((f) => ({ ...f, historyCode: e.target.value }))} placeholder="# Historia (VetPraxis, opcional)" className={`${FIELD_CLS} min-w-0 flex-1`} />
+                  <select
+                    value={form.doctorName}
+                    onChange={(e) => setForm((f) => ({ ...f, doctorName: e.target.value }))}
+                    className={`${FIELD_CLS} w-40`}
+                  >
+                    <option value="-">Sin médico</option>
+                    {(doctors ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
+                    {form.doctorName !== "-" && !(doctors ?? []).some((d) => d.name === form.doctorName) && (
+                      <option value={form.doctorName}>{form.doctorName}</option>
+                    )}
+                  </select>
                 </div>
+                <input value={form.ownerName} onChange={(e) => setForm((f) => ({ ...f, ownerName: e.target.value }))} placeholder="Nombre del dueño" className={`${FIELD_CLS} w-full`} />
+                <input
+                  value={form.ownerPhone}
+                  onChange={(e) => setForm((f) => ({ ...f, ownerPhone: e.target.value }))}
+                  placeholder="Celular del dueño (WhatsApp) — obligatorio"
+                  inputMode="tel"
+                  className={`${FIELD_CLS} w-full`}
+                />
               </div>
-              <div className="flex gap-2">
-                <input value={form.historyCode} onChange={(e) => setForm((f) => ({ ...f, historyCode: e.target.value }))} placeholder="# Historia (VetPraxis, opcional)" className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-                <select
-                  value={form.doctorName}
-                  onChange={(e) => setForm((f) => ({ ...f, doctorName: e.target.value }))}
-                  className="w-40 rounded-lg border border-slate-300 px-2 py-2 text-sm"
-                >
-                  <option value="-">Sin médico</option>
-                  {(doctors ?? []).map((d) => <option key={d.id} value={d.name}>{d.name}</option>)}
-                  {form.doctorName !== "-" && !(doctors ?? []).some((d) => d.name === form.doctorName) && (
-                    <option value={form.doctorName}>{form.doctorName}</option>
-                  )}
-                </select>
+            </div>
+
+            <div className="mt-3">
+              <ModalSection title="Pago y notas" icon={Wallet} tone="green" />
+              <div className="grid gap-3">
+                <input value={form.paidNotes} onChange={(e) => setForm((f) => ({ ...f, paidNotes: e.target.value }))} placeholder="Monto / pago (opcional)" className={`${FIELD_CLS} w-full`} />
+                <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Notas (opcional)" className={`${FIELD_CLS} w-full`} />
               </div>
-              <input value={form.ownerName} onChange={(e) => setForm((f) => ({ ...f, ownerName: e.target.value }))} placeholder="Nombre del dueño" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <input
-                value={form.ownerPhone}
-                onChange={(e) => setForm((f) => ({ ...f, ownerPhone: e.target.value }))}
-                placeholder="Celular del dueño (WhatsApp) — obligatorio"
-                inputMode="tel"
-                className="rounded-lg border border-slate-300 px-3 py-2 text-sm"
-              />
-              <input value={form.paidNotes} onChange={(e) => setForm((f) => ({ ...f, paidNotes: e.target.value }))} placeholder="Monto / pago (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-              <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2} placeholder="Notas (opcional)" className="rounded-lg border border-slate-300 px-3 py-2 text-sm" />
+            </div>
+
+            <div className="mt-4 border-t border-slate-100 pt-3">
               <button
                 onClick={() => void guardar()}
                 disabled={busy || !canSave}
-                className="rounded-xl bg-brand-blue py-2.5 text-sm font-semibold text-white disabled:opacity-50"
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 py-3 text-sm font-bold text-white shadow-md shadow-blue-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
               >
+                <FlaskConical className="h-4 w-4" />
                 {busy ? "Registrando…" : "Registrar orden"}
               </button>
-              <button onClick={() => maybeClose(false)} className="text-sm text-slate-400">Cancelar</button>
+              <button onClick={() => maybeClose(false)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">
+                Cancelar
+              </button>
             </div>
           </>
           )
@@ -875,11 +909,3 @@ function LabOrderSuccess({ code, notified, onDone }: { code: string; notified: b
   );
 }
 
-function Row01({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <label className="flex flex-col gap-1">
-      <span className="text-[10px] font-medium uppercase tracking-wide text-slate-500">{label}</span>
-      {children}
-    </label>
-  );
-}

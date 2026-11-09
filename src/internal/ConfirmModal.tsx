@@ -20,12 +20,15 @@ export function ConfirmModal({ title, description, confirmLabel, danger = false,
       aria-modal="true"
       aria-label={title}
     >
-      <div className="relative w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl" onClick={(e) => e.stopPropagation()}>
+      <div className="relative w-full max-w-sm overflow-hidden rounded-2xl bg-white shadow-2xl ring-1 ring-slate-100" onClick={(e) => e.stopPropagation()}>
+        {/* Firma de marca: misma barra degradada de los wizards públicos */}
+        <div aria-hidden className="h-1.5 bg-gradient-to-r from-blue-500 via-blue-400 to-orange-400" />
+        <div className="relative p-5">
         <button
           onClick={onClose}
           aria-label="Cerrar"
           disabled={busy}
-          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-slate-100 hover:text-slate-700 disabled:opacity-50"
+          className="absolute right-3 top-3 flex h-8 w-8 items-center justify-center rounded-full text-slate-400 transition hover:bg-blue-50 hover:text-[#475AAB] disabled:opacity-50"
         >
           <X className="h-5 w-5" />
         </button>
@@ -60,6 +63,7 @@ export function ConfirmModal({ title, description, confirmLabel, danger = false,
             {busy && <Loader2 className="h-4 w-4 animate-spin" />}
             {confirmLabel}
           </button>
+        </div>
         </div>
       </div>
     </div>,

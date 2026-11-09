@@ -3,6 +3,7 @@ import { ChevronDown, Clock, GraduationCap, MessageCircle, Plus, Stethoscope } f
 import { createDoctor, createSpecialty, fetchCatalog, fetchMedConfig, putMedConfig, updateCatalog, type MedDoctorPanel, type MedSpecialtyPanel } from "./apiMedical";
 import { MED_BRANCHES } from "../medical/api";
 import { HorariosTab } from "./HorariosTab";
+import { FIELD_CLS } from "./ModalShell";
 
 // Pestaña Config: duración de cita, texto de métodos de pago, doctores,
 // especialidades y horarios médicos (tareas de baja frecuencia del counter).
@@ -72,10 +73,10 @@ export function ConfigTab() {
             step={5}
             value={config?.appt_duration_minutes ?? "60"}
             onChange={(e) => setConfigState((c) => ({ ...(c ?? {}), appt_duration_minutes: e.target.value }))}
-            className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm outline-none"
+            className={`${FIELD_CLS} w-24`}
           />
           <span className="text-sm text-slate-500">minutos</span>
-          <button onClick={() => void guardarConfig("appt_duration_minutes", config?.appt_duration_minutes ?? "60", "duración de cita")} disabled={busy} className="ml-auto rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+          <button onClick={() => void guardarConfig("appt_duration_minutes", config?.appt_duration_minutes ?? "60", "duración de cita")} disabled={busy} className="ml-auto rounded-xl bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
             Guardar
           </button>
         </div>
@@ -94,9 +95,9 @@ export function ConfigTab() {
           rows={4}
           value={config?.payment_info ?? ""}
           onChange={(e) => setConfigState((c) => ({ ...(c ?? {}), payment_info: e.target.value }))}
-          className="w-full rounded-xl border border-slate-300 px-3 py-2.5 text-sm outline-none focus:border-brand-blue"
+          className={`${FIELD_CLS} w-full`}
         />
-        <button onClick={() => void guardarConfig("payment_info", config?.payment_info ?? "", "métodos de pago")} disabled={busy} className="mt-2 rounded-lg bg-brand-blue px-4 py-2 text-sm font-semibold text-white disabled:opacity-50">
+        <button onClick={() => void guardarConfig("payment_info", config?.payment_info ?? "", "métodos de pago")} disabled={busy} className="mt-2 rounded-xl bg-brand-blue px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
           Guardar texto de pago
         </button>
       </section>
@@ -130,17 +131,17 @@ export function ConfigTab() {
             value={nuevoDoc.fullName}
             onChange={(e) => setNuevoDoc((n) => ({ ...n, fullName: e.target.value }))}
             placeholder="Nombre del doctor"
-            className="min-w-40 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm"
+            className={`${FIELD_CLS} min-w-40 flex-1`}
           />
-          <select value={nuevoDoc.branch} onChange={(e) => setNuevoDoc((n) => ({ ...n, branch: e.target.value }))} className="rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <select value={nuevoDoc.branch} onChange={(e) => setNuevoDoc((n) => ({ ...n, branch: e.target.value }))} className={FIELD_CLS}>
             {MED_BRANCHES.map((b) => <option key={b.value} value={b.value}>{b.short}</option>)}
           </select>
-          <select value={nuevoDoc.kind} onChange={(e) => setNuevoDoc((n) => ({ ...n, kind: e.target.value }))} className="rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <select value={nuevoDoc.kind} onChange={(e) => setNuevoDoc((n) => ({ ...n, kind: e.target.value }))} className={FIELD_CLS}>
             <option value="general">General</option>
             <option value="especialista">Especialista</option>
           </select>
           {nuevoDoc.kind === "especialista" && (
-            <select value={nuevoDoc.specialtyId} onChange={(e) => setNuevoDoc((n) => ({ ...n, specialtyId: e.target.value }))} className="rounded-lg border border-slate-300 px-2 py-2 text-sm">
+            <select value={nuevoDoc.specialtyId} onChange={(e) => setNuevoDoc((n) => ({ ...n, specialtyId: e.target.value }))} className={FIELD_CLS}>
               <option value="">Especialidad…</option>
               {specialties.filter((s) => s.active).map((s) => <option key={s.id} value={s.id}>{s.name}</option>)}
             </select>
@@ -158,7 +159,7 @@ export function ConfigTab() {
                 .catch((err) => setError(err instanceof Error ? err.message : "Error al crear doctor"))
             }
             disabled={!nuevoDoc.fullName.trim()}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Añadir
           </button>
@@ -183,7 +184,7 @@ export function ConfigTab() {
                   const v = Number(e.target.value);
                   if (v && v !== s.cost)
                     void updateCatalog("specialty", { id: s.id, cost: v }).then(() => setSpecialties((prev) => prev.map((x) => x.id === s.id ? { ...x, cost: v } : x))).catch((err) => setError(err instanceof Error ? err.message : "Error"));
-                }} className="w-20 rounded-lg border border-slate-300 px-2 py-1 text-sm" />
+                }} className={`${FIELD_CLS} w-20 px-2 py-1`} />
                 {MED_BRANCHES.map((b) => (
                   <button
                     key={b.value}
@@ -197,9 +198,9 @@ export function ConfigTab() {
           ))}
         </div>
         <div className="flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-          <input value={nuevaEsp.name} onChange={(e) => setNuevaEsp((n) => ({ ...n, name: e.target.value }))} placeholder="Nueva especialidad" className="min-w-40 flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <input value={nuevaEsp.cost} onChange={(e) => setNuevaEsp((n) => ({ ...n, cost: e.target.value }))} placeholder="Costo S/" type="number" className="w-24 rounded-lg border border-slate-300 px-3 py-2 text-sm" />
-          <select value={nuevaEsp.branches} onChange={(e) => setNuevaEsp((n) => ({ ...n, branches: e.target.value }))} className="rounded-lg border border-slate-300 px-2 py-2 text-sm">
+          <input value={nuevaEsp.name} onChange={(e) => setNuevaEsp((n) => ({ ...n, name: e.target.value }))} placeholder="Nueva especialidad" className={`${FIELD_CLS} min-w-40 flex-1`} />
+          <input value={nuevaEsp.cost} onChange={(e) => setNuevaEsp((n) => ({ ...n, cost: e.target.value }))} placeholder="Costo S/" type="number" className={`${FIELD_CLS} w-24`} />
+          <select value={nuevaEsp.branches} onChange={(e) => setNuevaEsp((n) => ({ ...n, branches: e.target.value }))} className={FIELD_CLS}>
             <option value="san_martin">Solo SPM</option>
             <option value="los_olivos">Solo LO</option>
             <option value="san_miguel">Solo SM</option>
@@ -221,7 +222,7 @@ export function ConfigTab() {
               }
             }}
             disabled={!nuevaEsp.name.trim() || !nuevaEsp.cost}
-            className="flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="flex items-center gap-1.5 rounded-xl bg-brand-blue px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50"
           >
             <Plus className="h-4 w-4" /> Añadir
           </button>

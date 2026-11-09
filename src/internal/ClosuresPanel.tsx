@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Ban, ChevronDown, Trash2 } from "lucide-react";
 import { createClosure, deleteClosure, type PanelClosure } from "./api";
 import { BRANCH_LABELS, SLOT_LABELS } from "../statuses";
+import { FIELD_CLS } from "./ModalShell";
 
 const BRANCH_OPTIONS = Object.entries(BRANCH_LABELS);
 
@@ -93,7 +94,7 @@ export function ClosuresPanel({
               <select
                 value={form.branch}
                 onChange={(e) => setForm((f) => ({ ...f, branch: e.target.value }))}
-                className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none"
+                className={FIELD_CLS}
               >
                 {BRANCH_OPTIONS.map(([value, label]) => (
                   <option key={value} value={value}>{label}</option>
@@ -106,7 +107,7 @@ export function ClosuresPanel({
                 type="date"
                 value={form.date}
                 onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-                className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none"
+                className={FIELD_CLS}
               />
             </label>
             <label className="flex flex-col gap-1">
@@ -114,7 +115,7 @@ export function ClosuresPanel({
               <select
                 value={form.timeSlot}
                 onChange={(e) => setForm((f) => ({ ...f, timeSlot: e.target.value as typeof f.timeSlot }))}
-                className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none"
+                className={FIELD_CLS}
               >
                 <option value="all">Todo el día</option>
                 <option value="9-11">9:00 am – 11:00 am</option>
@@ -127,7 +128,7 @@ export function ClosuresPanel({
                 value={form.reason}
                 onChange={(e) => setForm((f) => ({ ...f, reason: e.target.value }))}
                 placeholder="Ej: día lleno / feriado"
-                className="rounded-lg border border-slate-300 px-2.5 py-2 text-sm outline-none"
+                className={FIELD_CLS}
               />
             </label>
             <button
