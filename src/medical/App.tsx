@@ -69,13 +69,14 @@ const MASCOT = {  orden: "/images/vetMascot/orden.webp",
 // MascotaCard: wrapper de las mascotas del wizard (patrón maqueta, SIN marco):
 // animación + fundido blanco inferior para despegar el arte; la ilustración flota
 // con su fondo propio — sin aro ni padding (se revirtió el marco tras feedback 08/11).
-function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }: {
+function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError, fade = true }: {
   src: string;
   alt: string;
   imgClass: string;
   mix?: boolean;
   delay?: number;
   onError?: () => void;
+  fade?: boolean;
 }) {
   const reduceMotion = useReducedMotion() ?? false;
   return (
@@ -93,11 +94,15 @@ function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError }:
           draggable={false}
           onError={onError}
         />
-        {/* Fundido abajo: despega el arte del borde inferior (patrón maqueta) */}
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/60 to-transparent sm:h-16"
-        />
+        {/* Fundido abajo: SOLO para arte que se corta de pelado (orden, doctor).
+            Los webp con panel/texto integrado van sin fundido (fade=false):
+            el degradado lava el texto que ya pintaron. */}
+        {fade && (
+          <div
+            aria-hidden
+            className="pointer-events-none absolute inset-x-0 bottom-0 h-10 bg-gradient-to-t from-white via-white/60 to-transparent sm:h-16"
+          />
+        )}
       </div>
     </motion.div>
   );
@@ -787,6 +792,7 @@ export default function App() {
                     src={MASCOT.sinOrden}
                     alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
                     imgClass="h-56 w-auto sm:h-72 lg:h-96"
+                    fade={false}
                   />
                 </section>
               )}
@@ -980,6 +986,7 @@ export default function App() {
                         src={MASCOT.diaDoctor}
                         alt="Doctor veterinario con el panel: agenda fácil y rápida — elige el día y la hora, disponibilidad en tiempo real, tu mascota en las mejores manos"
                         imgClass="h-auto w-64 sm:w-72 lg:w-full lg:max-w-[32rem]"
+                        fade={false}
                       />
                     )}
                     {form.date && slotsLoading && <Loading />}
@@ -1023,8 +1030,8 @@ export default function App() {
                       <MascotaCard
                         src={MASCOT.sinDisponibilidad}
                         alt="Calendario con X y aviso: el doctor no está disponible este día — elige otra fecha o selecciona otro doctor"
-                        imgClass="h-auto w-64 sm:w-80"
-                        mix
+                        imgClass="h-auto w-72 sm:w-80 lg:w-[28rem]"
+                        fade={false}
                       />
                     )}
                     {form.date && !slotsLoading && slots && slots.length > 0 && (
@@ -1227,7 +1234,8 @@ export default function App() {
                 /* Confirmación estilo maqueta (misma tarjeta del grooming):
                     mascota a la izquierda / código + resumen + avisos a la derecha.
                     Cero lógica: mismos estados, mensajes y handlers que producción. */
-                <section className="mx-auto grid max-w-4xl gap-5 py-4 sm:grid-cols-[0.9fr_1.1fr] sm:items-start sm:gap-8">
+                <div className="mx-auto flex max-w-4xl flex-col gap-6 py-4">
+                  <section className="grid gap-5 sm:grid-cols-[0.8fr_1.2fr] sm:items-center sm:gap-8">
                   <div className="sm:self-center">
                     {form.serviceType === "especializada" ? (
                       // TODO: reemplazar por la ilustración de interconsulta
@@ -1235,7 +1243,7 @@ export default function App() {
                       <MascotaCard
                         src={MASCOT.agendado}
                         alt="Van de movilidad de Ariels Clinic con nuestro asistente"
-                        imgClass="h-auto w-56 sm:w-72"
+                        imgClass="h-auto w-64 sm:w-80"
                         mix
                       />
                     ) : (
@@ -1244,8 +1252,9 @@ export default function App() {
                       <MascotaCard
                         src={MASCOT.citaRegistrada}
                         alt="¡Cita registrada! Hemos agendado tu cita con éxito"
-                        imgClass="h-auto w-72 sm:w-[26rem]"
+                        imgClass="h-auto w-64 sm:w-80 sm:max-w-none"
                         mix
+                        fade={false}
                       />
                     )}
                   </div>
@@ -1262,40 +1271,6 @@ export default function App() {
                       </div>
                     )}
 
-                    <div className="flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-6 py-5">
-                      {/* Tile calendario (patrón maqueta grooming) */}
-                      <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-brand-blue shadow-sm ring-1 ring-blue-200">
-                        <CalendarDays className="h-6 w-6" />
-                      </span>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
-                        <div className="mt-1 flex items-center justify-center gap-2">
-                          <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
-                          <button
-                            title="Copiar código"
-                            onClick={() => {
-                              void navigator.clipboard?.writeText(code);
-                              setCopia(true);
-                              setTimeout(() => setCopia(false), 2000);
-                            }}
-                            className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
-                          >
-                            {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
-                          </button>
-                        </div>
-                        <button
-                          onClick={() => {
-                            void navigator.clipboard?.writeText(code);
-                            setCopia(true);
-                            setTimeout(() => setCopia(false), 2000);
-                          }}
-                          className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
-                        >
-                          {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                          {copia ? "¡Copiado!" : "Copiar código"}
-                        </button>
-                      </div>
-                    </div>
                     <Resumen form={form} />
                     {form.serviceType === "especializada" ? (
                       <>
@@ -1356,23 +1331,63 @@ export default function App() {
                         </p>
                       </div>
                     )}
-                    <button
-                      onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                      className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
-                    >
-                      <CalendarDays className="h-5 w-5" />
-                      Agendar otra cita
-                      <ChevronRight className="h-4 w-4" />
-                    </button>
-                    <button
-                      onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                      className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                      Volver al inicio de citas
-                    </button>
                   </div>
                 </section>
+
+                {/* Código de cita: el hito, BLOQUE ANCHO — mismo esqueleto del grooming */}
+                <div className="flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-6 py-5 text-center">
+                  {/* Tile calendario (patrón maqueta grooming) */}
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-brand-blue shadow-sm ring-1 ring-blue-200">
+                    <CalendarDays className="h-6 w-6" />
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
+                    <div className="mt-1 flex items-center justify-center gap-2">
+                      <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                      <button
+                        title="Copiar código"
+                        onClick={() => {
+                          void navigator.clipboard?.writeText(code);
+                          setCopia(true);
+                          setTimeout(() => setCopia(false), 2000);
+                        }}
+                        className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                      >
+                        {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                      </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        void navigator.clipboard?.writeText(code);
+                        setCopia(true);
+                        setTimeout(() => setCopia(false), 2000);
+                      }}
+                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
+                    >
+                      {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
+                      {copia ? "¡Copiado!" : "Copiar código"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="flex flex-col items-center gap-3">
+                  <button
+                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
+                  >
+                    <CalendarDays className="h-5 w-5" />
+                    Agendar otra cita
+                    <ChevronRight className="h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Volver al inicio de citas
+                  </button>
+                </div>
+                </div>
               )}
             </motion.div>
           </AnimatePresence>
