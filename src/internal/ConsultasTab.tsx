@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { CalendarDays, Cat, Check, ChevronDown, Clock, Dog, FileText, History, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
+import { CalendarDays, Cat, Check, ChevronDown, Clock, Dog, FileText, History, Loader2, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
   assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, searchMedAppts,
   type MedAppt, type ScheduleWithDoctor,
@@ -940,6 +940,7 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
   const [specialtyId, setSpecialty] = useState(prefill?.specialtyId ?? "");
   const [date, setDate] = useState("");
   const [slots, setSlotsList] = useState<MedSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
   const [startMinute, setStart] = useState<number | null>(null);
   const [name, setName] = useState({
     petName: prefill?.petName ?? "",
@@ -972,10 +973,25 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
     return () => { active = false; };
   }, [branch]);
 
-  async function loadSlots(d: string) {
+  // Carrera de respuestas: si el doctor cambia mientras un fetch vuela,
+  // la respuesta antigua no puede sobrescribir la del doctor actual.
+  const slotsSeqRef = useRef(0);
+
+  async function loadSlots(d: string, doc = doctorId) {
     setDate(d); setStart(null); setSlotsList([]);
-    if (!doctorId) return;
-    try { setSlotsList(await fetchSlots(doctorId, d)); } catch { setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha."); }
+    if (!doc) return;
+    setSlotsLoading(true);
+    const seq = ++slotsSeqRef.current;
+    try {
+      const list = await fetchSlots(doc, d);
+      if (slotsSeqRef.current !== seq) return; // cayó tarde: descartar
+      setSlotsList(list);
+    } catch {
+      if (slotsSeqRef.current !== seq) return;
+      setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha.");
+    } finally {
+      if (slotsSeqRef.current === seq) setSlotsLoading(false);
+    }
   }
 
   // dirty (para la confirmación de salida): solo lo que el USUARIO cambió
@@ -1054,7 +1070,7 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
               <div className="flex gap-2">
                 <label className="grid min-w-0 flex-1 gap-1">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Doctor</span>
-                  <select value={doctorId} onChange={(e) => setDoctor(e.target.value)} className={`${FIELD_CLS} w-full`}>
+                  <select value={doctorId} onChange={(e) => { setDoctor(e.target.value); setStart(null); if (date && e.target.value) void loadSlots(date, e.target.value); }} className={`${FIELD_CLS} w-full`}>
                     {(doctors ?? []).filter((d) => d.kind === "general").map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
                   </select>
                 </label>
@@ -1063,6 +1079,28 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
                   <input type="date" value={date} onChange={(e) => void loadSlots(e.target.value)} className={`${FIELD_CLS} w-full`} />
                 </label>
               </div>
+              {slotsLoading && (
+                <div className="grid gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
+                  <div className="flex flex-wrap items-center gap-3">
+                    <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-blue" />
+                    <p className="text-xs text-slate-500">Buscando los horarios del doctor…</p>
+                    <div className="flex gap-1.5" aria-hidden>
+                      {[0, 1, 2, 3].map((i) => (
+                        <span key={i} style={{ animationDelay: `${i * 150}ms` }} className="h-7 w-16 animate-pulse rounded-lg bg-slate-100" />
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              )}
+              {!slotsLoading && !error && date && slots.length === 0 && (
+                <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <p className="text-xs leading-relaxed text-amber-800">
+                    <b>El doctor no tiene horarios para este día.</b> Prueba otra fecha o cambia de doctor.
+                  </p>
+                </div>
+              )}
               {slots.length > 0 && (
                 <div className="grid gap-1">
                   <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>

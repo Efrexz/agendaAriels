@@ -504,7 +504,7 @@ export default function App() {
               </a>
               <div className="hidden items-center gap-3 rounded-2xl bg-gradient-to-r from-[#FFF7ED] to-[#FFFDF8] py-2 pl-2.5 pr-4 shadow-sm ring-1 ring-orange-200/70 sm:flex">
                 <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm ring-1 ring-orange-100">
-                  <span className="text-lg">🩺</span>
+                  <Stethoscope className="h-5 w-5 text-blue-600" />
                 </span>
                 <div className="text-left leading-tight">
                   <p className="text-[13px] font-bold text-[#475AAB]">Más de 10 años</p>
