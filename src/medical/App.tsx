@@ -1231,12 +1231,12 @@ export default function App() {
               {/* ── Enviado: éxito con mascota (arte con título integrado) +
                   código copiable + resumen en card + banner WhatsApp ── */}
               {step === "enviado" && (
-                /* Confirmación estilo maqueta (misma tarjeta del grooming):
-                    mascota a la izquierda / código + resumen + avisos a la derecha.
-                    Cero lógica: mismos estados, mensajes y handlers que producción. */
-                <div className="mx-auto flex max-w-4xl flex-col gap-6 py-4">
-                  <section className="grid gap-5 sm:grid-cols-[0.8fr_1.2fr] sm:items-center sm:gap-8">
-                  <div className="sm:self-center">
+                /* Maqueta aprobada (09/11): izquierda = mascota + código + avisos;
+                    derecha = tarjeta grande con medalla, título y resumen.
+                    Textos honestos M1 intactos — la honestidad vive en el aviso. */
+                <div className="mx-auto grid max-w-4xl gap-6 py-4 lg:grid-cols-2 lg:items-start">
+                  {/* Columna izquierda: mascota + código + avisos (lo que hay que GUARDAR) */}
+                  <div className="flex flex-col items-center gap-4">
                     {form.serviceType === "especializada" ? (
                       // TODO: reemplazar por la ilustración de interconsulta
                       // (frenchie junto al WhatsApp esperando confirmación) cuando llegue al repo.
@@ -1245,6 +1245,7 @@ export default function App() {
                         alt="Van de movilidad de Ariels Clinic con nuestro asistente"
                         imgClass="h-auto w-64 sm:w-80"
                         mix
+                        fade={false}
                       />
                     ) : (
                       // El arte trae integrado "¡Cita registrada!" + subtítulo,
@@ -1252,79 +1253,88 @@ export default function App() {
                       <MascotaCard
                         src={MASCOT.citaRegistrada}
                         alt="¡Cita registrada! Hemos agendado tu cita con éxito"
-                        imgClass="h-auto w-64 sm:w-80 sm:max-w-none"
+                        imgClass="h-auto w-64 sm:w-80"
                         mix
                         fade={false}
                       />
                     )}
-                  </div>
 
-                  <div className="flex flex-col items-center gap-4 text-center">
-                    {form.serviceType === "especializada" && (
-                      <div className="flex items-center justify-center gap-2.5">
-                        <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200">
-                          <Check className="h-6 w-6" strokeWidth={3} />
+                    {/* Código de cita: encabezado + pill importante + nota de guardar */}
+                    <div className="w-full rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-5 py-4">
+                      <div className="mb-2 flex items-center justify-between gap-2">
+                        <span className="flex items-center gap-2 text-sm font-bold text-[#475AAB]">
+                          <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-[#E8F2FF] text-blue-600">
+                            <ShieldCheck className="h-4 w-4" />
+                          </span>
+                          Código de tu cita
                         </span>
-                        <h2 className="font-display text-3xl font-bold leading-none tracking-tight text-[#475AAB] sm:text-4xl">
-                          ¡Cita <span className="text-orange-500">registrada!</span>
-                        </h2>
+                        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#E4EEFF] px-2.5 py-1 text-[11px] font-bold text-[#3756B5] ring-1 ring-blue-200">
+                          <Info className="h-3 w-3" />
+                          Importante
+                        </span>
                       </div>
-                    )}
+                      <div className="flex items-center justify-center gap-2">
+                        <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                        <button
+                          title="Copiar código"
+                          onClick={() => {
+                            void navigator.clipboard?.writeText(code);
+                            setCopia(true);
+                            setTimeout(() => setCopia(false), 2000);
+                          }}
+                          className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                        >
+                          {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                        </button>
+                      </div>
+                      <p className="mt-2 text-center text-xs text-[#8A97B1]">
+                        Guarda este código para consultar los datos de tu cita.
+                      </p>
+                    </div>
 
-                    <Resumen form={form} />
                     {form.serviceType === "especializada" ? (
                       <>
                       {/* M1: si el aviso con los métodos de pago no se pudo entregar
                           (o no lo pudimos confirmar), se dice — el verde no miente. */}
                       {whatsAppOk !== true && (
-                        <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                            <MessageCircle className="h-4 w-4" />
-                          </span>
-                          <p className="text-xs leading-relaxed text-amber-800">
+                        <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                          <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">
                             {whatsAppOk === false
                               ? <><b>El aviso por WhatsApp con los métodos de pago no se pudo enviar.</b> Tu solicitud SÍ está registrada — guarda tu código; en cuanto el servicio restablezca te lo mandamos.</>
                               : <>Guarda tu <b>código</b>: no pudimos confirmar que el aviso con los <b>métodos de pago</b> te haya llegado por WhatsApp.</>}
                           </p>
                         </div>
                       )}
-                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                        <img
-                          src={MASCOT.pago}
-                          alt=""
-                          aria-hidden="true"
-                          className="h-12 w-12 shrink-0 object-contain mix-blend-multiply"
-                        />
-                        <p className="text-xs leading-relaxed text-amber-800">
+                      <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <p className="font-bold text-amber-800">Métodos de pago</p>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
                           Te llega por WhatsApp un mensaje con los <b>métodos de pago</b>: envía tu comprobante al
                           WhatsApp de la sede y te confirmamos fecha, hora y doctor.
                         </p>
                       </div>
                       </>
                     ) : solicitudEnviada ? (
-                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                        <p className="text-xs leading-relaxed text-amber-800">
+                      <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
                           <b>¡Solicitud registrada!</b> El personal confirma la <b>hora exacta</b> con la agenda
                           publicada cada lunes y te avisamos por WhatsApp con fecha, hora y doctor — no es un
                           horario garantizado hasta esa confirmación.
                         </p>
                       </div>
                     ) : whatsAppOk === true ? (
-                      <div className="flex w-full items-start gap-3 rounded-2xl bg-green-50 px-4 py-3 text-left ring-1 ring-green-200">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-green-100 text-green-700">
-                          <MessageCircle className="h-5 w-5" />
-                        </span>
-                        <p className="text-xs leading-relaxed text-green-900">
+                      <div className="w-full rounded-2xl bg-[#E8F7EE] px-4 py-3 text-left ring-1 ring-green-200">
+                        <p className="font-bold text-green-700">Aviso por WhatsApp</p>
+                        <p className="mt-1 text-xs leading-relaxed text-green-900">
                           Ya recibiste el <b>recibo</b> por WhatsApp con los detalles de tu cita. Llega puntual:
                           tolerancia de 10 minutos, luego atendemos al siguiente 🐾.
                         </p>
                       </div>
                     ) : (
-                      <div className="flex w-full items-start gap-3 rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
-                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-amber-100 text-amber-600">
-                          <MessageCircle className="h-4 w-4" />
-                        </span>
-                        <p className="text-xs leading-relaxed text-amber-800">
+                      <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                        <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
+                        <p className="mt-1 text-xs leading-relaxed text-amber-800">
                           {whatsAppOk === false
                             ? <><b>El aviso por WhatsApp no se pudo enviar</b> (probablemente temporal). Tu cita SÍ está registrada: <b>guarda tu código</b> y si no llega en unos minutos, escríbenos al WhatsApp de la sede.</>
                             : <>No pudimos confirmar que el aviso haya salido por WhatsApp. Tu cita SÍ está registrada: <b>guarda tu código</b>.</>}
@@ -1332,61 +1342,46 @@ export default function App() {
                       </div>
                     )}
                   </div>
-                </section>
 
-                {/* Código de cita: el hito, BLOQUE ANCHO — mismo esqueleto del grooming */}
-                <div className="flex w-full items-center gap-4 rounded-2xl border-2 border-dashed border-blue-300 bg-gradient-to-b from-[#F4FAFF] to-[#FDFEFF] px-6 py-5 text-center">
-                  {/* Tile calendario (patrón maqueta grooming) */}
-                  <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-white text-brand-blue shadow-sm ring-1 ring-blue-200">
-                    <CalendarDays className="h-6 w-6" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-xs font-bold uppercase tracking-[0.15em] text-[#546A8E]">Código de cita</p>
-                    <div className="mt-1 flex items-center justify-center gap-2">
-                      <p className="font-mono text-3xl font-bold tracking-wider text-brand-blue">{code}</p>
+                  {/* Columna derecha: tarjeta grande de confirmación (lo que se CONFIRMÓ) */}
+                  <div className="flex flex-col items-stretch gap-4">
+                    <div className="rounded-[20px] border border-[#DCEBFF] bg-white p-5 shadow-sm sm:p-6">
+                      <div className="mb-4 flex items-center gap-3">
+                        <span className="flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md shadow-green-200 ring-4 ring-green-100">
+                          <Check className="h-7 w-7" strokeWidth={3} />
+                        </span>
+                        <div className="min-w-0 text-left">
+                          <h2 className="font-display text-2xl font-bold leading-tight text-[#475AAB] sm:text-3xl">
+                            ¡Tu cita está <span className="text-orange-500">registrada!</span>
+                          </h2>
+                          {form.serviceType === "especializada"
+                            ? <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Tu solicitud está registrada con éxito.</p>
+                            : <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Hemos agendado tu cita con éxito.</p>}
+                        </div>
+                      </div>
+                      <div className="flex justify-center">
+                        <Resumen form={form} header />
+                      </div>
+                    </div>
+
+                    <div className="flex flex-col items-center gap-3">
                       <button
-                        title="Copiar código"
-                        onClick={() => {
-                          void navigator.clipboard?.writeText(code);
-                          setCopia(true);
-                          setTimeout(() => setCopia(false), 2000);
-                        }}
-                        className="rounded-xl p-1.5 text-[#546A8E] transition-colors hover:bg-[#EAF3FF] hover:text-brand-blue"
+                        onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                        className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
                       >
-                        {copia ? <Check className="h-5 w-5 text-green-600" /> : <Copy className="h-5 w-5" />}
+                        <CalendarDays className="h-5 w-5" />
+                        Agendar otra cita
+                        <ChevronRight className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
+                        className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
+                      >
+                        <ChevronLeft className="h-4 w-4" />
+                        Volver al inicio de citas
                       </button>
                     </div>
-                    <button
-                      onClick={() => {
-                        void navigator.clipboard?.writeText(code);
-                        setCopia(true);
-                        setTimeout(() => setCopia(false), 2000);
-                      }}
-                      className="mt-2 inline-flex items-center gap-1.5 rounded-full bg-white px-3 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-200 transition hover:bg-blue-50"
-                    >
-                      {copia ? <Check className="h-3.5 w-3.5 text-green-600" /> : <Copy className="h-3.5 w-3.5" />}
-                      {copia ? "¡Copiado!" : "Copiar código"}
-                    </button>
                   </div>
-                </div>
-
-                <div className="flex flex-col items-center gap-3">
-                  <button
-                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                    className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-8 py-3.5 text-base font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg hover:shadow-orange-300/50 active:scale-[0.98]"
-                  >
-                    <CalendarDays className="h-5 w-5" />
-                    Agendar otra cita
-                    <ChevronRight className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => { setForm(INITIAL); setSolicitudEnviada(false); setWhatsAppOk(null); go("sede"); }}
-                    className="inline-flex items-center gap-1.5 text-sm font-medium text-[#546A8E] transition-colors hover:text-[#475AAB]"
-                  >
-                    <ChevronLeft className="h-4 w-4" />
-                    Volver al inicio de citas
-                  </button>
-                </div>
                 </div>
               )}
             </motion.div>

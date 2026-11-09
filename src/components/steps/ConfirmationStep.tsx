@@ -317,9 +317,9 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
       <div className="py-4">
         <section className="mx-auto grid max-w-3xl items-center gap-5 sm:grid-cols-[0.75fr_1.25fr] sm:gap-8">
           <motion.img
-            src="/images/vetMascot/agendado.webp"
-            alt="Van de movilidad de Ariels Clinic con nuestro asistente mascota"
-            className="mx-auto h-auto w-72 object-contain sm:w-80"
+            src="/images/vetMascot/movilidad.webp"
+            alt="Van naranja de movilidad de Ariel's Clinic con el asistente celebrando: Tu mascota en buenas manos"
+            className="mx-auto h-auto w-full max-w-[22rem] object-contain"
             draggable={false}
             initial={{ opacity: 0, scale: 0.8, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
