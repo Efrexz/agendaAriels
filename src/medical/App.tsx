@@ -55,6 +55,7 @@ const INITIAL: FormData = {
 const MASCOT = {  orden: "/images/vetMascot/orden.webp",
   sinOrden: "/images/vetMascot/confirmacionOrden.webp",
   diaDoctor: "/images/vetMascot/diaDoctor.webp",
+  sinDisponibilidad: "/images/vetMascot/sinDisponibilidad.webp",
   // esperando.webp retirada del paso agenda (05/11 → maqueta diaDoctor);
   // el archivo sigue en public/images/vetMascot/ por si se reusa después.
   doctor: "/images/vetMascot/doctor.webp",
@@ -1017,9 +1018,14 @@ export default function App() {
                       </motion.div>
                     )}
                     {form.date && !slotsLoading && slots && slots.length === 0 && !requestedNextWeek(form.date) && (
-                      <p className="rounded-2xl bg-amber-50 p-4 text-center text-sm text-amber-800">
-                        El doctor no tiene horas libres ese día — prueba otro día.
-                      </p>
+                      /* Maqueta 09/11: estado diseñado "doctor sin horarios este día".
+                          El webp ya trae el panel ámbar con el texto pintado — no se duplica. */
+                      <MascotaCard
+                        src={MASCOT.sinDisponibilidad}
+                        alt="Calendario con X y aviso: el doctor no está disponible este día — elige otra fecha o selecciona otro doctor"
+                        imgClass="h-auto w-64 sm:w-80"
+                        mix
+                      />
                     )}
                     {form.date && !slotsLoading && slots && slots.length > 0 && (
                       <motion.div layout>
