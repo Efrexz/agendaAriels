@@ -1,12 +1,16 @@
 import { test as base, expect, type Page } from "@playwright/test";
 
+// Puerto del dev server que atiende la app (por defecto 5173; si otro proyecto
+// lo ocupa, correr con E2E_PORT=5174 y la config playwright.local.config.ts).
+const PORT = process.env.E2E_PORT ?? "5173";
+
 // Las pruebas E2E son locales: nunca deben contactar Maps, webhooks, Supabase
 // u otros servicios externos. Cada prueba puede simular la respuesta que use.
 export const test = base.extend({
   page: async ({ page }, runWithPage) => {
     await page.route("**/*", (route) => {
       const url = new URL(route.request().url());
-      return (url.hostname === "localhost" || url.hostname === "127.0.0.1") && url.port === "5173"
+      return (url.hostname === "localhost" || url.hostname === "127.0.0.1") && url.port === PORT
         ? route.continue()
         : route.abort();
     });

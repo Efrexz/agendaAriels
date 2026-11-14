@@ -525,7 +525,7 @@ export default function App() {
           </div>
 
           {/* Progreso con puntos numerados + etiquetas (maqueta "Confirma tu cita") */}
-          {groupIndex >= 0 && <StepProgress groups={PROGRESS_GROUPS} current={groupIndex} />}
+          {groupIndex >= 0 && <StepProgress groups={PROGRESS_GROUPS} current={groupIndex} branchShort={branch?.short} />}
 
           {error && (
             <motion.p
@@ -1590,9 +1590,14 @@ function SedeStep({ selected, onPick, onContinue }: {
 // Recolor de marca: pasos completados en azul sólido, el activo en NARANJA
 // ("naranja = aquí estás", como los CTAs) con su halo; el azul→naranja
 // cuenta el mismo degradado del borde superior de la card.
-function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; current: number }) {
+function StepProgress({ groups, current, branchShort }: {
+  groups: typeof PROGRESS_GROUPS;
+  current: number;
+  branchShort?: string;
+}) {
   return (
-    <div className="mb-7 flex">
+    <div className="mb-7 flex items-center gap-4">
+      <div className="flex min-w-0 flex-1">
       {groups.map((g, i) => {
         const done = i < current;
         const active = i === current;
@@ -1625,6 +1630,18 @@ function StepProgress({ groups, current }: { groups: typeof PROGRESS_GROUPS; cur
           </div>
         );
       })}
+      </div>
+      {/* Badge de sede: siempre visible tras elegirla (feedback 09/11) */}
+      {branchShort && (
+        <span
+          data-testid="branch-badge"
+          title="Sede seleccionada"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#EFF5FC] px-3 py-1 text-xs font-bold text-[#475AAB] ring-1 ring-[#DCEBFF] sm:inline-flex"
+        >
+          <MapPin className="h-3.5 w-3.5 text-blue-500" />
+          Sede {branchShort}
+        </span>
+      )}
     </div>
   );
 }

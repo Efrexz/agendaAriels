@@ -1,6 +1,6 @@
 import { useReducer, useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
-import { Check, ChevronLeft, PawPrint, Pencil } from "lucide-react";
+import { Check, ChevronLeft, MapPin, PawPrint, Pencil } from "lucide-react";
 import { BranchSelectionStep } from "./steps/BranchSelectionStep";
 import { ServiceTypeStep } from "./steps/ServiceTypeStep";
 import { PetInfoStep } from "./steps/PetInfoStep";
@@ -174,6 +174,18 @@ export function BookingWizard() {
               <Pencil className="h-3 w-3" />
               {STEP_LABELS[state.step]}
             </span>
+            {/* Badge de sede: siempre visible tras elegirla (feedback 09/11 -
+                el cliente ya no se pregunta "¿en qué sede estoy?" a mitad del wizard) */}
+            {branch && (
+              <span
+                data-testid="branch-badge"
+                title={branch.label}
+                className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#EFF5FC] px-3 py-1 text-xs font-bold text-[#475AAB] ring-1 ring-[#DCEBFF] sm:inline-flex"
+              >
+                <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                {branch.label.replace("Sede ", "")}
+              </span>
+            )}
           </div>
 
           <div className="relative">
