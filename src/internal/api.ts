@@ -32,6 +32,8 @@ export interface PanelBooking {
   pets: PanelPet[];
   /** G1 estado por mascota: { "<índice>": {s, by, at} } (null = reserva vieja). */
   petStatus?: Record<string, { s: string; by: string; at: string }> | null;
+  /** Número de baño (turno del spa) por mascota: { "<índice>": {n, by, at} } (null = sin asignar). */
+  bathNumbers?: Record<string, { n: number; by: string; at: string }> | null;
   createdAt: string;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
 }
@@ -47,6 +49,18 @@ export async function setPetStatus(
   await authedFetch("/api/internal/pet-status", {
     method: "POST",
     body: JSON.stringify({ bookingId, petIndex, status }),
+  });
+}
+
+/** Número de baño (turno del cuaderno del spa) por mascota; null lo quita. */
+export async function setBathNumber(
+  bookingId: string,
+  petIndex: number,
+  number: number | null,
+): Promise<void> {
+  await authedFetch("/api/internal/bath-number", {
+    method: "POST",
+    body: JSON.stringify({ bookingId, petIndex, number }),
   });
 }
 

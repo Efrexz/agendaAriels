@@ -42,6 +42,10 @@ export interface BookingRecord extends BookingRowInput {
   /** G1: estado por mascota. Clave = índice en `pets`; valor {s,by,at}.
    *  Null/ausente = reserva vieja (solo flujo global, sin cambios en su UI). */
   petStatus: Record<string, { s: string; by: string; at: string }> | null;
+  /** Número de baño (turno del cuaderno del spa) por mascota, asignado
+   *  manualmente al llegar. Clave = índice en `pets`; valor {n,by,at}.
+   *  Null/ausente = sin número asignado (nada cambia en la UI). */
+  bathNumbers: Record<string, { n: number; by: string; at: string }> | null;
 }
 
 export interface DayClosureRecord {
@@ -86,6 +90,14 @@ export interface BookingDb {
     petIndex: number,
     entry: { s: string; by: string; at: string },
     current: Record<string, { s: string; by: string; at: string }> | null,
+  ): Promise<void>;
+  /** Número de baño (turno del spa) por mascota: {n,by,at} o null = quitar.
+   *  Requiere la migración bath_numbers aplicada. */
+  setBathNumber(
+    bookingId: string,
+    petIndex: number,
+    entry: { n: number; by: string; at: string } | null,
+    current: Record<string, { n: number; by: string; at: string }> | null,
   ): Promise<void>;
   listStatusUpdates(bookingId: string): Promise<StatusUpdateRecord[]>;
   listUpdatesForBookings(bookingIds: string[]): Promise<Record<string, StatusUpdateRecord[]>>;
@@ -132,6 +144,7 @@ function rowToRecord(row: Record<string, unknown>): BookingRecord {
     createdAt: String(row.created_at),
     whatsappDelivered: Boolean(row.whatsapp_delivered),
     petStatus: (row.pet_status as Record<string, { s: string; by: string; at: string }> | null) ?? null,
+    bathNumbers: (row.bath_numbers as Record<string, { n: number; by: string; at: string }> | null) ?? null,
   };
 }
 
@@ -282,6 +295,27 @@ export class SupabaseBookingDb implements BookingDb {
       .select("id");
     if (error) throw ({ code: "PET_STATUS_WRITE", message: error.message } as { code: string; message: string });
     if (!data || data.length === 0) throw new Error("setPetStatus: booking no encontrado");
+  }
+
+  /** Número de baño (turno del cuaderno del spa) por mascota: fusiona una
+   *  entrada en `bath_numbers` jsonb (entry null = quita el número).
+   *  Requiere la migración aplicada. */
+  async setBathNumber(
+    bookingId: string,
+    petIndex: number,
+    entry: { n: number; by: string; at: string } | null,
+    current: Record<string, { n: number; by: string; at: string }> | null,
+  ): Promise<void> {
+    const next = { ...(current ?? {}) };
+    if (entry === null) delete next[String(petIndex)]; // vacío = sin número (reset)
+    else next[String(petIndex)] = entry;
+    const { data, error } = await this.client
+      .from("bookings")
+      .update({ bath_numbers: next })
+      .eq("id", bookingId)
+      .select("id");
+    if (error) throw ({ code: "BATH_NUMBER_WRITE", message: error.message } as { code: string; message: string });
+    if (!data || data.length === 0) throw new Error("setBathNumber: booking no encontrado");
   }
 
   async listStatusUpdates(bookingId: string): Promise<StatusUpdateRecord[]> {

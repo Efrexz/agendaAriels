@@ -8,6 +8,8 @@ export interface TrackingBooking {
   pets: Array<{ name: string; type: string; service: string }>;
   /** G1: {"<índice>": {s}} — null/ausente en reservas viejas. */
   petStatus?: Record<string, { s: string }> | null;
+  /** Número de baño (turno del spa) por mascota: {"<índice>": n} — null/ausente = sin asignar. */
+  bathNumbers?: Record<string, number> | null;
   timeline: Array<{ status: string; createdAt: string }>;
 }
 

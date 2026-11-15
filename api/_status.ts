@@ -64,6 +64,11 @@ export async function buildStatusResponse(
         petStatus: record.petStatus
           ? Object.fromEntries(Object.entries(record.petStatus).map(([k, v]) => [k, { s: v.s }]))
           : null,
+        // Número de baño (turno del spa) por mascota: SOLO el número — el
+        // "by"/"at" del jsonb no es dato para el cliente.
+        bathNumbers: record.bathNumbers
+          ? Object.fromEntries(Object.entries(record.bathNumbers).map(([k, v]) => [k, v.n]))
+          : null,
         // Sin createdBy: el email del staff no va al público (el panel interno sí lo ve).
         timeline: timeline.map((t) => ({ status: t.status, createdAt: t.createdAt })),
       },

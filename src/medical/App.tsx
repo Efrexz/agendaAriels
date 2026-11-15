@@ -1631,14 +1631,15 @@ function StepProgress({ groups, current, branchShort }: {
         );
       })}
       </div>
-      {/* Badge de sede: siempre visible tras elegirla (feedback 09/11) */}
+      {/* Badge de sede: siempre visible tras elegirla (feedback 09/11;
+          15/11 marketing: azul sólido + letras blancas como en grooming) */}
       {branchShort && (
         <span
           data-testid="branch-badge"
           title="Sede seleccionada"
-          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#EFF5FC] px-3 py-1 text-xs font-bold text-[#475AAB] ring-1 ring-[#DCEBFF] sm:inline-flex"
+          className="hidden shrink-0 items-center gap-1.5 rounded-full bg-brand-blue px-3 py-1 text-xs font-bold text-white shadow-sm shadow-blue-600/25 sm:inline-flex"
         >
-          <MapPin className="h-3.5 w-3.5 text-blue-500" />
+          <MapPin className="h-3.5 w-3.5 text-white" />
           Sede {branchShort}
         </span>
       )}

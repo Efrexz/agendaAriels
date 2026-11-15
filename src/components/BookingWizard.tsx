@@ -175,14 +175,15 @@ export function BookingWizard() {
               {STEP_LABELS[state.step]}
             </span>
             {/* Badge de sede: siempre visible tras elegirla (feedback 09/11 -
-                el cliente ya no se pregunta "¿en qué sede estoy?" a mitad del wizard) */}
+                el cliente ya no se pregunta "¿en qué sede estoy?" a mitad del wizard).
+                15/11 marketing: fondo azul sólido + letras blancas (antes casi no se notaba). */}
             {branch && (
               <span
                 data-testid="branch-badge"
                 title={branch.label}
-                className="hidden shrink-0 items-center gap-1.5 rounded-full bg-[#EFF5FC] px-3 py-1 text-xs font-bold text-[#475AAB] ring-1 ring-[#DCEBFF] sm:inline-flex"
+                className="hidden shrink-0 items-center gap-1.5 rounded-full bg-brand-blue px-3 py-1 text-xs font-bold text-white shadow-sm shadow-blue-600/25 sm:inline-flex"
               >
-                <MapPin className="h-3.5 w-3.5 text-blue-500" />
+                <MapPin className="h-3.5 w-3.5 text-white" />
                 {branch.label.replace("Sede ", "")}
               </span>
             )}

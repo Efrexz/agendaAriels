@@ -13,12 +13,13 @@ import {
   Phone,
   Printer,
   Scissors,
+  Ticket,
   Truck,
   User,
   Wind,
   type LucideIcon,
 } from "lucide-react";
-import { updateStatus, resendWhatsapp, PET_PHASES, setPetStatus, type PanelBooking, type PetPhase } from "./api";
+import { updateStatus, resendWhatsapp, PET_PHASES, setPetStatus, setBathNumber, type PanelBooking, type PetPhase } from "./api";
 import { printViaQz } from "./qz";
 import { ConfirmModal } from "./ConfirmModal";
 import { NOTIFIABLE_STATUSES, SLOT_LABELS, STATUS_ORDER, statusMeta } from "../statuses";
@@ -180,6 +181,40 @@ export function BookingCard({
       setError(err instanceof Error ? err.message : "Error al actualizar la mascota");
     } finally {
       setBusy(false);
+    }
+  }
+
+  // Número de baño (turno del cuaderno del spa) por mascota: el counter lo
+  // asigna a mano al llegar. Borrador local por mascota + guardar explícito.
+  const [bathDraft, setBathDraft] = useState<Record<string, string>>({});
+  const [bathBusy, setBathBusy] = useState<string | null>(null);
+  const bathOf = (i: number): string => {
+    const draft = bathDraft[String(i)];
+    if (draft !== undefined) return draft;
+    const n = booking.bathNumbers?.[String(i)]?.n;
+    return n == null ? "" : String(n);
+  };
+  async function saveBath(i: number) {
+    const raw = bathDraft[String(i)]?.trim() ?? "";
+    const num = raw === "" ? null : Number(raw);
+    if (num !== null && (!Number.isInteger(num) || num < 1 || num > 9999)) {
+      setError("Número de baño: entero entre 1 y 9999.");
+      return;
+    }
+    setBathBusy(String(i));
+    setError(null);
+    try {
+      await setBathNumber(booking.id, i, num);
+      setBathDraft((prev) => {
+        const next = { ...prev };
+        delete next[String(i)];
+        return next;
+      });
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar el número de baño");
+    } finally {
+      setBathBusy(null);
     }
   }
 
@@ -377,6 +412,36 @@ export function BookingCard({
                     )}
                   </div>
                 )}
+                {/* N° de baño (turno del cuaderno del spa): asignado a mano al
+                    llegar. El cliente lo ve en /estado como referencia. */}
+                <div className="no-print mt-2 flex flex-wrap items-center gap-2 border-t border-slate-200/70 pt-2">
+                  <span className="flex items-center gap-1 text-[10px] font-bold uppercase tracking-wide text-slate-400">
+                    <Ticket className="h-3 w-3" /> N° de baño
+                  </span>
+                  <input
+                    value={bathOf(i)}
+                    onChange={(e) => {
+                      const v = e.target.value.replace(/[^\d]/g, "").slice(0, 4);
+                      setBathDraft((prev) => ({ ...prev, [String(i)]: v }));
+                    }}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); void saveBath(i); } }}
+                    inputMode="numeric"
+                    placeholder="—"
+                    aria-label={`Número de baño de ${pet.name}`}
+                    className="w-14 rounded-lg border border-slate-300 px-2 py-1 text-center text-sm font-bold text-slate-800 outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
+                  />
+                  <button
+                    onClick={() => void saveBath(i)}
+                    disabled={bathBusy === String(i) || bathDraft[String(i)] === undefined}
+                    className="rounded-lg bg-[#EFF6FF] px-2.5 py-1 text-[11px] font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF] transition hover:bg-blue-100 disabled:opacity-50"
+                    title="Guardar número de baño (el cliente lo ve en /estado)"
+                  >
+                    {bathBusy === String(i) ? "Guardando…" : "Guardar"}
+                  </button>
+                  {booking.bathNumbers?.[String(i)]?.n != null && (
+                    <span className="text-[10px] text-slate-400">visible en /estado</span>
+                  )}
+                </div>
               </div>
               );
             })}

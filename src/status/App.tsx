@@ -12,6 +12,7 @@ import {
   MapPin,
   PawPrint,
   Search,
+  Ticket,
 } from "lucide-react";
 import { fetchLabDownload, fetchTracking, isLabTracking } from "./api";
 import type { TrackingBooking, TrackingLab, TrackingResult } from "./types";
@@ -215,6 +216,7 @@ function StatusCard({
   reduceMotion,
   stateIcon: StatusIcon,
   details,
+  bathPill,
 }: {
   chip: string;
   kind: "va" | "lab";
@@ -226,6 +228,8 @@ function StatusCard({
   reduceMotion: boolean;
   stateIcon: LucideIcon;
   details: Array<{ icon: LucideIcon; label: string; value: React.ReactNode }>;
+  /** Número de baño (turno del spa) para reservas de UNA mascota; null = no mostrar. */
+  bathPill?: string | null;
 }) {
   const tint = tintFor(status);
   return (
@@ -254,6 +258,17 @@ function StatusCard({
         </span>
         <span className="text-sm font-bold uppercase tracking-wide lg:text-base">{label}</span>
       </div>
+
+      {/* N° de baño (turno del spa): referencia para el cliente a distancia.
+          Solo reservas de UNA mascota — en multi-mascota va en cada tarjeta. */}
+      {bathPill && (
+        <div className="mt-2 flex justify-center">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-blue-50 px-3 py-1 text-xs font-bold text-brand-blue ring-1 ring-blue-100">
+            <Ticket className="h-3.5 w-3.5" />
+            {bathPill}
+          </span>
+        </div>
+      )}
 
       {/* Detalles: apilados en móvil, 3 métricas con divisor en pantallas anchas */}
       <div className="mx-auto mt-6 grid max-w-xs grid-cols-1 gap-3 text-left sm:max-w-none sm:grid-cols-3 sm:gap-0 sm:divide-x sm:divide-slate-100">
@@ -387,10 +402,17 @@ export default function App() {
       </div>
 
       <div className="relative z-10">
-        {/* Encabezado en línea (estilo referencia): logo + marca naranja */}
+        {/* Encabezado en línea: logo REAL de marca (el mismo del wizard de
+            grooming) sobre pastilla blanca — el logo.webp tiene fondo blanco,
+            así flota bien sobre el fondo pastel. Marca naranja al lado. */}
         <header className="mb-6 flex items-center gap-2.5">
-          <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-brand-blue text-white shadow-md shadow-blue-600/20">
-            <PawPrint className="h-6 w-6" />
+          <div className="flex items-center rounded-2xl bg-white/95 px-2.5 py-1.5 shadow-md shadow-blue-900/5 ring-1 ring-slate-100">
+            <img
+              src="/logo.webp"
+              alt="Veterinaria Ariel — Hospital Veterinario"
+              className="h-10 w-auto select-none sm:h-11"
+              draggable={false}
+            />
           </div>
           <span className="font-hand text-2xl leading-none text-brand-orange">Ariel&apos;s Clinic</span>
         </header>
@@ -423,9 +445,15 @@ export default function App() {
             <button
               type="submit"
               disabled={loading}
-              className="ml-auto shrink-0 rounded-xl bg-brand-blue px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+              aria-label="Buscar"
+              title="Buscar"
+              className="ml-auto flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-blue text-white transition hover:bg-blue-700 disabled:opacity-60"
             >
-              {loading ? "…" : "Ver"}
+              {loading ? (
+                <span className="h-4 w-4 animate-spin rounded-full border-2 border-white/40 border-t-white" aria-hidden />
+              ) : (
+                <Search className="h-4.5 w-4.5" strokeWidth={2.5} />
+              )}
             </button>
           </div>
         </form>
@@ -467,7 +495,9 @@ function PetStatusCards({ booking }: { booking: TrackingBooking }) {
   const entries = booking.petStatus
     ? Object.entries(booking.petStatus).map(([k, v]) => [Number(k), v.s] as const)
     : [];
-  if ((booking.pets?.length ?? 0) < 2 || entries.length === 0) return null;
+  const bathValues = booking.bathNumbers ? Object.values(booking.bathNumbers) : [];
+  // Se muestran si hay estado por mascota O algún número de baño asignado.
+  if ((booking.pets?.length ?? 0) < 2 || (entries.length === 0 && bathValues.length === 0)) return null;
   return (
     <section className="mt-6 rounded-3xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
       <div className="mb-4 flex items-center gap-2.5">
@@ -480,6 +510,7 @@ function PetStatusCards({ booking }: { booking: TrackingBooking }) {
         {booking.pets.map((pet, i) => {
           const s = booking.petStatus?.[String(i)]?.s ?? "";
           const chip = s ? PET_CHIP[s] : null;
+          const bathN = booking.bathNumbers?.[String(i)];
           const idxActive = PHASE_BAR.indexOf(s as (typeof PHASE_BAR)[number]);
           return (
             <div
@@ -493,6 +524,12 @@ function PetStatusCards({ booking }: { booking: TrackingBooking }) {
                 {petEmoji(pet.type)}
               </div>
               <p className="mt-2 font-display text-base font-bold text-slate-800">{pet.name}</p>
+              {/* N° de baño (turno del spa): referencia a distancia para el dueño */}
+              {bathN != null && (
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-blue-50 px-2.5 py-0.5 text-[11px] font-bold text-brand-blue ring-1 ring-blue-100">
+                  <Ticket className="h-3 w-3" /> N° {bathN}
+                </span>
+              )}
               {chip ? (
                 <span className={`mt-2 inline-block rounded-full px-3 py-1 text-xs font-bold ${chip.cls}`}>
                   {chip.label}
@@ -659,6 +696,11 @@ function BookingView({
           polling={polling}
           reduceMotion={reduceMotion}
           stateIcon={iconFor("va", booking.status)}
+          bathPill={
+            booking.pets.length === 1 && booking.bathNumbers?.["0"] != null
+              ? `N° de baño ${booking.bathNumbers["0"]}`
+              : null
+          }
           details={[
             { icon: CalendarDays, label: "Fecha y hora", value: `${formatDate(booking.serviceDate)} · ${SLOT_LABELS[booking.timeSlot]}` },
             { icon: MapPin, label: "Sede", value: booking.branchLabel.replace("Sede ", "") },
