@@ -19,8 +19,9 @@ import { HistoryTab, type HistTarget } from "./HistoryTab";
 
 type Tab = "grooming" | "consultas" | "laboratorio" | "historial" | "config";
 
-// Navbar estilo maqueta: brand + pestañas con iconos en línea + chip de
-// usuario. Sin campana/menú fake: lo que existe es visible.
+// Navbar estilo maqueta 17/11 (aprobada por marketing): fondo azul marino +
+// franja naranja arriba, logo real en pastilla blanca, pestañas pastilla con
+// subrayado naranja en la activa. Sin tabs fake: lo que existe es visible.
 const TABS: Array<[Tab, string, typeof PawPrint]> = [
   ["grooming", "Grooming", PawPrint],
   ["consultas", "Consultas", Stethoscope],
@@ -28,17 +29,6 @@ const TABS: Array<[Tab, string, typeof PawPrint]> = [
   ["historial", "Historial", History],
   ["config", "Config", Settings],
 ];
-
-// Acento del dominio en la pestaña activa: grooming=azul de marca,
-// consultas=celeste, laboratorio=naranja. Orientación instantánea de dónde
-// estás sin leer el label (el azul/celeste comparten familia fría a propósito).
-const TAB_ACTIVE: Record<Tab, string> = {
-  grooming: "border-brand-blue bg-blue-50/60 text-brand-blue",
-  consultas: "border-sky-500 bg-sky-50 text-sky-700",
-  laboratorio: "border-orange-400 bg-orange-50 text-brand-orange",
-  historial: "border-brand-blue bg-blue-50/60 text-brand-blue",
-  config: "border-brand-blue bg-blue-50/60 text-brand-blue",
-};
 
 function TabButton({
   tab,
@@ -60,12 +50,18 @@ function TabButton({
     <button
       onClick={() => onSelect(value)}
       aria-pressed={active}
-      className={`flex shrink-0 items-center gap-1.5 rounded-lg border-b-2 px-3 py-2 text-sm font-semibold transition ${
-        compact ? "gap-1.5 px-2.5" : "gap-2"
-      } ${active ? TAB_ACTIVE[value] : "border-transparent text-slate-600 hover:bg-slate-50 hover:text-brand-blue"}`}
+      className={`relative flex shrink-0 items-center rounded-full py-2 text-sm font-semibold transition ${
+        compact ? "gap-1.5 px-2.5" : "gap-2 px-3.5"
+      } ${
+        active
+          ? "bg-brand-blue text-white shadow-md shadow-blue-950/40"
+          : "text-white/75 hover:bg-white/10 hover:text-white"
+      }`}
     >
       <Icon className="h-4 w-4" />
       {label}
+      {/* Subrayado naranja de marca en la pestaña activa (maqueta 17/11) */}
+      {active && <span aria-hidden className="absolute inset-x-3 bottom-0.5 h-0.5 rounded-full bg-orange-400" />}
     </button>
   );
 }
@@ -120,15 +116,19 @@ export default function App() {
         <div className="absolute right-40 -bottom-16 h-32 w-32 rounded-full bg-orange-100/50 blur-2xl" />
       </div>
 
-      {/* Navbar superior fija: brand + pestañas + usuario */}
-      <header className="no-print sticky top-0 z-30 border-b border-slate-200 bg-white/85 backdrop-blur">
+      {/* Navbar superior fija (maqueta 17/11): azul marino + franja naranja +
+          logo real en pastilla blanca + pestañas pastilla + chip Recepción */}
+      <header className="no-print sticky top-0 z-30 shadow-lg shadow-blue-950/20">
+        <div aria-hidden className="h-1 w-full bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue" />
+        <div className="bg-gradient-to-r from-[#0E1D40] via-[#152A52] to-[#1D3A6E]">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 lg:px-8">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-brand-blue text-white shadow-md shadow-blue-600/20">
-            <PawPrint className="h-5 w-5" />
-          </div>
-          <div className="min-w-0 shrink-0">
-            <p className="font-hand text-xl leading-none text-brand-orange">Ariel&apos;s Clinic</p>
-            <p className="text-[10px] leading-tight text-slate-400">Hospital veterinario</p>
+          <div className="flex shrink-0 items-center rounded-xl bg-white px-2 py-1.5 shadow-md">
+            <img
+              src="/logo.webp"
+              alt="Ariel's Clinic — Hospital Veterinario"
+              className="h-8 w-auto select-none"
+              draggable={false}
+            />
           </div>
           <nav className="ml-2 hidden flex-1 justify-end lg:flex">
             {TABS.map(([v, label, Icon]) => (
@@ -136,8 +136,8 @@ export default function App() {
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-3">
-            <span className="hidden max-w-52 items-center gap-2 truncate rounded-full bg-slate-100 sm:flex px-3 py-1.5 text-xs text-slate-600" title={session.user.email ?? ""}>
-              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-brand-blue/10 text-brand-blue">
+            <span className="hidden max-w-52 items-center gap-2 truncate rounded-full bg-white/10 px-3 py-1.5 text-xs text-white ring-1 ring-orange-300/60 sm:flex" title={session.user.email ?? ""}>
+              <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-400/25 text-orange-300">
                 <Stethoscope className="h-3 w-3" />
               </span>
               Recepción
@@ -145,7 +145,7 @@ export default function App() {
             <button
               onClick={signOut}
               title="Salir de la sesión"
-              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-500 transition hover:bg-slate-100 hover:text-slate-800"
+              className="flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-white/80 transition hover:bg-white/10 hover:text-white"
             >
               <LogOut className="h-3.5 w-3.5" />
               <span className="hidden sm:inline">Salir</span>
@@ -158,6 +158,7 @@ export default function App() {
             <TabButton key={v} tab={tab} value={v} label={label} Icon={Icon} onSelect={setTab} compact />
           ))}
         </nav>
+        </div>
       </header>
 
       {/* Guía "?" del panel (onboarding de recepcionista nueva) */}

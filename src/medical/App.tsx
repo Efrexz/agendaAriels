@@ -535,6 +535,12 @@ export default function App() {
 
   return (
     <div className="flex min-h-screen items-center justify-center p-2 pb-24 sm:p-4 sm:pb-28">
+      {/* Fondo calmado PROPIO del wizard médico (feedback 17/11: el colorido
+          global cansa detrás de la card aquí — mismo patrón pastel del login).
+          El wizard de grooming conserva su fondo colorido aprobado. */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <img src="/images/bg/fondo.webp" alt="" className="h-full w-full object-cover" />
+      </div>
       <div ref={cardRef} className="w-full max-w-2xl lg:max-w-5xl overflow-hidden rounded-2xl bg-white shadow-xl">
         <div className="h-3 bg-gradient-to-r from-blue-500 to-orange-400" />
         <div className="p-4 sm:p-6 lg:p-10">
