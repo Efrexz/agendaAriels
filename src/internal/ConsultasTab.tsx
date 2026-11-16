@@ -878,6 +878,15 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
               {a.petName} <span className="font-medium text-slate-500">({a.petType})</span>
             </p>
             <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ${meta.badge}`}>{meta.label}</span>
+            {/* Orden subida por el cliente: visible SIN expandir la card */}
+            {(a.serviceType === "rayos" || a.serviceType === "eco") && a.orderPath && (
+              <span
+                title="El cliente subió su orden sellada — ábrelo con 'Ver orden' en las acciones"
+                className="rounded-full bg-[#FFF7E6] px-2 py-0.5 text-[10px] font-bold text-amber-800 ring-1 ring-amber-200"
+              >
+                📄 Orden
+              </span>
+            )}
             {avisoFallado && (
               <span
                 title="El aviso por WhatsApp no se entregó al cliente"
