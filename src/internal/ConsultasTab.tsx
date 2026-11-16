@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Cat, Check, ChevronDown, Clock, Dog, FileText, History, Loader2, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
-  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, rescheduleMedAppt, searchMedAppts,
+  assignMedAppt, fetchMedDay, fetchMedPending, fetchOrderUrl, fetchSchedules, patchMedStatus, resendMedNotice, rescheduleMedAppt, searchMedAppts,
   type MedAppt, type ScheduleWithDoctor,
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
@@ -333,6 +333,21 @@ function PendingChip({ a }: { a: MedAppt }) {
       </span>
     );
   }
+  if (a.serviceType === "rayos" || a.serviceType === "eco") {
+    // Flujo con orden subida (feedback 16/11): solicitud SIN fecha — la agenda
+    // la fija el counter tras verificar la orden con el doctor.
+    if (!a.apptDate) {
+      return a.orderPath ? (
+        <span className="inline-flex w-fit items-center rounded-full bg-[#E8F7EE] px-2 py-0.5 text-[10px] font-semibold text-green-700 ring-1 ring-green-200">
+          📄 Con orden subida · por verificar
+        </span>
+      ) : (
+        <span className="inline-flex w-fit items-center rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800 ring-1 ring-orange-200">
+          📄 Orden pendiente de subir
+        </span>
+      );
+    }
+  }
   return (
     <span className="inline-flex w-fit items-center rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-200">
       🗓 Semana próxima · sin hora
@@ -353,8 +368,27 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
   const [busyAppts, setBusyList] = useState<Array<{ startMinute: number; durationMinutes: number }>>([]);
   const [busy, setPending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Orden subida por el cliente (rayos/eco): abrirla firmada para el doctor.
+  const [orderBusy, setOrderBusy] = useState(false);
 
   const esSolicitud = a.status === "solicitud";
+
+  async function verOrden() {
+    setOrderBusy(true);
+    // Abrir desde el clic evita el bloqueo de ventanas tras el fetch.
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await fetchOrderUrl(a.appointmentCode);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch {
+      tab?.close();
+      setError("No se pudo abrir la orden. Intenta de nuevo.");
+    } finally {
+      setOrderBusy(false);
+    }
+  }
 
   async function marcarPagado() {
     setPending(true); setError(null);
@@ -470,13 +504,22 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
           <span>{a.specialtyName} · {a.petName} ({a.petType}) · {a.ownerName} · {a.ownerPhone}</span>
         </div>
         <div className="flex gap-2">
+          {a.orderPath && (
+            <button onClick={() => void verOrden()} disabled={orderBusy} className="rounded-lg bg-[#EFF6FF] px-3 py-1.5 text-xs font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF] transition hover:bg-blue-100 disabled:opacity-50">
+              {orderBusy ? "Abriendo…" : "📄 Ver orden"}
+            </button>
+          )}
           {esSolicitud && a.serviceType === "especializada" ? (
             <button onClick={() => void marcarPagado()} disabled={busy} className="rounded-lg bg-amber-500 px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
               💰 Verifiqué el pago
             </button>
           ) : (
             <button onClick={() => void abrirAsignar()} disabled={busy} className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white disabled:opacity-50">
-              {a.serviceType === "especializada" ? "🩺 Asignar doctor/fecha" : "🗓 Confirmar horario (avisamos al cliente)"}
+              {a.serviceType === "especializada"
+                ? "🩺 Asignar doctor/fecha"
+                : !a.apptDate && (a.serviceType === "rayos" || a.serviceType === "eco")
+                  ? "🩺 Verificar orden y fijar horario"
+                  : "🗓 Confirmar horario (avisamos al cliente)"}
             </button>
           )}
         </div>
@@ -572,8 +615,15 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
           )}
           {startMin !== null && (
             <button onClick={() => void asignar()} disabled={busy} className="mt-3 w-full rounded-lg bg-brand-blue py-2 text-sm font-semibold text-white disabled:opacity-50">
-              ✅ Confirmar horario y avisar al cliente
+              {!a.apptDate && (a.serviceType === "rayos" || a.serviceType === "eco")
+                ? "✅ Fijar horario (el mensaje final al cliente lo escribes tú)"
+                : "✅ Confirmar horario y avisar al cliente"}
             </button>
+          )}
+          {!a.apptDate && (a.serviceType === "rayos" || a.serviceType === "eco") && (
+            <p className="mt-2 text-[11px] leading-relaxed text-amber-800">
+              📄 Este cliente subió su orden: al fijar el horario NO sale WhatsApp automático — luego usa el botón verde 💬 en su cita para enviarle fecha, hora y costo (editándolos).
+            </p>
           )}
         </div>
       )}
@@ -714,6 +764,8 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
   // M1 honestidad: reenvío del aviso de WhatsApp cuando falló y no se entregó después.
   const [resendBusy, setResendBusy] = useState(false);
   const [resendMsg, setResendMsg] = useState<string | null>(null);
+  // Orden subida por el cliente: abrirla firmada para el doctor.
+  const [orderBusy, setOrderBusy] = useState(false);
   // Marcas locales de reenvío (p.ej. en resultados de búsqueda la lista no se
   // refresca sola): se fusionan con el timeline del servidor para que el ⚠
   // responda al instante.
@@ -746,6 +798,43 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
       setResendBusy(false);
     }
   }
+
+  // Orden de rayos/eco subida por el cliente: URL firmada (900 s) para el doctor.
+  async function verOrden() {
+    setOrderBusy(true);
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await fetchOrderUrl(a.appointmentCode);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch {
+      tab?.close();
+      setResendMsg("No se pudo abrir la orden. Intenta de nuevo.");
+    } finally {
+      setOrderBusy(false);
+    }
+  }
+
+  // Confirmación MANUAL (feedback del counter 16/11): el doctor fija día/hora
+  // y el counter edita el monto/fecha antes de enviar — wa.me con texto listo.
+  const confirmacionManual = (a.serviceType === "rayos" || a.serviceType === "eco") && a.orderPath
+    ? [
+        `🐾 *¡Su cita está confirmada, ${a.ownerName.split(/\s+/)[0]}!*`,
+        "",
+        `${MED_SERVICE_LABELS[a.serviceType]}${a.specialtyName ? ` · ${a.specialtyName}` : ""} · ${MED_BRANCHES.find((b) => b.value === a.branch)?.short ?? a.branch}`,
+        a.apptDate ? `🗓 ${a.apptDate.split("-").reverse().join("/")}${a.startMinute !== null ? ` · ${hour(a.startMinute)}` : ""}` : "",
+        a.doctorName ? `🩺 Doctor: ${a.doctorName}` : "",
+        `🐾 Mascota: ${a.petName}`,
+        "",
+        "💰 Inversión: S/ ________",
+        "",
+        `🔖 Código: *${a.appointmentCode}*`,
+        "",
+        "⚠️ Llega puntual; la tolerancia es de 10 minutos.",
+        "¡Te esperamos! 🐶✨",
+      ].filter(Boolean).join("\n")
+    : null;
 
   const nextActions: Array<[string, string]> = [];
   if (a.status === "confirmada") nextActions.push(["en_consulta", "🏥 Entró"], ["no_llego", "⏰ No llegó"], ["cancelado", "❌ Cancelar"]);
@@ -881,6 +970,30 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
               >
                 🕐 Cambiar horario
               </button>
+            )}
+            {/* Orden subida por el cliente (rayos/eco): URL firmada para el doctor. */}
+            {(a.serviceType === "rayos" || a.serviceType === "eco") && a.orderPath && (
+              <button
+                onClick={() => void verOrden()}
+                disabled={orderBusy}
+                className="flex items-center gap-1.5 rounded-lg bg-[#FFF7E6] px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 disabled:opacity-50"
+              >
+                {orderBusy ? "Abriendo…" : "📄 Ver orden"}
+              </button>
+            )}
+            {/* Confirmación MANUAL del counter (feedback 16/11): texto listo con
+                fecha/doctor y el costo por editar — el cliente lo recibe del chat. */}
+            {confirmacionManual && (
+              <span className="flex w-full items-center gap-2.5 rounded-xl bg-[#E8F7EE] px-3 py-2">
+                <MiniWhatsApp
+                  phone={a.ownerPhone}
+                  message={confirmacionManual}
+                  title="Confirmar fecha y costo al cliente (edítalo antes de enviar)"
+                />
+                <span className="text-[11px] leading-snug font-semibold text-green-700">
+                  Confirmación manual: el texto ya trae fecha, doctor y el costo por completar — edítalo antes de enviar.
+                </span>
+              </span>
             )}
             {avisoFallado && (
               <button

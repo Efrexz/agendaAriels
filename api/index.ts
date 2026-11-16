@@ -47,6 +47,8 @@ import mSchedulesHandler from "./medical/_schedules.js";
 import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
 import mRemindersHandler from "./medical/_reminders.js";
+import mOrderHandler from "./medical/_order.js";
+import mPurgeOrdersHandler from "./medical/_purge_orders.js";
 import mHistoryHandler from "./medical/_history.js";
 import mResendNoticeHandler from "./medical/_resend_notice.js";
 import labCreateHandler from "./lab/_create.js";
@@ -100,6 +102,9 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /medical/catalog": { handler: mCatalogHandler as Handler },
   "PATCH /medical/catalog": { handler: mCatalogHandler as Handler },
   "GET /medical/reminders": { handler: mRemindersHandler as Handler },
+  "POST /medical/order": { handler: mOrderHandler as Handler },
+  "GET /medical/order": { handler: mOrderHandler as Handler },
+  "GET /medical/purge-orders": { handler: mPurgeOrdersHandler as Handler },
   "GET /medical/history": { handler: mHistoryHandler as Handler },
 
   "POST /internal/medical/resend-notice": { handler: mResendNoticeHandler as Handler },

@@ -81,6 +81,10 @@ export interface MedicalAppointmentRecord extends MedicalAppointmentInput {
   id: string;
   doctorName: string | null;
   specialtyName: string | null;
+  /** Costo de la especialidad (S/) para el mensaje manual del counter. */
+  specialtyCost: number | null;
+  /** Ruta de la orden subida por el cliente (bucket privado); null = sin archivo. */
+  orderPath: string | null;
   createdAt: string;
 }
 
@@ -109,8 +113,9 @@ interface ApptDbRow {
   created_by_client: boolean;
   created_by: string;
   created_at: string;
+  order_path: string | null;
   medical_doctors?: { full_name: string } | null;
-  medical_specialties?: { name: string } | null;
+  medical_specialties?: { name: string; cost: number } | null;
 }
 
 function apptRowToRecord(r: ApptDbRow): MedicalAppointmentRecord {
@@ -138,6 +143,8 @@ function apptRowToRecord(r: ApptDbRow): MedicalAppointmentRecord {
     createdBy: r.created_by,
     doctorName: r.medical_doctors?.full_name ?? null,
     specialtyName: r.medical_specialties?.name ?? null,
+    specialtyCost: r.medical_specialties?.cost ?? null,
+    orderPath: r.order_path ?? null,
     createdAt: r.created_at,
   };
 }
@@ -146,7 +153,7 @@ const APPT_COLUMNS =
   "id, appointment_code, branch, service_type, specialty_id, doctor_id, appt_date, " +
   "start_minute, duration_minutes, needs_order, has_order, status, pet_name, pet_type, " +
   "pet_notes, owner_name, owner_phone, owner_email, payment_notes, created_by_client, " +
-  "created_by, created_at, medical_doctors(full_name), medical_specialties(name)";
+  "created_by, created_at, order_path, medical_doctors(full_name), medical_specialties(name, cost)";
 
 export class MedicalDb {
   constructor(private client: SupabaseClient) {}
@@ -636,6 +643,30 @@ export class MedicalDb {
   }
 
   // ── Config ──────────────────────────────────────────────────
+
+  /** Guarda/quita la ruta de la orden subida (bucket privado medical-orders).
+   *  path null = archivo purgado o removido. Requiere la migración aplicada. */
+  async setOrderFile(apptId: string, path: string | null): Promise<void> {
+    const { error } = await this.client
+      .from("medical_appointments")
+      .update({ order_path: path })
+      .eq("id", apptId);
+    if (error) throw new Error(`setOrderFile: ${error.message}`);
+  }
+
+  /** Órdenes subidas con más de `cutoffIso` (purga a 7 días del cron). */
+  async listOrderFilesToPurge(cutoffIso: string): Promise<{ id: string; orderPath: string }[]> {
+    const { data, error } = await this.client
+      .from("medical_appointments")
+      .select("id, order_path")
+      .not("order_path", "is", null)
+      .lt("created_at", cutoffIso)
+      .limit(500);
+    if (error) throw new Error(`listOrderFilesToPurge: ${error.message}`);
+    return (data ?? [])
+      .filter((r) => typeof r.order_path === "string" && r.order_path.length > 0)
+      .map((r) => ({ id: String(r.id), orderPath: String(r.order_path) }));
+  }
 
   async getConfig(): Promise<Record<string, string>> {
     const { data, error } = await this.client.from("app_config").select("key, value");

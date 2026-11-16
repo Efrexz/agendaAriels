@@ -1,7 +1,8 @@
 {
   "crons": [
     { "path": "/api/medical/reminders", "schedule": "0 23 * * *" },
-    { "path": "/api/internal/lab/purge", "schedule": "10 6 * * *" }
+    { "path": "/api/internal/lab/purge", "schedule": "10 6 * * *" },
+    { "path": "/api/medical/purge-orders", "schedule": "30 6 * * *" }
   ],
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/index?apiPath=$1" },

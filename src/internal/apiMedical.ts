@@ -27,6 +27,10 @@ export interface MedAppt {
   createdByClient: boolean;
   createdBy: string;
   createdAt: string;
+  /** Costo de la especialidad (S/) — para el mensaje manual del counter. */
+  specialtyCost?: number | null;
+  /** Ruta de la orden subida por el cliente (bucket privado). */
+  orderPath?: string | null;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
 }
 
@@ -133,6 +137,12 @@ export async function rescheduleMedAppt(input: {
   startMinute: number;
 }): Promise<{ notified: boolean }> {
   return authedFetch("/api/medical/reschedule", { method: "PATCH", body: JSON.stringify(input) });
+}
+
+/** URL firmada (900 s) de la orden subida por el cliente — solo staff. */
+export async function fetchOrderUrl(code: string): Promise<string> {
+  const out = await authedFetch<{ url: string }>(`/api/medical/order?code=${encodeURIComponent(code)}`);
+  return out.url;
 }
 
 export async function fetchSchedules(): Promise<{ schedules: ScheduleWithDoctor[] }> {

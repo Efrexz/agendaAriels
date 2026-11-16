@@ -145,16 +145,19 @@ export default async function handler(req: Req, res: Res) {
       return;
     }
 
-    // La cita confirmada recibe el WhatsApp oficial con fecha/hora/doctor.
-    // G1/M1: YA INCLUYE ESPECIALIZADAS — antes se excluidas (hueco encontrado
-    // en pruebas del dueño: la especializada pagada confirmaba sin aviso).
+    // La cita confirmada recibe el WhatsApp oficial con fecha/hora/doctor...
+    // EXCEPTO rayos/eco con orden subida por el cliente (feedback 16/11 del
+    // counter): ahí el mensaje de fecha+costo lo escribe el counter a mano
+    // cuando el doctor fija el día — el panel le deja el texto listo para
+    // pegar y editar (MiniWhatsApp en la card).
     let notified = false;
+    const skipAutoConfirm = Boolean(appt.orderPath);
+    const env = process.env as BookingEnv;
+    const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
     {
-      const env = process.env as BookingEnv;
       const dest = normalizePhoneDest(typeof appt.ownerPhone === "string" ? appt.ownerPhone : "");
       const evoReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE);
-      const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
-      if (dest && (evoReady || dryRun)) {
+      if (!skipAutoConfirm && dest && (evoReady || dryRun)) {
         const sent = await sendViaEvolution(
           [buildConfirmationMessage({
             apptDate,

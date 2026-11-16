@@ -41,6 +41,10 @@ const CREATE_SCHEMA = z.object({
   date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable().optional(),
   startMinute: z.number().int().min(0).max(1380).nullable().optional(),
   hasOrder: z.boolean().nullable().optional(),
+  // Rayos/eco CON orden subida por el cliente (feedback 16/11): la cita entra
+  // como 'solicitud' SIN fecha/doctor — el counter verifica la orden con el
+  // doctor y luego fija fecha/hora (mensaje de confirmación va MANUAL).
+  withOrderUpload: z.boolean().nullable().optional(),
   petName: z.string().trim().min(2).max(60),
   petType: z.string().trim().min(1).max(30).default("-"),
   petNotes: z.string().trim().max(400).default("-"),
@@ -201,6 +205,30 @@ export function buildNextWeekRequestMessage(
   return lines.join("\n");
 }
 
+/** Mensaje para rayos/eco CON orden (feedback 16/11 del counter): la orden se
+ *  verifica con el doctor y el counter escribe después con fecha, hora y costo. */
+export function buildOrderRequestMessage(
+  p: { ownerName: string; petName: string },
+  serviceLabel: string,
+  code: string,
+  branch: string,
+): string {
+  const lines = [
+    `📄 *Solicitud recibida, ${p.ownerName.split(/\s+/)[0]}!*`,
+    "",
+    `${serviceLabel} · ${BRANCH_LABELS[branch] ?? branch}`,
+    `🐾 Mascota: ${p.petName}`,
+    `🔖 Código: *${code}*`,
+    "",
+    "Recibimos tu orden sellada — nuestro personal la está verificando con el doctor.",
+    "En cuanto confirmemos la disponibilidad te escribimos por este medio con la",
+    "fecha, hora y el costo. Sin llamadas ni trámites extra 🐶✨",
+    "",
+    `☎ Consultas: ${BRANCH_PHONES[branch] ?? ""}`,
+  ];
+  return lines.join("\n");
+}
+
 // ── Handler ──────────────────────────────────────────────────
 
 const WINDOW_MS = 60_000;
@@ -241,7 +269,13 @@ export async function handleMedicalCreate(opts: {
   const requestedNextWeek = requestedDate !== null && requestedDate > weekEnd;
   const maxDay = nextWeekEnd; // semana en curso + próxima
 
-  if (p.serviceType !== "especializada") {
+  // Rayos/eco CON orden subida (con verso del wizard): la fecha/hora la fija
+  // el counter después de verificar la orden con el doctor.
+  const orderFlow =
+    (p.serviceType === "rayos" || p.serviceType === "eco") &&
+    p.hasOrder === true && p.withOrderUpload === true;
+
+  if (p.serviceType !== "especializada" && !orderFlow) {
     if (!p.date) return { status: 400, body: { ok: false, error: "Elige la fecha de tu cita." } };
     if (p.date < today || p.date > maxDay) {
       return {
@@ -279,7 +313,7 @@ export async function handleMedicalCreate(opts: {
         return { status: 400, body: { ok: false, error: "Esta especialidad no atiende en esa sede." } };
       }
       specialtyName = spec.name;
-    } else {
+    } else if (!orderFlow) {
       // general / rayos / eco: doctor + franja exacta (semana en curso), o
       // SOLICITUD sin hora si es de la próxima semana (agenda se publica lunes).
       if (!p.doctorId) return { status: 400, body: { ok: false, error: "Elige un doctor." } };
@@ -339,7 +373,7 @@ export async function handleMedicalCreate(opts: {
   if (deduped) return { status: 200, body: { ok: true, appointmentCode: deduped, requested: requestedNextWeek } };
 
   // Insert con reintentos por unicidad del código
-  const requested = requestedNextWeek || p.serviceType === "especializada";
+  const requested = requestedNextWeek || p.serviceType === "especializada" || orderFlow;
   const initialStatus = requested ? "solicitud" : "confirmada";
   let inserted = false;
   let code = "";
@@ -352,8 +386,8 @@ export async function handleMedicalCreate(opts: {
         branch: p.branch,
         serviceType: p.serviceType,
         specialtyId: p.serviceType === "especializada" ? p.specialtyId ?? null : null,
-        doctorId: p.serviceType === "especializada" ? null : p.doctorId ?? null,
-        apptDate: p.serviceType === "especializada" ? null : (p.date ?? null),
+        doctorId: orderFlow || p.serviceType === "especializada" ? null : p.doctorId ?? null,
+        apptDate: orderFlow || p.serviceType === "especializada" ? null : (p.date ?? null),
         startMinute: requested ? null : (p.startMinute ?? null),
         durationMinutes: requested ? 0 : durationMinutes,
         needsOrder: p.serviceType === "rayos" || p.serviceType === "eco",
@@ -401,9 +435,11 @@ export async function handleMedicalCreate(opts: {
   const dryRun = env.EVOLUTION_DRY_RUN === "true" || env.EVOLUTION_DRY_RUN === "1";
 
   const counterAlert = buildCounterAlert(p, code, {
-    serviceLabel: requestedNextWeek
-      ? "🗓 SOLICITUD PRÓXIMA SEMANA (hora por confirmar el lunes)"
-      : p.serviceType === "especializada" ? "🎓 SOLICITUD ESPECIALIZADA (pago pendiente)" : null,
+    serviceLabel: orderFlow
+      ? "📄 SOLICITUD RAYOS/ECO CON ORDEN — verificar orden y confirmar en panel"
+      : requestedNextWeek
+        ? "🗓 SOLICITUD PRÓXIMA SEMANA (hora por confirmar el lunes)"
+        : p.serviceType === "especializada" ? "🎓 SOLICITUD ESPECIALIZADA (pago pendiente)" : null,
     specialty: specialtyName,
     doctor: doctorName,
     time: requestedNextWeek ? null : p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null,
@@ -412,9 +448,11 @@ export async function handleMedicalCreate(opts: {
     await sendViaEvolution([counterAlert], env, fetch);
   }
 
-  const clientMsg = requestedNextWeek
-    ? buildNextWeekRequestMessage(p, code, { doctor: doctorName })
-    : buildClientApptMessage(
+  const clientMsg = orderFlow
+    ? buildOrderRequestMessage(p, p.serviceType === "rayos" ? "Radiografía" : "Ecografía", code, p.branch)
+    : requestedNextWeek
+      ? buildNextWeekRequestMessage(p, code, { doctor: doctorName })
+      : buildClientApptMessage(
         p,
         code,
         { specialty: specialtyName, doctor: doctorName, time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null },
@@ -435,7 +473,7 @@ export async function handleMedicalCreate(opts: {
   }
 
   rememberDedupe(p, code, nowMs);
-  return { status: 200, body: { ok: true, appointmentCode: code, requested: requestedNextWeek, whatsappDelivered: clientDelivered } };
+  return { status: 200, body: { ok: true, appointmentCode: code, requested: requestedNextWeek || orderFlow, whatsappDelivered: clientDelivered } };
 }
 
 export default async function handler(req: Req, res: Res) {

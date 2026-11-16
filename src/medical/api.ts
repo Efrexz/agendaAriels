@@ -29,6 +29,8 @@ export interface CreateApptPayload {
   date?: string | null;
   startMinute?: number | null;
   hasOrder?: boolean | null;
+  /** Rayos/eco con orden: sin fecha/doctor — el counter confirma tras verificar. */
+  withOrderUpload?: boolean | null;
   petName: string;
   petType: string;
   petNotes: string;
@@ -93,5 +95,19 @@ export async function createAppointment(
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
+  });
+}
+
+/** Sube la foto/PDF de la orden sellada para una solicitud de rayos/eco
+ *  (base64; la API valida firma real del archivo y tamaño). */
+export async function uploadOrder(
+  code: string,
+  fileBase64: string,
+  mime: string,
+): Promise<void> {
+  await jsonFetch("/api/medical/order", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ code, fileBase64, mime }),
   });
 }

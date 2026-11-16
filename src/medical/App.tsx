@@ -10,12 +10,13 @@ import {
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
 import { clearMedProfile, loadMedProfile, saveMedProfile } from "./clientProfileMed";
-import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties,
+import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, uploadOrder,
   MED_BRANCH_PHONES, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty,
 } from "./api";
 import { BRANCHES, isBranchOpen } from "../data/branches";
 import { LazyImage } from "../components/LazyImage";
 import { WhatsAppButton } from "../components/WhatsAppButton";
+import { prepareOrderBase64 } from "./orderUpload";
 
 // Wizard de citas médicas: sede → servicio → especialidad/doctor → fecha/hora → datos → CM-XXXXX.
 // Presentación con el sistema Ariel del wizard grooming (BookingWizard): card grande,
@@ -23,7 +24,7 @@ import { WhatsAppButton } from "../components/WhatsAppButton";
 // NO cambia lógica ni APIs — mismos handlers/estados queProduction probados.
 
 type ServiceType = "general" | "rayos" | "eco" | "especializada";
-type Step = "sede" | "servicio" | "orden" | "sin_orden" | "especialidad" | "doctor" | "agenda" | "datos" | "enviado";
+type Step = "sede" | "servicio" | "orden" | "subir_orden" | "sin_orden" | "especialidad" | "doctor" | "agenda" | "datos" | "enviado";
 
 interface FormData {
   branch: MedBranch | null;
@@ -180,7 +181,7 @@ const SERVICES: Array<{
 // Grupos del progreso (4): sede / servicio / agenda / datos
 const PROGRESS_GROUPS: Array<{ label: string; steps: Step[] }> = [
   { label: "Sede", steps: ["sede"] },
-  { label: "Servicio", steps: ["servicio", "orden", "sin_orden", "especialidad", "doctor"] },
+  { label: "Servicio", steps: ["servicio", "orden", "subir_orden", "sin_orden", "especialidad", "doctor"] },
   { label: "Agenda", steps: ["agenda"] },
   { label: "Datos", steps: ["datos"] },
 ];
@@ -242,6 +243,11 @@ export default function App() {
   const [slots, setSlots] = useState<MedSlot[] | null>(null);
   // Solicitud de próxima semana (sin hora): cambia el mensaje de confirmación.
   const [solicitudEnviada, setSolicitudEnviada] = useState(false);
+  // Orden de rayos/eco subida por el cliente (feedback 16/11): archivo local +
+  // resultado de la subida (null = aún no se intenta / flujo sin orden).
+  const [orderFile, setOrderFile] = useState<File | null>(null);
+  const [orderPreview, setOrderPreview] = useState<string | null>(null);
+  const [ordenSubida, setOrdenSubida] = useState<boolean | null>(null);
   // M1 honestidad: ¿Evolution entregó el aviso? true=verde, false=ámbar
   // "no se pudo enviar", null=no confirmado (reenvío viejo) — el verde GANA solo con true.
   const [whatsAppOk, setWhatsAppOk] = useState<boolean | null>(null);
@@ -249,6 +255,7 @@ export default function App() {
   const [submitting, setSubmitting] = useState(false);
   const [code, setCode] = useState("");
   const [copia, setCopia] = useState(false);
+  const orderInputRef = useRef<HTMLInputElement | null>(null);
   // Idea 1: ¿estamos mostrando datos guardados del navegador del cliente?
   const [recordados, setRecordados] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -280,14 +287,20 @@ export default function App() {
   const back = () => {
     setError(null);
     const prev: Record<Step, Step> = {
-      sede: "sede", servicio: "sede", orden: "servicio", sin_orden: "servicio",
+      sede: "sede", servicio: "sede", orden: "servicio", subir_orden: "orden", sin_orden: "servicio",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
     };
+    const orderFlow =
+      (form.serviceType === "rayos" || form.serviceType === "eco") && form.hasOrder === true;
     // Especializada ("interconsulta") no pasa por el calendario: su fecha la
     // fija el counter después del pago. El back de datos/agenda regresa a la
     // especialidad — igual al paso que llamó a go() — y NUNCA recrea el bucle
     // datos ⇄ agenda que atrapaba al usuario.
-    if (form.serviceType === "especializada" && (step === "datos" || step === "agenda")) {
+    // Rayos/eco con orden: la fecha/hora NO se elige (las fija el counter tras
+    // verificar la orden) — el back de datos regresa a "subir_orden".
+    if (orderFlow && step === "datos") {
+      go("subir_orden");
+    } else if (form.serviceType === "especializada" && (step === "datos" || step === "agenda")) {
       go("especialidad");
     } else {
       go(prev[step]);
@@ -302,11 +315,14 @@ export default function App() {
     setError(null);
     update("serviceType", t);
     if (t === "general" || t === "rayos" || t === "eco") {
-      // Limpia rastro de una especializada previa (paso especialidad).
+      // Limpia rastro de una especializada previa (paso especialidad) y de una
+      // orden subida previa (paso subir_orden).
       setForm((f) => ({
         ...f,
         specialtyId: null, specialtyName: null, specialtyCost: null,
       }));
+      setOrderFile(null);
+      setOrderPreview(null);
       if (t !== "general") {
         go("orden");
         return;
@@ -318,6 +334,8 @@ export default function App() {
         ...f,
         doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null,
       }));
+      setOrderFile(null);
+      setOrderPreview(null);
       go("especialidad");
     }
   }
@@ -452,14 +470,20 @@ export default function App() {
   async function submit() {
     setSubmitting(true);
     setError(null);
+    // Rayos/eco con orden subida: la cita va como SOLICITUD sin fecha/doctor —
+    // el counter verifica la orden con el doctor y luego fija fecha/hora
+    // (el mensaje de confirmación lo escribe el counter a mano, con costo).
+    const orderFlow =
+      (form.serviceType === "rayos" || form.serviceType === "eco") && form.hasOrder === true;
     try {
       const result = await createAppointment({
         branch: form.branch!,
         serviceType: form.serviceType!,
         specialtyId: form.serviceType === "especializada" ? form.specialtyId : null,
-        doctorId: form.serviceType === "especializada" ? null : form.doctorId,
-        date: form.serviceType === "especializada" ? null : form.date,
-        startMinute: form.serviceType === "especializada" ? null : form.startMinute,
+        doctorId: form.serviceType === "especializada" || orderFlow ? null : form.doctorId,
+        date: form.serviceType === "especializada" || orderFlow ? null : form.date,
+        startMinute: form.serviceType === "especializada" || orderFlow ? null : form.startMinute,
+        withOrderUpload: orderFlow ? true : null,
         hasOrder:
           form.serviceType === "rayos" || form.serviceType === "eco"
             ? form.hasOrder === true
@@ -478,6 +502,19 @@ export default function App() {
         ownerPhone: form.ownerPhone,
         ownerEmail: form.ownerEmail.trim() || "",
       });
+      // Subida de la orden: DESPUÉS de la reserva (INSERT antes; regla del repo).
+      // Si falla, la reserva no se pierde: el panel muestra "⚠️ Sin orden" y el
+      // counter la pide por chat o el cliente la trae impresa.
+      setOrdenSubida(null);
+      if (orderFlow && orderFile) {
+        try {
+          const { base64, mime } = await prepareOrderBase64(orderFile);
+          await uploadOrder(result.appointmentCode, base64, mime);
+          setOrdenSubida(true);
+        } catch {
+          setOrdenSubida(false);
+        }
+      }
       setCode(result.appointmentCode);
       setSolicitudEnviada(result.requested === true);
       setWhatsAppOk(result.whatsappDelivered === true);
@@ -684,7 +721,7 @@ export default function App() {
                         initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.3 }}
-                        onClick={() => { update("hasOrder", true); go("doctor"); }}
+                        onClick={() => { setError(null); update("hasOrder", true); go("subir_orden"); }}
                         className="group flex items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
                       >
                         <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
@@ -718,6 +755,119 @@ export default function App() {
 
                   {/* Columna derecha: tarjeta ilustrada (orden.webp ya trae
                       blobs, placa, eco, orden, huellitas y destellos dentro) */}
+                  <MascotaCard
+                    src={MASCOT.orden}
+                    alt="Mascota con su orden médica, radiografía y ecografía"
+                    imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                  />
+                </section>
+              )}
+
+              {/* ── Subir orden (rayos/eco con orden; feedback 16/11 del counter):
+                      el cliente adjunta la foto/PDF de la orden sellada — la cita
+                      NO pasa por calendario (la fecha/hora las fija el counter tras
+                      verificar la orden con el doctor, y le escribe al cliente). ── */}
+              {step === "subir_orden" && (
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Radiografía y ecografía</p>
+                    </div>
+                    <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">Sube tu <span className="text-orange-500">orden sellada</span></span>
+                    </h2>
+                    <motion.div
+                      className="mb-5 flex items-start gap-3 rounded-2xl bg-[#EFF5FC] p-4 ring-1 ring-[#DCEBFF]"
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 }}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-blue-600 shadow-sm ring-1 ring-blue-100">
+                        <FileCheck2 className="h-5 w-5" />
+                      </span>
+                      <p className="pt-1 text-xs leading-relaxed text-[#3B5178]">
+                        Fotografía la orden <b>con el sello del médico</b> (o adjúntala en PDF).
+                        Nuestro personal la verifica con el doctor y te escribimos para
+                        confirmar <b>fecha, hora y costo</b>. No elijas doctor ni hora: nosotros te contactamos.
+                      </p>
+                    </motion.div>
+
+                    <input
+                      ref={orderInputRef}
+                      type="file"
+                      accept="image/*,application/pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const f = e.target.files?.[0] ?? null;
+                        setOrderFile(f);
+                        if (orderPreview) URL.revokeObjectURL(orderPreview);
+                        setOrderPreview(f && f.type.startsWith("image/") ? URL.createObjectURL(f) : null);
+                      }}
+                    />
+                    {orderFile ? (
+                      <motion.div
+                        className="mb-4 flex items-center gap-3 rounded-2xl bg-white p-3 ring-1 ring-[#DCEBFF] shadow-sm"
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: 0.25 }}
+                      >
+                        {orderPreview ? (
+                          <img src={orderPreview} alt="Vista previa de la orden" className="h-16 w-16 shrink-0 rounded-xl object-cover ring-1 ring-slate-200" />
+                        ) : (
+                          <span className="flex h-16 w-16 shrink-0 items-center justify-center rounded-xl bg-[#EFF5FC] text-2xl">📄</span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-semibold text-[#1A2238]">{orderFile.name}</p>
+                          <p className="text-xs text-slate-400">{(orderFile.size / 1024 / 1024).toFixed(1)} MB</p>
+                        </div>
+                        <button
+                          onClick={() => { setOrderFile(null); if (orderPreview) URL.revokeObjectURL(orderPreview); setOrderPreview(null); if (orderInputRef.current) orderInputRef.current.value = ""; }}
+                          className="shrink-0 rounded-xl px-3 py-1.5 text-xs font-semibold text-red-600 transition hover:bg-red-50"
+                        >
+                          Quitar
+                        </button>
+                      </motion.div>
+                    ) : (
+                      <motion.button
+                        onClick={() => orderInputRef.current?.click()}
+                        initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.3 }}
+                        className="group flex w-full items-center gap-4 rounded-2xl bg-green-50 px-5 py-4 text-left ring-2 ring-green-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-green-100 hover:shadow-lg hover:shadow-green-100/60 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                      >
+                        <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-white text-green-600 ring-1 ring-green-200">
+                          <FileCheck2 className="h-6 w-6" />
+                        </span>
+                        <span className="flex-1">
+                          <span className="block font-display text-lg font-bold text-green-800">Tomar foto o elegir archivo</span>
+                          <span className="block text-xs text-green-700/80">Foto clara con el sello — JPG/PNG/PDF</span>
+                        </span>
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                          <ArrowRight className="h-5 w-5" />
+                        </span>
+                      </motion.button>
+                    )}
+
+                    <div className="mt-4 flex flex-col items-start gap-2">
+                      <motion.button
+                        onClick={() => go("datos")}
+                        disabled={!orderFile}
+                        title={!orderFile ? "Sube la foto de tu orden para continuar" : undefined}
+                        className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-7 py-3 text-sm font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+                      >
+                        Continuar
+                        <ArrowRight className="h-4 w-4" />
+                      </motion.button>
+                      <button
+                        onClick={() => go("datos")}
+                        className="text-xs font-medium text-[#546A8E] underline decoration-dotted transition-colors hover:text-[#475AAB]"
+                      >
+                        No puedo subirla ahora — la traigo impresa o la envío por WhatsApp
+                      </button>
+                    </div>
+                  </div>
+
                   <MascotaCard
                     src={MASCOT.orden}
                     alt="Mascota con su orden médica, radiografía y ecografía"
@@ -1240,7 +1390,7 @@ export default function App() {
                 <div className="mx-auto grid max-w-4xl gap-6 py-4 lg:grid-cols-2 lg:items-start">
                   {/* Columna izquierda: mascota + código + avisos (lo que hay que GUARDAR) */}
                   <div className="flex flex-col items-center gap-4">
-                    {form.serviceType === "especializada" ? (
+                    {form.serviceType === "especializada" || solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco") ? (
                       <MascotaCard
                         src={MASCOT.interconsulta}
                         alt="Doctor frenchie saludando con su clipboard registrado, aviso de WhatsApp enviado y calendario a confirmar"
@@ -1314,6 +1464,27 @@ export default function App() {
                         </p>
                       </div>
                       </>
+                    ) : solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco") ? (
+                      // Rayos/eco con orden: la fecha/hora las fija el counter tras
+                      // verificar la orden con el doctor (feedback 16/11).
+                      <>
+                        {ordenSubida === false && (
+                          <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                            <p className="font-bold text-amber-800">Tu orden no se pudo subir</p>
+                            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                              Tu solicitud SÍ está registrada. Tráela <b>impresa</b> el día de la cita o envíanos la foto por WhatsApp de la sede.
+                            </p>
+                          </div>
+                        )}
+                        <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                          <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                            {solicitudEnviada && ordenSubida === false
+                              ? <><b>¡Solicitud registrada!</b> Nuestro personal está verificando tu orden con el doctor. Te contactaremos para confirmar la <b>fecha, hora y el costo</b>.</>
+                              : <><b>¡Recibimos tu orden!</b> 📄 Nuestro personal la está verificando con el doctor. Te contactaremos para confirmar la <b>fecha, hora y el costo</b> — sin llamadas ni trámites extra.</>}
+                          </p>
+                        </div>
+                      </>
                     ) : solicitudEnviada ? (
                       <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
                         <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
@@ -1354,7 +1525,7 @@ export default function App() {
                           <h2 className="font-display text-2xl font-bold leading-tight text-[#475AAB] sm:text-3xl">
                             ¡Tu cita está <span className="text-orange-500">registrada!</span>
                           </h2>
-                          {form.serviceType === "especializada"
+                          {form.serviceType === "especializada" || (solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco"))
                             ? <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Tu solicitud está registrada con éxito.</p>
                             : <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Hemos agendado tu cita con éxito.</p>}
                         </div>
