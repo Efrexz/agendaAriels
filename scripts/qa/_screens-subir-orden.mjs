@@ -10,16 +10,15 @@ await page.evaluate(() => localStorage.clear());
 await page.reload({ waitUntil: "networkidle" });
 await page.waitForTimeout(1500);
 
-// sede → continuar
-const sede = page.locator("button:has-text('San Martín'), button:has-text('San Miguel'), button:has-text('Los Olivos')").first();
-await sede.click();
+// sede → ver servicios
+await page.locator("button:has-text('Seleccionar sede')").first().click();
 await page.waitForTimeout(500);
-const continuar = page.locator("button:has-text('Continuar')").first();
-if (await continuar.isVisible().catch(() => false)) { await continuar.click(); await page.waitForTimeout(600); }
+await page.locator("button:has-text('Ver servicios disponibles')").first().click();
+await page.waitForTimeout(800);
 
 // servicio → rayos
 await page.locator("button:has-text('Radiografía')").first().click();
-await page.waitForTimeout(700);
+await page.waitForTimeout(800);
 
 // orden → "Sí, tengo orden" → paso subir_orden
 await page.locator("button:has-text('Sí, tengo orden')").first().click();
