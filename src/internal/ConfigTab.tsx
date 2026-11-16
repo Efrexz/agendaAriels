@@ -102,6 +102,36 @@ export function ConfigTab() {
         </button>
       </section>
 
+      {/* Links de reseñas de Google por sede (van en la encuesta post-atención) */}
+      <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#FFF7E6] text-amber-500">
+            ⭐
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Link de reseñas de Google (por sede)</h3>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Va dentro del mensaje de encuesta cuando el counter marca una cita como "Atendida". Pega el link de reseña de Google Business de cada sede (empieza con https://). Si una sede no tiene aún, déjalo vacío: la encuesta sale sin esa línea.
+        </p>
+        <div className="flex flex-col gap-2">
+          {([["san_martin", "San Martín de Porres"], ["los_olivos", "Los Olivos"], ["san_miguel", "San Miguel"]] as const).map(([k, label]) => (
+            <div key={k} className="flex items-center gap-2">
+              <span className="w-40 shrink-0 text-xs font-semibold text-slate-600">{label}</span>
+              <input
+                value={config?.[`google_review_url_${k}`] ?? ""}
+                onChange={(e) => setConfigState((c) => ({ ...(c ?? {}), [`google_review_url_${k}`]: e.target.value }))}
+                placeholder="https://g.page/r/…/review"
+                inputMode="url"
+                className={`${FIELD_CLS} min-w-0 flex-1 font-mono text-xs`}
+              />
+              <button onClick={() => void guardarConfig(`google_review_url_${k}`, config?.[`google_review_url_${k}`] ?? "", `link de Google (${label})`)} disabled={busy} className="shrink-0 rounded-xl bg-brand-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                Guardar
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
       {/* Doctores */}
       <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
         <div className="mb-3 flex items-center gap-2.5">

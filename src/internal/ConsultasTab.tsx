@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CalendarDays, Cat, Check, ChevronDown, Clock, Dog, FileText, History, Loader2, MapPin, NotebookText, Phone, PlusCircle, Search, Stethoscope, UserRound, type LucideIcon } from "lucide-react";
 import {
-  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, searchMedAppts,
+  assignMedAppt, fetchMedDay, fetchMedPending, fetchSchedules, patchMedStatus, resendMedNotice, rescheduleMedAppt, searchMedAppts,
   type MedAppt, type ScheduleWithDoctor,
 } from "./apiMedical";
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
@@ -52,6 +52,8 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   // solo elige fecha/hora (o especialidad). El guard de "¿descartar?" compara
   // contra este base, no pide confirmación si el usuario no tocó nada.
   const [manualPrefill, setManualPrefill] = useState<ManApptPrefill | null>(null);
+  // Cambio de horario de una cita CONFIRMADA (fecha/hora/doctor, sin cancelar).
+  const [reschedAppt, setReschedAppt] = useState<MedAppt | null>(null);
   const [tick, setTick] = useState(0);
   // Toast de llegadas nuevas (citas creadas tras abrir el panel y aún no vistas)
   const [novelCount, setNovelCount] = useState(0);
@@ -260,7 +262,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
               Sin resultados para "{query}".
             </p>
           )}
-          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onUpdate={() => setTick((t) => t + 1)} />)}
+          {searchResults.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onReschedule={setReschedAppt} onUpdate={() => setTick((t) => t + 1)} />)}
         </div>
       )}
 
@@ -285,7 +287,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
                 </span>
               </h3>
               <div className="flex flex-col gap-2">
-                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onUpdate={() => setTick((t) => t + 1)} />)}
+                {list.map((a) => <ApptCard key={a.id} a={a} onStatus={setApptStatus} onReagendar={openReagendar} onReschedule={setReschedAppt} onUpdate={() => setTick((t) => t + 1)} />)}
               </div>
             </section>
           ))}
@@ -293,6 +295,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
       )}
 
       {manualOpen && <ManualApptModal prefill={manualPrefill} onClose={(reload) => { setManualOpen(false); setManualPrefill(null); if (reload) setTick((t) => t + 1); }} />}
+      {reschedAppt && <RescheduleModal appt={reschedAppt} onClose={(reload) => { setReschedAppt(null); if (reload) setTick((t) => t + 1); }} />}
 
       {/* Llegadas nuevas con el panel abierto */}
       <NewArrivalsToast
@@ -586,6 +589,7 @@ interface MedDoctorLite { id: string; name: string; kind: string; specialty: str
 const WA_EVENT_META: Record<string, string> = {
   wa_fallado: "⚠ Aviso por WhatsApp no entregado",
   wa_entregado: "✓ Aviso por WhatsApp entregado",
+  reprogramada: "🕐 Horario reprogramado",
 };
 
 // Hora compacta del grid V2: 690 → "8:30a" (mismo formato 12h del sistema).
@@ -697,10 +701,11 @@ function InfoCell({ icon: Icon, tint, label, children }: {
   );
 }
 
-function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
+function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
   a: MedAppt;
   onStatus: (a: MedAppt, status: string) => void;
   onReagendar: (a: MedAppt) => void;
+  onReschedule: (a: MedAppt) => void;
   onUpdate: () => void;
 }) {
   const [open, setOpen] = useState(false);
@@ -864,6 +869,17 @@ function ApptCard({ a, onStatus, onReagendar, onUpdate }: {
                 className="flex items-center gap-1.5 rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700 focus:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue/40"
               >
                 🔁 Reagendar como nueva cita
+              </button>
+            )}
+            {/* Cambiar horario de una cita CONFIRMADA (fecha/hora/doctor,
+                sin cancelar): imprevistos del cliente o error del counter. */}
+            {a.status === "confirmada" && (
+              <button
+                onClick={() => onReschedule(a)}
+                title="Cambia fecha/hora/doctor de ESTA cita y avisa al cliente por WhatsApp"
+                className="flex items-center gap-1.5 rounded-lg bg-[#EFF6FF] px-3 py-1.5 text-xs font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF] transition hover:bg-blue-100"
+              >
+                🕐 Cambiar horario
               </button>
             )}
             {avisoFallado && (
@@ -1146,6 +1162,166 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
             >
               <Check className="h-4 w-4" />
               {prefill ? "Guardar nueva fecha" : "Crear cita"}
+            </button>
+            <button onClick={() => maybeClose(false)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">
+              Cancelar
+            </button>
+          </div>
+        </div>
+      </>
+      )}
+    </ModalShell>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────
+// Cambiar horario de una cita CONFIRMADA (fecha/hora/doctor, sin
+// cancelarla). Mismo cargador de slots con guard de carrera que el
+// modal manual; al guardar, la API avisa al cliente por WhatsApp.
+// Reversible: se puede volver a cambiar cuantas veces haga falta.
+// ─────────────────────────────────────────────────────────────
+function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: boolean) => void }) {
+  const [doctors, setDocList] = useState<MedDoctor[] | null>(null);
+  const [doctorId, setDoctor] = useState(appt.doctorId ?? "");
+  const [date, setDate] = useState(appt.apptDate ?? "");
+  const [slots, setSlotsList] = useState<MedSlot[]>([]);
+  const [slotsLoading, setSlotsLoading] = useState(false);
+  const [startMinute, setStart] = useState<number | null>(appt.startMinute);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  // Generales atienden general/rayos/eco; especialistas las especializadas.
+  const wantKind = appt.serviceType === "especializada" ? "especialista" : "general";
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const list = await fetchDoctors(appt.branch as MedBranch);
+        if (active) setDocList(list.filter((d) => d.kind === wantKind));
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Error al cargar doctores");
+      }
+    })();
+    return () => { active = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [appt.branch]);
+
+  // Carrera de respuestas: la respuesta antigua no pisa la del doctor actual.
+  const slotsSeqRef = useRef(0);
+  async function loadSlots(d: string, doc = doctorId) {
+    setDate(d); setStart(null); setSlotsList([]);
+    if (!doc) return;
+    setSlotsLoading(true);
+    const seq = ++slotsSeqRef.current;
+    try {
+      const list = await fetchSlots(doc, d);
+      if (slotsSeqRef.current !== seq) return; // cayó tarde: descartar
+      setSlotsList(list);
+    } catch {
+      if (slotsSeqRef.current !== seq) return;
+      setSlotsList([]); setError("No se pudieron cargar las horas de esa fecha.");
+    } finally {
+      if (slotsSeqRef.current === seq) setSlotsLoading(false);
+    }
+  }
+
+  const dirty =
+    doctorId !== appt.doctorId || date !== (appt.apptDate ?? "") ||
+    (startMinute !== null && startMinute !== appt.startMinute);
+
+  async function guardar() {
+    if (!doctorId || !date || startMinute === null) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await rescheduleMedAppt({ id: appt.id, doctorId, apptDate: date, startMinute });
+      onClose(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "No se pudo cambiar el horario");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  const actual = appt.apptDate
+    ? `${appt.apptDate.split("-").reverse().join("/")}${appt.startMinute !== null ? ` · ${hour(appt.startMinute)}` : ""}`
+    : "(sin horario)";
+
+  return (
+    <ModalShell
+      title={`🕐 Cambiar horario — ${appt.petName} (${appt.appointmentCode})`}
+      dirty={dirty}
+      onClose={onClose}
+      wide
+    >
+      {(maybeClose) => (
+      <>
+        {error && (
+          <p className="mb-2 flex items-start gap-2 rounded-xl bg-red-50 px-3 py-2 text-xs text-red-700 ring-1 ring-red-100">
+            <span className="font-bold">⚠️</span>
+            {error}
+          </p>
+        )}
+        <p className="mb-3 rounded-xl bg-[#EFF6FF] px-3 py-2 text-xs text-[#3B5178] ring-1 ring-[#DCEBFF]">
+          Horario actual: <b>{actual}</b> — al guardar, el cliente recibe el aviso por WhatsApp con el horario nuevo. La cita NO se cancela: conserva su código.
+        </p>
+        <div className="flex flex-col gap-3">
+          <ModalSection title="Nueva fecha y hora" icon={CalendarDays} />
+          <div className="flex gap-2">
+            <label className="grid min-w-0 flex-1 gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Doctor</span>
+              <select value={doctorId} onChange={(e) => { setDoctor(e.target.value); setStart(null); if (date && e.target.value) void loadSlots(date, e.target.value); }} className={`${FIELD_CLS} w-full`}>
+                {(doctors ?? []).map((d) => <option key={d.id} value={d.id}>{d.name}</option>)}
+                {/* El doctor actual sigue visible aunque el fetch tarde o esté inactivo */}
+                {doctors !== null && appt.doctorId && !doctors.some((d) => d.id === appt.doctorId) && (
+                  <option value={appt.doctorId}>{appt.doctorName ?? "Doctor actual"}</option>
+                )}
+              </select>
+            </label>
+            <label className="grid min-w-0 gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Fecha</span>
+              <input type="date" value={date} onChange={(e) => void loadSlots(e.target.value)} className={`${FIELD_CLS} w-full`} />
+            </label>
+          </div>
+          {slotsLoading && (
+            <div className="grid gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
+              <div className="flex flex-wrap items-center gap-3">
+                <Loader2 className="h-4 w-4 shrink-0 animate-spin text-brand-blue" />
+                <p className="text-xs text-slate-500">Buscando los horarios del doctor…</p>
+              </div>
+            </div>
+          )}
+          {!slotsLoading && !error && date && slots.length === 0 && (
+            <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
+              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+              <p className="text-xs leading-relaxed text-amber-800">
+                <b>El doctor no tiene horarios para este día.</b> Prueba otra fecha o cambia de doctor.
+              </p>
+            </div>
+          )}
+          {slots.length > 0 && (
+            <div className="grid gap-1">
+              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
+              <div className="flex flex-wrap gap-1.5">
+                {slots.map((s) => (
+                  <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${startMinute === s.startMinute ? "bg-brand-orange text-white shadow-sm shadow-orange-200" : "bg-[#EFF5FC] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:bg-blue-50"}`}>
+                    {s.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="border-t border-slate-100 pt-3">
+            <button
+              onClick={() => void guardar()}
+              disabled={busy || !date || startMinute === null || !dirty}
+              title={!dirty ? "Elige un cambio (fecha, hora o doctor) para guardar" : undefined}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-blue-600 to-orange-400 py-3 text-sm font-bold text-white shadow-md shadow-blue-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+            >
+              <Check className="h-4 w-4" />
+              {busy ? "Guardando…" : "Guardar nuevo horario"}
             </button>
             <button onClick={() => maybeClose(false)} className="mt-2 w-full rounded-xl border border-slate-200 bg-white py-2.5 text-sm font-semibold text-slate-500 transition hover:bg-slate-50">
               Cancelar

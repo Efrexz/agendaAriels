@@ -42,6 +42,7 @@ import mDayHandler from "./medical/_day.js";
 import mSearchHandler from "./medical/_search.js";
 import mStatusHandler from "./medical/_status.js";
 import mAssignHandler from "./medical/_assign.js";
+import mRescheduleHandler from "./medical/_reschedule.js";
 import mSchedulesHandler from "./medical/_schedules.js";
 import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
@@ -89,6 +90,7 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /medical/search": { handler: mSearchHandler as Handler },
   "PATCH /medical/status": { handler: mStatusHandler as Handler },
   "POST /medical/assign": { handler: mAssignHandler as Handler },
+  "PATCH /medical/reschedule": { handler: mRescheduleHandler as Handler },
   "GET /medical/schedules": { handler: mSchedulesHandler as Handler },
   "POST /medical/schedules": { handler: mSchedulesHandler as Handler },
   "DELETE /medical/schedules": { handler: mSchedulesHandler as Handler },

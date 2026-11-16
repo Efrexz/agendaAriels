@@ -18,7 +18,15 @@ interface Res {
   json(payload: unknown): Res;
 }
 
-const ALLOWED_KEYS = new Set(["appt_duration_minutes", "payment_info"]);
+// Links de reseñas de Google POR SEDE (feedback 16/11 del dueño). Vacíos = la
+// encuesta sale sin la línea del link (nunca se bloquea por falta de link).
+const ALLOWED_KEYS = new Set([
+  "appt_duration_minutes",
+  "payment_info",
+  "google_review_url_san_martin",
+  "google_review_url_los_olivos",
+  "google_review_url_san_miguel",
+]);
 
 const PUT_SCHEMA = z.object({
   key: z.string(),
@@ -48,6 +56,13 @@ export default async function handler(req: Req, res: Res) {
         const n = Number(parsed.data.value);
         if (!Number.isInteger(n) || n < 15 || n > 120) {
           res.status(400).json({ ok: false, error: "La duración debe ser entre 15 y 120 minutos." });
+          return;
+        }
+      }
+      if (parsed.data.key.startsWith("google_review_url_") && parsed.data.value.trim() !== "") {
+        // Acepta solo https para no guardar enlaces raros (tipo javascript:) en el chat.
+        if (!/^https:\/\//.test(parsed.data.value.trim())) {
+          res.status(400).json({ ok: false, error: "El link de Google debe empezar con https://" });
           return;
         }
       }

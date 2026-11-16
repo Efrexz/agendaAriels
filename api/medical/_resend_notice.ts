@@ -2,7 +2,7 @@ import { sendViaEvolution, normalizePhoneDest, type BookingEnv } from "../_booki
 import {
   buildClientApptMessage, buildNextWeekRequestMessage,
 } from "./_create.js";
-import { buildConfirmationMessage } from "./_status.js";
+import { buildConfirmationMessage, buildSurveyMessage } from "./_status.js";
 import { minuteToTime } from "./slots.js";
 import { BRANCH_LABELS, BRANCH_PHONES, getMedicalDb, notConfigured, staffGuard } from "./_shared.js";
 
@@ -61,7 +61,13 @@ export default async function handler(req: Req, res: Res) {
 
     const cfg = await db.getConfig();
     const text =
-      appt.status === "asignada" || appt.status === "confirmada"
+      appt.status === "atendida"
+        // La "encuesta" de post-atención se reenvía igual (con el link vigente).
+        ? buildSurveyMessage(
+            { ownerName: appt.ownerName, petName: appt.petName, appointmentCode: appt.appointmentCode },
+            cfg[`google_review_url_${appt.branch}`] || null,
+          )
+        : appt.status === "asignada" || appt.status === "confirmada"
         ? buildConfirmationMessage({
             apptDate: appt.apptDate,
             startMinute: appt.startMinute,

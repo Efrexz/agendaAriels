@@ -527,6 +527,29 @@ export class MedicalDb {
     return false;
   }
 
+  /** Igual que listApptsForDoctor pero devuelve ids y permite EXCLUIR la
+   *  propia cita (reschedule: moverla sobre sí misma no es conflicto). */
+  async listBusyForDoctor(
+    doctorId: string,
+    date: string,
+    excludeApptId: string | null,
+  ): Promise<{ id: string; startMinute: number; durationMinutes: number }[]> {
+    let q = this.client
+      .from("medical_appointments")
+      .select("id, start_minute, duration_minutes")
+      .eq("doctor_id", doctorId)
+      .eq("appt_date", date)
+      .in("status", ["pagado", "asignada", "confirmada", "en_consulta", "atendida"]);
+    if (excludeApptId) q = q.neq("id", excludeApptId);
+    const { data, error } = await q;
+    if (error) throw new Error(`listBusyForDoctor: ${error.message}`);
+    return (data ?? []).map((a) => ({
+      id: String(a.id),
+      startMinute: Number(a.start_minute),
+      durationMinutes: Number(a.duration_minutes),
+    }));
+  }
+
   async recordApptStatus(apptId: string, status: string, createdBy: string): Promise<void> {
     // Solo registra el estado inicial: actualizar la cita aquí podía pisar
     // un cambio del mostrador ocurrido después de la inserción.
@@ -560,7 +583,7 @@ export class MedicalDb {
     apptId: string,
     patch: { doctorId?: string; apptDate?: string; startMinute?: number; paymentNotes?: string; durationMinutes?: number },
     createdBy: string,
-    newStatus?: string,
+    newStatus?: string | null,
     fromStatus = "pagado",
   ): Promise<boolean> {
     const row: Record<string, unknown> = {};

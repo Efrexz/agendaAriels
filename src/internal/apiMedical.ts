@@ -125,6 +125,16 @@ export async function assignMedAppt(input: {
   return authedFetch("/api/medical/assign", { method: "POST", body: JSON.stringify(input) });
 }
 
+/** Cambiar horario (y doctor) de una cita CONFIRMADA sin cancelarla. */
+export async function rescheduleMedAppt(input: {
+  id: string;
+  doctorId: string;
+  apptDate: string;
+  startMinute: number;
+}): Promise<{ notified: boolean }> {
+  return authedFetch("/api/medical/reschedule", { method: "PATCH", body: JSON.stringify(input) });
+}
+
 export async function fetchSchedules(): Promise<{ schedules: ScheduleWithDoctor[] }> {
   return authedFetch("/api/medical/schedules");
 }

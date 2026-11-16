@@ -68,6 +68,28 @@ export function buildConfirmationMessage(appt: {
   return lines.filter(Boolean).join("\n");
 }
 
+/** Mensaje-encuesta al terminar la atención (feedback 16/11 del dueño):
+ *  corto, se responde EN el propio chat (sin links de formularios) y cierra
+ *  invitando a la reseña de Google de la sede (si ya está configurada). */
+export function buildSurveyMessage(appt: {
+  ownerName: string;
+  petName: string;
+  appointmentCode: string;
+}, googleUrl: string | null): string {
+  const lines = [
+    `🐾 *¡Gracias por su visita, ${appt.ownerName.split(/\s+/)[0]}!*`,
+    `💙 ${appt.petName} ya está atendida.`,
+    "",
+    "Su opinión nos ayuda a mejorar cada día. ¿Nos responde aquí mismo? 🙏",
+    "1️⃣ Del 1 al 5, ¿cómo califica la atención?",
+    "2️⃣ ¿Nos recomendaría con sus conocidos?",
+    "3️⃣ ¿Algo que podamos mejorar?",
+  ];
+  if (googleUrl) lines.push("", `⭐ Y si nos llevó bien, califíquenos en Google: ${googleUrl}`);
+  lines.push("", `🔖 Su código: ${appt.appointmentCode}`, "¡Gracias por confiar en Ariel's Clinic! 🐶✨");
+  return lines.filter(Boolean).join("\n");
+}
+
 export default async function handler(req: Req, res: Res) {
   if (req.method !== "PATCH") {
     res.status(405).json({ ok: false, error: "Método no permitido." });
@@ -107,24 +129,31 @@ export default async function handler(req: Req, res: Res) {
     }
 
     // 'confirmada' → avisar al cliente (single corto, best-effort)
+    // 'atendida'   → encuesta corta + link de Google de la sede (best-effort)
     let notified = false;
-    if (status === "confirmada") {
+    if (status === "confirmada" || status === "atendida") {
       const env = process.env as BookingEnv;
       const dest = normalizePhoneDest(appt.ownerPhone);
       const evoReady = !!(env.EVOLUTION_API_URL && env.EVOLUTION_API_KEY && env.EVOLUTION_INSTANCE);
       if (dest && (evoReady || env.EVOLUTION_DRY_RUN === "true")) {
-        const text = buildConfirmationMessage({
-          apptDate: appt.apptDate,
-          startMinute: appt.startMinute,
-          branchLabel: BRANCH_LABELS[appt.branch] ?? appt.branch,
-          doctorName: appt.doctorName,
-          specialtyName: appt.specialtyName,
-          petName: appt.petName,
-          ownerName: appt.ownerName,
-          appointmentCode: appt.appointmentCode,
-          needsOrder: appt.needsOrder,
-          branchPhone: BRANCH_PHONES[appt.branch] ?? "",
-        });
+        const text =
+          status === "confirmada"
+            ? buildConfirmationMessage({
+                apptDate: appt.apptDate,
+                startMinute: appt.startMinute,
+                branchLabel: BRANCH_LABELS[appt.branch] ?? appt.branch,
+                doctorName: appt.doctorName,
+                specialtyName: appt.specialtyName,
+                petName: appt.petName,
+                ownerName: appt.ownerName,
+                appointmentCode: appt.appointmentCode,
+                needsOrder: appt.needsOrder,
+                branchPhone: BRANCH_PHONES[appt.branch] ?? "",
+              })
+            : buildSurveyMessage(
+                { ownerName: appt.ownerName, petName: appt.petName, appointmentCode: appt.appointmentCode },
+                (await db.getConfig())[`google_review_url_${appt.branch}`] || null,
+              );
         const sent = await sendViaEvolution([text], env, fetch, dest);
         notified = sent.ok;
         // Marca del aviso en el historial (⚠ + reenvío en el panel). Best-effort
