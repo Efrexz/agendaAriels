@@ -418,7 +418,7 @@ export default function App() {
         </header>
         {/* Línea de acento de marca sobre el título */}
         <div aria-hidden className="mb-2 h-1 w-8 rounded-full bg-brand-orange" />
-        <h1 className="font-display text-3xl font-bold leading-tight text-slate-900">¿Cómo va tu mascota? 🐾</h1>
+        <h1 className="font-display text-3xl font-bold leading-tight text-[#475AAB]">¿Cómo va tu mascota? 🐾</h1>
         <p className="mt-2 text-sm text-slate-500">
           Consulta el estado de su baño, corte o examen de laboratorio. Ingresa tu código: <b>VA-</b> grooming ·{" "}
           <b>LAB-</b> laboratorio.

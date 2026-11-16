@@ -127,7 +127,7 @@ export function LoginScreen() {
             <div className="flex items-center rounded-2xl bg-white px-3 py-2 shadow-sm ring-1 ring-slate-100 lg:hidden">
               <img src="/logo.webp" alt="Veterinaria Ariel" className="h-10 w-auto select-none" draggable={false} />
             </div>
-            <h1 className="font-display text-2xl font-bold text-slate-900">Panel Interno</h1>
+            <h1 className="font-display text-2xl font-bold text-[#475AAB]">Panel Interno</h1>
             {/* Marca manuscrita con líneas a los lados (referencia) */}
             <div className="flex items-center gap-3">
               <span aria-hidden className="h-px w-10 rounded-full bg-slate-200" />
