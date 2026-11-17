@@ -38,6 +38,8 @@ export interface LabOrderRecord extends Omit<LabOrderInput, "orderCode"> {
   orderCode: string;
   createdAt: string;
   updatedAt: string;
+  /** Fecha de toma de muestra coordinada por el counter (sin hora). */
+  sampleDate: string | null;
   // Resultado publicado al cliente (\Storage privado, ventan todas de 20 días)
   resultPath: string | null;
   resultName: string | null;
@@ -67,6 +69,7 @@ interface LabDbRow {
   created_by: string;
   created_at: string;
   updated_at: string;
+  sample_date: string | null;
   result_path: string | null;
   result_name: string | null;
   result_published_at: string | null;
@@ -93,6 +96,7 @@ function rowToRecord(r: LabDbRow): LabOrderRecord {
     createdBy: r.created_by,
     createdAt: r.created_at,
     updatedAt: r.updated_at,
+    sampleDate: r.sample_date ?? null,
     resultPath: r.result_path,
     resultName: r.result_name,
     resultPublishedAt: r.result_published_at,
@@ -103,8 +107,7 @@ function rowToRecord(r: LabDbRow): LabOrderRecord {
 const LAB_COLUMNS =
   "id, order_code, sede_origen, sede_responsable, lab_name, exam_type, pet_name, pet_type, " +
   "history_code, doctor_name, owner_name, owner_phone, paid_notes, notes, status, " +
-  "created_by, created_at, updated_at, result_path, result_name, result_published_at, order_path";
-
+  "created_by, created_at, updated_at, result_path, result_name, result_published_at, order_path, sample_date";
 export class LabDb {
   constructor(private client: SupabaseClient) {}
 
@@ -257,9 +260,17 @@ export class LabDb {
     if (error) throw new Error(`setOrderFile: ${error.message}`);
   }
 
+  /** Fecha de toma de muestra (counter la fija al coordinar; null = quitar). */
+  async setSampleDate(orderId: string, date: string | null): Promise<void> {
+    const { error } = await this.client
+      .from("lab_orders")
+      .update({ sample_date: date })
+      .eq("id", orderId);
+    if (error) throw new Error(`setSampleDate: ${error.message}`);
+  }
+
   /** Órdenes de lab con foto de orden vencida (purga a 7 días del cron). */
-  async listOrderFilesToPurge(cutoffIso: string): Promise<{ id: string; orderPath: string }[]> {
-    const { data, error } = await this.client
+  async listOrderFilesToPurge(cutoffIso: string): Promise<{ id: string; orderPath: string }[]> {    const { data, error } = await this.client
       .from("lab_orders")
       .select("id, order_path")
       .not("order_path", "is", null)

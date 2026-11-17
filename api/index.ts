@@ -62,6 +62,8 @@ import labPurgeHandler from "./lab/_purge.js";
 import labDownloadHandler from "./lab/_download.js";
 import labResendResultHandler from "./lab/_resend_result.js";
 import labCreateClientHandler from "./lab/_create-client.js";
+import labSampleDateHandler from "./lab/_sample_date.js";
+import arrivalsHandler from "./internal/_arrivals.js";
 
 export const maxDuration = 60;
 
@@ -85,6 +87,7 @@ const ROUTES: Record<string, RouteDef> = {
   "POST /internal/pet-status": { handler: gPetStatusHandler as Handler },
   "POST /internal/bath-number": { handler: gBathNumberHandler as Handler },
   "GET /internal/history": { handler: gHistoryHandler as Handler },
+  "GET /internal/arrivals": { handler: arrivalsHandler as Handler },
 
   "GET /medical/doctors": { handler: mDoctorsHandler as Handler },
   "GET /medical/specialties": { handler: mSpecialtiesHandler as Handler },
@@ -117,6 +120,7 @@ const ROUTES: Record<string, RouteDef> = {
   "PATCH /internal/lab/status": { handler: labStatusHandler as Handler },
   "GET /lab-status": { handler: labPublicStatusHandler as Handler },
   "POST /lab/create-client": { handler: labCreateClientHandler as Handler },
+  "POST /internal/lab/sample-date": { handler: labSampleDateHandler as Handler },
   "POST /lab-download": { handler: labDownloadHandler as Handler },
   "GET /internal/lab/catalog": { handler: labCatalogHandler as Handler },
   "POST /internal/lab/catalog": { handler: labCatalogHandler as Handler },

@@ -1,6 +1,7 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import type { Session } from "@supabase/supabase-js";
 import {
+  Bell,
   FlaskConical,
   History,
   LogOut,
@@ -16,6 +17,36 @@ import { HelpGuide } from "./HelpGuide";
 import { ConfigTab } from "./ConfigTab";
 import { LabTab } from "./LabTab";
 import { HistoryTab, type HistTarget } from "./HistoryTab";
+import { fetchArrivals, type Arrivals } from "./apiLab";
+
+/** "Tin" suave tipo WhatsApp Web por Web Audio (sin archivos): 2 notas
+ *  cortas de seno. Funciona con la pestaña EN SEGUNDO PLANO — solo requiere
+ *  que el counter haya interactuado con la página alguna vez (política de
+ *  autoplay de los navegadores). Fallo silencioso si el audio no está. */
+function playChime(): void {
+  try {
+    const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+    if (!Ctx) return;
+    const ctx = new Ctx();
+    const now = ctx.currentTime;
+    const notes: Array<[number, number]> = [[880, 0], [1174.66, 0.18]]; // La5 → Re6
+    for (const [freq, at] of notes) {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.type = "sine";
+      osc.frequency.value = freq;
+      gain.gain.setValueAtTime(0.0001, now + at);
+      gain.gain.exponentialRampToValueAtTime(0.08, now + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.35);
+      osc.connect(gain).connect(ctx.destination);
+      osc.start(now + at);
+      osc.stop(now + at + 0.4);
+    }
+    setTimeout(() => void ctx.close().catch(() => undefined), 1200);
+  } catch {
+    /* sin audio disponible: la campana visual queda */
+  }
+}
 
 type Tab = "grooming" | "consultas" | "laboratorio" | "historial" | "config";
 
@@ -73,6 +104,58 @@ export default function App() {
   // Salto desde 📚 Historial: contenido pestaña destino + código que debe
   // quedar buscado al montar la pestaña correspondiente.
   const [jump, setJump] = useState<{ tab: Tab; q: string } | null>(null);
+  // Campana (feedback 18/11): pendientes accionables por pestaña + "tin" al
+  // subir el total, aun con la pestaña en segundo plano (WhatsApp Web).
+  const [arrivals, setArrivals] = useState<Arrivals | null>(null);
+  const [bellOpen, setBellOpen] = useState(false);
+  const lastTotalRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!session) return;
+    let active = true;
+    (async () => {
+      try {
+        const a = await fetchArrivals();
+        if (!active) return;
+        setArrivals(a);
+        if (lastTotalRef.current !== null && a.total > lastTotalRef.current) playChime();
+        lastTotalRef.current = a.total;
+      } catch {
+        /* sin sesión válida o red: la campana queda como está */
+      }
+    })();
+    // Sondeo cada 30s + re-chequeo al volver a la pestaña (counter la minimiza):
+    // el "tin" suena aun en segundo plano (WhatsApp Web, feedback 18/11).
+    const timer = setInterval(() => {
+      void (async () => {
+        try {
+          const a = await fetchArrivals();
+          if (!active) return;
+          setArrivals(a);
+          if (lastTotalRef.current !== null && a.total > lastTotalRef.current) playChime();
+          lastTotalRef.current = a.total;
+        } catch { /* silencioso */ }
+      })();
+    }, 30_000);
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      void (async () => {
+        try {
+          const a = await fetchArrivals();
+          if (!active) return;
+          setArrivals(a);
+          if (lastTotalRef.current !== null && a.total > lastTotalRef.current) playChime();
+          lastTotalRef.current = a.total;
+        } catch { /* silencioso */ }
+      })();
+    };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      active = false;
+      clearInterval(timer);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
+  }, [session]);
 
   const jumpTo = (target: HistTarget, q: string) => {
     setTab(target);
@@ -136,6 +219,43 @@ export default function App() {
             ))}
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-2 lg:ml-3">
+            {/* Campana de pendientes (feedback 18/11): grooming hoy + citas por
+                confirmar + solicitudes de lab; clic → va a la pestaña. */}
+            <div className="relative">
+              <button
+                onClick={() => setBellOpen((v) => !v)}
+                aria-label="Pendientes nuevos"
+                title="Pendientes nuevos (grooming · citas · lab)"
+                className="relative flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white ring-1 ring-white/15 transition hover:bg-white/20"
+              >
+                <Bell className="h-4.5 w-4.5" />
+                {arrivals && arrivals.total > 0 && (
+                  <span className="absolute -right-1 -top-1 flex h-4.5 min-w-4.5 items-center justify-center rounded-full bg-brand-orange px-1 text-[10px] font-black text-white shadow">
+                    {arrivals.total > 99 ? "99+" : arrivals.total}
+                  </span>
+                )}
+              </button>
+              {bellOpen && (
+                <div className="absolute right-0 top-11 z-40 w-60 overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-slate-200">
+                  <p className="border-b border-slate-100 px-4 py-2.5 text-xs font-bold text-slate-500">Pendientes por atender</p>
+                  {([["grooming", "Grooming (hoy)", "🐾"], ["consultas", "Consultas por confirmar", "🩺"], ["lab", "Laboratorio por confirmar", "🧪"]] as Array<[Tab, string, string]>).map(
+                    ([t, label, emoji]) => {
+                      const n = arrivals?.[t === "grooming" ? "grooming" : t === "consultas" ? "consultas" : "lab"] ?? 0;
+                      return (
+                        <button
+                          key={t}
+                          onClick={() => { setTab(t); setBellOpen(false); }}
+                          className="flex w-full items-center justify-between gap-2 px-4 py-2.5 text-left text-sm transition hover:bg-slate-50"
+                        >
+                          <span className="flex items-center gap-2 text-slate-700"><span aria-hidden>{emoji}</span>{label}</span>
+                          <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${n > 0 ? "bg-brand-orange text-white" : "bg-slate-100 text-slate-400"}`}>{n}</span>
+                        </button>
+                      );
+                    },
+                  )}
+                </div>
+              )}
+            </div>
             <span className="hidden max-w-52 items-center gap-2 truncate rounded-full bg-white/10 px-3 py-1.5 text-xs text-white ring-1 ring-orange-300/60 sm:flex" title={session.user.email ?? ""}>
               <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-orange-400/25 text-orange-300">
                 <Stethoscope className="h-3 w-3" />

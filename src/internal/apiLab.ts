@@ -27,7 +27,29 @@ export interface LabOrder {
   resultPublishedAt: string | null;
   /** Foto de la orden sellada subida por el cliente (bucket privado). */
   orderPath?: string | null;
+  /** Fecha de toma de muestra coordinada por el counter (sin hora). */
+  sampleDate?: string | null;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
+}
+
+/** Fija/quita la fecha de toma de muestra de una solicitud de lab. */
+export async function setLabSampleDate(orderId: string, date: string | null): Promise<void> {
+  const out = await authedFetch<{ ok: boolean }>("/api/internal/lab/sample-date", {
+    method: "POST",
+    body: JSON.stringify({ id: orderId, date }),
+  });
+  void out;
+}
+
+/** Pendientes accionables para la campana del navbar (solo conteos). */
+export interface Arrivals {
+  grooming: number;
+  consultas: number;
+  lab: number;
+  total: number;
+}
+export async function fetchArrivals(): Promise<Arrivals> {
+  return authedFetch<Arrivals>("/api/internal/arrivals");
 }
 
 export type LabView = "active" | "today" | "week" | "history";

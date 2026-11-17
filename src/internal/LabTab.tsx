@@ -6,6 +6,7 @@ import { Cat, Check, ChevronDown, ClipboardList, Clock, Copy, Dog, FileText, Fla
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
 import { fetchOrderUrl } from "./apiMedical";
+import { setLabSampleDate } from "./apiLab";
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
@@ -121,12 +122,30 @@ function timeOfLima(iso: string): string {
 /** Fila compacta de solicitudes de lab desde la web (estado 'solicitada'):
  *  verificar orden → coordinar toma de muestra (S/ 25, MANUAL por WhatsApp)
  *  → 'recibida' cuando la muestra esté en mano. */
-function LabPendingRow({ o, onStatus }: {
+function LabPendingRow({ o, onStatus, onChanged }: {
   o: LabOrder;
   onStatus: (o: LabOrder, status: string) => void;
+  onChanged: () => void;
 }) {
   const [orderBusy, setOrderBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Fecha de toma de muestra (feedback 18/11): SIN hora — la toma la hace
+  // cualquier personal. Borrador local + guardar (null = quitar).
+  const [dateDraft, setDateDraft] = useState<string>(o.sampleDate ?? "");
+  const [dateBusy, setDateBusy] = useState(false);
+
+  async function guardarFecha() {
+    setDateBusy(true);
+    setError(null);
+    try {
+      await setLabSampleDate(o.id, dateDraft === "" ? null : dateDraft);
+      onChanged();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al guardar la fecha");
+    } finally {
+      setDateBusy(false);
+    }
+  }
 
   async function verOrden() {
     setOrderBusy(true);
@@ -144,13 +163,17 @@ function LabPendingRow({ o, onStatus }: {
     }
   }
 
+  const sampleDate = o.sampleDate ?? null;
+  const fechaTxt = sampleDate ? `${sampleDate.split("-").reverse().join("/")}` : "por coordinar";
   const coordMsg = [
     `Hola ${o.ownerName.split(/\s+/)[0]} 🐾 le escribimos de Ariel's Clinic sobre el examen de ${o.petName} (${o.examType}, código ${o.orderCode}).`,
     "",
-    "Su orden ya fue verificada ✓ Para la toma de muestra coordinamos día y hora con usted por este chat.",
+    o.sampleDate
+      ? `Su orden ya fue verificada ✓ Coordinamos la toma de muestra para el ${fechaTxt}.`
+      : "Su orden ya fue verificada ✓ Para la toma de muestra coordinamos día y hora con usted por este chat.",
     "💉 Costo de la toma de muestra: S/ 25 (se paga en la sede).",
-    "Recuerde traer la orden impresa si no la subió a la web.",
-  ].join("\n");
+    o.orderPath ? "" : "Recuerde traer la orden impresa.",
+  ].filter(Boolean).join("\n");
 
   return (
     <div className="rounded-xl bg-white p-3 ring-1 ring-amber-100">
@@ -166,6 +189,9 @@ function LabPendingRow({ o, onStatus }: {
           ) : (
             <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800 ring-1 ring-orange-200">⚠ Sin orden subida</span>
           )}
+          <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-semibold text-blue-700 ring-1 ring-blue-200">
+            📅 Toma: {fechaTxt}
+          </span>
         </div>
         <div className="flex flex-wrap gap-2">
           {o.orderPath && (
@@ -182,6 +208,25 @@ function LabPendingRow({ o, onStatus }: {
             🩸 Muestra tomada
           </button>
         </div>
+      </div>
+      {/* Fijar fecha de toma: SIN hora (la toma la hace cualquier personal) */}
+      <div className="mt-2 flex flex-wrap items-center gap-2 border-t border-amber-100 pt-2">
+        <span className="text-[10px] font-bold uppercase tracking-wide text-slate-400">Fecha de toma</span>
+        <input
+          type="date"
+          value={dateDraft}
+          onChange={(e) => setDateDraft(e.target.value)}
+          className="rounded-lg border border-slate-300 px-2 py-1 text-sm"
+          aria-label={`Fecha de toma de muestra de ${o.petName}`}
+        />
+        <button
+          onClick={() => void guardarFecha()}
+          disabled={dateBusy || dateDraft === (o.sampleDate ?? "")}
+          className="rounded-lg bg-[#EFF6FF] px-2.5 py-1 text-[11px] font-semibold text-[#475AAB] ring-1 ring-[#DCEBFF] transition hover:bg-blue-100 disabled:opacity-50"
+        >
+          {dateBusy ? "Guardando…" : "Guardar fecha"}
+        </button>
+        <span className="text-[10px] text-slate-400">sin hora — la toma la hace cualquier personal · se la avisas al cliente con 💬</span>
       </div>
       {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
     </div>
@@ -383,7 +428,7 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
           </p>
           <div className="flex flex-col gap-2">
             {orders.filter((o) => o.status === "solicitada").map((o) => (
-              <LabPendingRow key={o.id} o={o} onStatus={setOrderStatus} />
+              <LabPendingRow key={o.id} o={o} onStatus={setOrderStatus} onChanged={() => { setSearchResults(null); setTick((t) => t + 1); }} />
             ))}
           </div>
         </div>
@@ -640,6 +685,11 @@ function LabCard({ o, onStatus, onChanged }: {
             <LabInfoCell icon={Wallet} tint="bg-[#E8F7EE] text-green-600" label="Pago / notas">
               {o.paidNotes !== "-" ? o.paidNotes : o.notes !== "-" ? o.notes : "—"}
             </LabInfoCell>
+            {o.status === "solicitada" && (
+              <LabInfoCell icon={Clock} tint="bg-[#EFF6FF] text-blue-500" label="Toma de muestra">
+                {o.sampleDate ? `${o.sampleDate.split("-").reverse().join("/")} (sin hora)` : "Por coordinar — S/ 25"}
+              </LabInfoCell>
+            )}
             {o.orderPath && (
               <LabInfoCell icon={FileText} tint="bg-[#FFF7E6] text-amber-600" label="Orden del cliente">
                 <button
