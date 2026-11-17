@@ -338,6 +338,9 @@ export default function App() {
   // Paso servicio (tile) → carga: doctores (general) o especialidades; rayos y
   // eco comparten tile "imagenes" (mismo flujo de orden — feedback 17/11) con
   // sub-selección; lab va directo a la pregunta de orden como solicitud.
+  // OJO: serviceType se setea AQUÍ para general/especializada/lab (rayos/eco
+  // se setean en la sub-selección "examen" — HOTFIX 18/11: quedaba null y la
+  // confirmación mostraba "Servicio" vacío sin poder agendar).
   async function chooseService(tile: TileId) {
     setError(null);
     if (tile === "general" || tile === "imagenes") {
@@ -345,8 +348,9 @@ export default function App() {
       // orden subida previa (paso subir_orden) y del examen de lab.
       setForm((f) => ({
         ...f,
+        serviceType: tile === "general" ? "general" : null,
         specialtyId: null, specialtyName: null, specialtyCost: null,
-        serviceType: null, hasOrder: null, examType: "",
+        hasOrder: null, examType: "",
       }));
       setOrderFile(null);
       setOrderPreview(null);
@@ -367,6 +371,7 @@ export default function App() {
     // especializada
     setForm((f) => ({
       ...f,
+      serviceType: "especializada",
       doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null, examType: "",
     }));
     setOrderFile(null);
