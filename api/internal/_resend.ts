@@ -164,7 +164,9 @@ export default async function handler(req: Req, res: Res) {
       : "https";
     const host = req.headers["x-forwarded-host"] ?? req.headers["host"];
     const origin = typeof host === "string" && host.length > 0 ? `${proto}://${host}` : undefined;
-    const trackingUrl = env.TRACKING_ENABLED === "true" && origin ? `${origin}/estado` : undefined;
+    const trackingUrl = env.TRACKING_ENABLED === "true" && origin
+      ? `${origin}/estado?code=${encodeURIComponent(booking.bookingCode)}`
+      : undefined;
     const receipt = await sendClientReceipt(payload, env, fetch, trackingUrl);
     if (receipt.outcome === "failed") console.warn(`[internal/resend] ${receipt.reason}`);
 

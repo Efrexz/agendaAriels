@@ -759,9 +759,11 @@ export async function handleBooking(options: {
   rememberBooking(payload, nowMs, dbOk);
 
   // Comprobante al cliente: best effort, nunca rompe la reserva.
+  // Link con el código adentro (feedback del dueño 17/11): 1 clic y el
+  // cliente ya ve su seguimiento sin escribir nada.
   const trackingUrl =
     dbOk && env.TRACKING_ENABLED === "true" && options.origin
-      ? `${options.origin}/estado`
+      ? `${options.origin}/estado?code=${encodeURIComponent(payload.bookingCode)}`
       : undefined;
   try {
     const receipt = await sendClientReceipt(normalized, env, fetcher, trackingUrl);

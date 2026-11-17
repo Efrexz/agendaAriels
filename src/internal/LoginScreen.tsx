@@ -41,11 +41,10 @@ export function LoginScreen() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center p-4">
-      {/* Fondo exterior calmado: patrón pastel de huellitas propio del
-          proyecto (feedback 16/11 — el colorido del wizard cansaba detrás
-          de la card) */}
+      {/* Fondo exterior: fondoPremium (del dueño, 17/11) — blobs suaves en
+          esquinas y centro casi blanco: el card respira y el contenido manda */}
       <div aria-hidden className="pointer-events-none fixed inset-0 z-0 overflow-hidden">
-        <img src="/images/bg/fondo.webp" alt="" className="h-full w-full object-cover" />
+        <img src="/images/bg/fondoPremium.webp" alt="" className="h-full w-full object-cover" />
       </div>
 
       <div className="relative z-10 grid w-full max-w-4xl overflow-hidden rounded-3xl bg-white shadow-xl ring-1 ring-slate-100 lg:grid-cols-[5fr_6fr]">

@@ -82,13 +82,16 @@ export function buildClientLabMessage(p: CreatePayload, code: string): string {
     `🧪 *Orden de laboratorio registrada, ${p.ownerName.split(/\s+/)[0]}!*`,
     "",
     `🐾 Mascota: ${p.petName} · Examen: ${p.examType}`,
-    `🏥 Laboratorio: ${p.labName} · ${LAB_BRANCH_LABELS[p.sedeResponsable] ?? p.sedeResponsable}`,
+    // Sin el nombre del laboratorio externo (feedback del dueño 17/11): el
+    // cliente no necesita saber a cuál se envía la muestra.
+    `🏥 ${LAB_BRANCH_LABELS[p.sedeResponsable] ?? p.sedeResponsable}`,
     `🔖 Código: *${code}*`,
     "",
     "Te avisaremos por este medio cuando tu resultado esté listo 🐶✨",
     "",
-    "Puedes ver el estado en tiempo real con tu código en:",
-    "https://agenda-ariels-nu.vercel.app/estado",
+    // Link con el código adentro: 1 clic y ve el estado (sin escribir nada).
+    "Puedes ver el estado en tiempo real (tu código ya viene incluido) en:",
+    `https://agenda-ariels-nu.vercel.app/estado?code=${code}`,
   ];
   return lines.join("\n");
 }
