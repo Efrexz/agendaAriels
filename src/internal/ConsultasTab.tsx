@@ -1349,6 +1349,14 @@ function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: b
   // Generales atienden general/rayos/eco; especialistas las especializadas.
   const wantKind = appt.serviceType === "especializada" ? "especialista" : "general";
 
+  // HOTFIX 18/11 (QA del dueño): al abrir el modal la fecha ya viene llena
+  // pero las HORAS nunca se cargaban → el estado vacío decía "El doctor no
+  // tiene horarios para ese día" aunque SÍ tenía. Precarga al montar.
+  useEffect(() => {
+    if (date && doctorId) void loadSlots(date, doctorId);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   useEffect(() => {
     let active = true;
     (async () => {
@@ -1365,8 +1373,7 @@ function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: b
 
   // Carrera de respuestas: la respuesta antigua no pisa la del doctor actual.
   const slotsSeqRef = useRef(0);
-  async function loadSlots(d: string, doc = doctorId) {
-    setDate(d); setStart(null); setSlotsList([]);
+  async function loadSlots(d: string, doc = doctorId) {    setDate(d); setStart(null); setSlotsList([]);
     if (!doc) return;
     setSlotsLoading(true);
     const seq = ++slotsSeqRef.current;
