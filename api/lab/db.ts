@@ -8,7 +8,7 @@ import { phoneMatchesDigits } from "../db.js";
 // ─────────────────────────────────────────────────────────────
 
 const VALID_LAB_STATUSES = [
-  "recibida", "en_laboratorio", "resultado_listo", "entregada", "cancelado",
+  "solicitada", "recibida", "en_laboratorio", "resultado_listo", "entregada", "cancelado",
 ];
 
 export function isValidLabStatus(s: string): boolean {
@@ -42,6 +42,8 @@ export interface LabOrderRecord extends Omit<LabOrderInput, "orderCode"> {
   resultPath: string | null;
   resultName: string | null;
   resultPublishedAt: string | null;
+  /** Foto de la orden sellada subida por el cliente (bucket privado). */
+  orderPath: string | null;
 }
 
 export type UniqueViolation = "23505";
@@ -68,6 +70,7 @@ interface LabDbRow {
   result_path: string | null;
   result_name: string | null;
   result_published_at: string | null;
+  order_path: string | null;
 }
 
 function rowToRecord(r: LabDbRow): LabOrderRecord {
@@ -93,13 +96,14 @@ function rowToRecord(r: LabDbRow): LabOrderRecord {
     resultPath: r.result_path,
     resultName: r.result_name,
     resultPublishedAt: r.result_published_at,
+    orderPath: r.order_path ?? null,
   };
 }
 
 const LAB_COLUMNS =
   "id, order_code, sede_origen, sede_responsable, lab_name, exam_type, pet_name, pet_type, " +
   "history_code, doctor_name, owner_name, owner_phone, paid_notes, notes, status, " +
-  "created_by, created_at, updated_at, result_path, result_name, result_published_at";
+  "created_by, created_at, updated_at, result_path, result_name, result_published_at, order_path";
 
 export class LabDb {
   constructor(private client: SupabaseClient) {}
@@ -169,12 +173,13 @@ export class LabDb {
   }
 
   /** Órdenes "en curso" (sin entregar ni cancelar). Con sede: las que la sede
-   *  originó O las que tiene como responsable (caso ecografía entre sedes). */
+   *  originó O las que tiene como responsable (caso ecografía entre sedes).
+   *  Incluye `solicitada` (agendadas desde la web por el cliente). */
   async listActiveOrders(sede: string | null): Promise<LabOrderRecord[]> {
     let q = this.client
       .from("lab_orders")
       .select(LAB_COLUMNS)
-      .in("status", ["recibida", "en_laboratorio", "resultado_listo"])
+      .in("status", ["solicitada", "recibida", "en_laboratorio", "resultado_listo"])
       .order("created_at", { ascending: true })
       .limit(200);
     if (sede) q = q.or(`sede_origen.eq.${sede},sede_responsable.eq.${sede}`);
@@ -242,6 +247,30 @@ export class LabDb {
   }
 
   /** Estado e historial se confirman juntos; solo gana una transición. */
+  /** Guarda/quita la ruta de la orden subida por el cliente (bucket privado
+   *  medical-orders). Requiere la migración aplicada. */
+  async setOrderFile(orderId: string, path: string | null): Promise<void> {
+    const { error } = await this.client
+      .from("lab_orders")
+      .update({ order_path: path })
+      .eq("id", orderId);
+    if (error) throw new Error(`setOrderFile: ${error.message}`);
+  }
+
+  /** Órdenes de lab con foto de orden vencida (purga a 7 días del cron). */
+  async listOrderFilesToPurge(cutoffIso: string): Promise<{ id: string; orderPath: string }[]> {
+    const { data, error } = await this.client
+      .from("lab_orders")
+      .select("id, order_path")
+      .not("order_path", "is", null)
+      .lt("created_at", cutoffIso)
+      .limit(500);
+    if (error) throw new Error(`listOrderFilesToPurge: ${error.message}`);
+    return (data ?? [])
+      .filter((r) => typeof r.order_path === "string" && r.order_path.length > 0)
+      .map((r) => ({ id: String(r.id), orderPath: String(r.order_path) }));
+  }
+
   async transitionOrderStatus(orderId: string, from: string, to: string, createdBy: string): Promise<boolean> {
     const { data, error } = await this.client.rpc("api_lab_transition", { p_id: orderId, p_from: from, p_to: to, p_actor: createdBy });
     if (error) throw new Error(`transitionOrderStatus: ${error.message}`);

@@ -9,6 +9,12 @@ export interface LabStatusMeta {
 }
 
 export const LAB_STATUS_META: Record<string, LabStatusMeta> = {
+  solicitada: {
+    id: "solicitada",
+    label: "Solicitada",
+    emoji: "📄",
+    badge: "bg-amber-100 text-amber-800",
+  },
   recibida: {
     id: "recibida",
     label: "Muestra recibida",
@@ -43,7 +49,7 @@ export const LAB_STATUS_META: Record<string, LabStatusMeta> = {
 
 /** Orden para timelines del cliente (los ya-vistos quedan detrás del actual). */
 export const LAB_STATUS_ORDER: string[] = [
-  "recibida", "en_laboratorio", "resultado_listo", "entregada",
+  "solicitada", "recibida", "en_laboratorio", "resultado_listo", "entregada",
 ];
 
 export function labStatusMeta(status: string): LabStatusMeta {

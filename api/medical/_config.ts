@@ -20,12 +20,16 @@ interface Res {
 
 // Links de reseñas de Google POR SEDE (feedback 16/11 del dueño). Vacíos = la
 // encuesta sale sin la línea del link (nunca se bloquea por falta de link).
+// Costos de rayos/eco (17/11: clientes preguntan cuánto cuestan) — se muestran
+// en el wizard ("Desde S/ X"). Vacíos = sin precio visible.
 const ALLOWED_KEYS = new Set([
   "appt_duration_minutes",
   "payment_info",
   "google_review_url_san_martin",
   "google_review_url_los_olivos",
   "google_review_url_san_miguel",
+  "price_rayos",
+  "price_eco",
 ]);
 
 const PUT_SCHEMA = z.object({
@@ -63,6 +67,13 @@ export default async function handler(req: Req, res: Res) {
         // Acepta solo https para no guardar enlaces raros (tipo javascript:) en el chat.
         if (!/^https:\/\//.test(parsed.data.value.trim())) {
           res.status(400).json({ ok: false, error: "El link de Google debe empezar con https://" });
+          return;
+        }
+      }
+      if (parsed.data.key.startsWith("price_") && parsed.data.value.trim() !== "") {
+        const n = Number(parsed.data.value);
+        if (!Number.isFinite(n) || n < 0 || n > 9999) {
+          res.status(400).json({ ok: false, error: "El costo debe ser un número entre 0 y 9999." });
           return;
         }
       }

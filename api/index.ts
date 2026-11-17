@@ -48,6 +48,7 @@ import mConfigHandler from "./medical/_config.js";
 import mCatalogHandler from "./medical/_catalog.js";
 import mRemindersHandler from "./medical/_reminders.js";
 import mOrderHandler from "./medical/_order.js";
+import mPricesHandler from "./medical/_prices.js";
 import mPurgeOrdersHandler from "./medical/_purge_orders.js";
 import mHistoryHandler from "./medical/_history.js";
 import mResendNoticeHandler from "./medical/_resend_notice.js";
@@ -60,6 +61,7 @@ import labResultHandler from "./lab/_result.js";
 import labPurgeHandler from "./lab/_purge.js";
 import labDownloadHandler from "./lab/_download.js";
 import labResendResultHandler from "./lab/_resend_result.js";
+import labCreateClientHandler from "./lab/_create-client.js";
 
 export const maxDuration = 60;
 
@@ -104,6 +106,7 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /medical/reminders": { handler: mRemindersHandler as Handler },
   "POST /medical/order": { handler: mOrderHandler as Handler },
   "GET /medical/order": { handler: mOrderHandler as Handler },
+  "GET /medical/prices": { handler: mPricesHandler as Handler },
   "GET /medical/purge-orders": { handler: mPurgeOrdersHandler as Handler },
   "GET /medical/history": { handler: mHistoryHandler as Handler },
 
@@ -113,6 +116,7 @@ const ROUTES: Record<string, RouteDef> = {
   "GET /internal/lab/list": { handler: labListHandler as Handler },
   "PATCH /internal/lab/status": { handler: labStatusHandler as Handler },
   "GET /lab-status": { handler: labPublicStatusHandler as Handler },
+  "POST /lab/create-client": { handler: labCreateClientHandler as Handler },
   "POST /lab-download": { handler: labDownloadHandler as Handler },
   "GET /internal/lab/catalog": { handler: labCatalogHandler as Handler },
   "POST /internal/lab/catalog": { handler: labCatalogHandler as Handler },

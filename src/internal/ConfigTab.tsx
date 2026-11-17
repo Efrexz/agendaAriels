@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ChevronDown, Clock, GraduationCap, MessageCircle, Plus, Stethoscope } from "lucide-react";
+import { ChevronDown, Clock, GraduationCap, MessageCircle, Plus, ScanLine, Stethoscope } from "lucide-react";
 import { createDoctor, createSpecialty, fetchCatalog, fetchMedConfig, putMedConfig, updateCatalog, type MedDoctorPanel, type MedSpecialtyPanel } from "./apiMedical";
 import { MED_BRANCHES } from "../medical/api";
 import { HorariosTab } from "./HorariosTab";
@@ -125,6 +125,41 @@ export function ConfigTab() {
                 className={`${FIELD_CLS} min-w-0 flex-1 font-mono text-xs`}
               />
               <button onClick={() => void guardarConfig(`google_review_url_${k}`, config?.[`google_review_url_${k}`] ?? "", `link de Google (${label})`)} disabled={busy} className="shrink-0 rounded-xl bg-brand-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
+                Guardar
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* Costos de rayos/eco (se muestran en el wizard; clientes preguntan) */}
+      <section className="rounded-2xl bg-white p-4 shadow-sm ring-1 ring-slate-200">
+        <div className="mb-3 flex items-center gap-2.5">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-[#E0F2FE] text-sky-600">
+            <ScanLine className="h-4 w-4" />
+          </span>
+          <h3 className="text-sm font-bold text-[#475AAB]">Costos de Rayos y Ecografía (web)</h3>
+        </div>
+        <p className="mb-3 text-xs text-slate-500">
+          Se muestran como "Desde S/ X" en el paso de estudios de imagen del wizard. Vacío = no se muestra precio (el cliente pregunta por WhatsApp). Valores informativos — el costo final lo confirma el counter.
+        </p>
+        <div className="flex flex-col gap-2">
+          {([["price_rayos", "Radiografía"], ["price_eco", "Ecografía"]] as const).map(([k, label]) => (
+            <div key={k} className="flex items-center gap-2">
+              <span className="w-40 shrink-0 text-xs font-semibold text-slate-600">{label}</span>
+              <div className="flex min-w-0 flex-1 items-center gap-1">
+                <span className="text-sm text-slate-400">S/</span>
+                <input
+                  type="number"
+                  min={0}
+                  max={9999}
+                  value={config?.[k] ?? ""}
+                  onChange={(e) => setConfigState((c) => ({ ...(c ?? {}), [k]: e.target.value }))}
+                  placeholder="—"
+                  className={`${FIELD_CLS} min-w-0 flex-1`}
+                />
+              </div>
+              <button onClick={() => void guardarConfig(k, config?.[k] ?? "", `costo ${label.toLowerCase()}`)} disabled={busy} className="shrink-0 rounded-xl bg-brand-blue px-3 py-2 text-xs font-semibold text-white transition hover:bg-blue-700 disabled:opacity-50">
                 Guardar
               </button>
             </div>

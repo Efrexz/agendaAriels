@@ -1,13 +1,16 @@
 import { z } from "zod/v4";
 import { getMedicalDb, staffGuard } from "./_shared.js";
+import { getLabDb } from "../lab/_shared.js";
 
 // POST /api/medical/order  { code, fileBase64, mime }  — PÚBLICO (wizard):
-// el cliente sube la foto/PDF de su orden sellada de rayos/eco DESPUÉS de que
-// su solicitud (status 'solicitud') fue registrada. La reserva NUNCA depende
-// de la subida (INSERT antes; si la foto falla, el panel muestra "⚠️ Sin
-// orden" y el counter la pide por chat o impresa).
-// GET /api/medical/order?code=CM-XXXXX — SOLO STAFF: URL firmada (900 s) para
-// ver la imagen al doctor. Deny-all RLS: el público jamás lee este bucket.
+// el cliente sube la foto/PDF de su orden sellada DESPUÉS de que su reserva
+// fue registrada. Acepta dos códigos por el prefijo:
+//   CM-XXXXX → cita de rayos/eco (medical_appointments, estado 'solicitud')
+//   LAB-XXXXX → solicitud de examen de laboratorio (lab_orders, 'solicitada')
+// La reserva NUNCA depende de la subida (INSERT antes; si la foto falla, el
+// panel muestra "⚠️ Sin orden" y el counter la pide por chat o impresa).
+// GET /api/medical/order?code=LAB-XXXXX|CM-XXXXX — SOLO STAFF: URL firmada
+// (900 s) para ver la imagen al doctor. Deny-all RLS: el público jamás lee.
 
 export const maxDuration = 30;
 
@@ -24,7 +27,7 @@ interface Res {
 }
 
 const POST_SCHEMA = z.object({
-  code: z.string().regex(/^CM-[A-Z0-9]{5}$/),
+  code: z.string().regex(/^(CM|LAB)-[A-Z0-9]{5}$/),
   fileBase64: z.string().max(4_600_000), // ~3.3 MB reales tras base64 (límite body de Vercel)
   mime: z.enum(["image/jpeg", "image/png", "image/webp", "application/pdf"]),
 });
@@ -84,17 +87,24 @@ export default async function handler(req: Req, res: Res) {
   if (req.method === "GET") {
     const staff = await staffGuard(req, res);
     if (!staff) return;
-    if (!/^CM-[A-Z0-9]{5}$/.test(codeRaw)) {
+    if (!/^(CM|LAB)-[A-Z0-9]{5}$/.test(codeRaw)) {
       res.status(400).json({ ok: false, error: "Código inválido." });
       return;
     }
     try {
-      const appt = await db.findApptByCode(codeRaw);
-      if (!appt?.orderPath) {
-        res.status(404).json({ ok: false, error: "Esta cita no tiene orden subida." });
+      let orderPath: string | null = null;
+      if (codeRaw.startsWith("LAB-")) {
+        const labDb = getLabDb();
+        if (!labDb) throw new Error("lab db no configurada");
+        orderPath = (await labDb.findOrderByCode(codeRaw))?.orderPath ?? null;
+      } else {
+        orderPath = (await db.findApptByCode(codeRaw))?.orderPath ?? null;
+      }
+      if (!orderPath) {
+        res.status(404).json({ ok: false, error: "Esta reserva no tiene orden subida." });
         return;
       }
-      const sign = await fetch(`${storage.url}/storage/v1/object/sign/medical-orders/${appt.orderPath}`, {
+      const sign = await fetch(`${storage.url}/storage/v1/object/sign/medical-orders/${orderPath}`, {
         method: "POST",
         headers: { Authorization: `Bearer ${storage.key}`, "Content-Type": "application/json" },
         body: JSON.stringify({ expiresIn: 900 }),
@@ -124,6 +134,30 @@ export default async function handler(req: Req, res: Res) {
   const { code, fileBase64, mime } = parsed.data;
 
   try {
+    if (code.startsWith("LAB-")) {
+      const labDb = getLabDb();
+      if (!labDb) throw new Error("lab db no configurada");
+      const order = await labDb.findOrderByCode(code);
+      if (!order) {
+        res.status(404).json({ ok: false, error: "Reserva no encontrada." });
+        return;
+      }
+      if (order.status !== "solicitada") {
+        res.status(409).json({ ok: false, error: "Esta solicitud ya fue confirmada: entrega la orden en la sede." });
+        return;
+      }
+      const objectPath = `${order.id}/orden-${Date.now()}.${EXT[mime]}`;
+      const bytes = Buffer.from(fileBase64, "base64");
+      const up = await fetch(`${storage.url}/storage/v1/object/medical-orders/${objectPath}`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${storage.key}`, "Content-Type": mime, "x-upsert": "true", "cache-control": "3600" },
+        body: new Uint8Array(bytes),
+      });
+      if (!up.ok) throw new Error(`storage ${up.status}: ${await up.text()}`);
+      await labDb.setOrderFile(order.id, objectPath);
+      res.status(200).json({ ok: true });
+      return;
+    }
     const appt = await db.findApptByCode(code);
     if (!appt) {
       res.status(404).json({ ok: false, error: "Reserva no encontrada." });
@@ -137,22 +171,15 @@ export default async function handler(req: Req, res: Res) {
       res.status(409).json({ ok: false, error: "Esta cita ya fue confirmada: entrega la orden en la sede." });
       return;
     }
-
-    const path = `${appt.id}/orden-${Date.now()}.${EXT[mime]}`;
+    const objectPath = `${appt.id}/orden-${Date.now()}.${EXT[mime]}`;
     const bytes = Buffer.from(fileBase64, "base64");
-    const up = await fetch(`${storage.url}/storage/v1/object/medical-orders/${path}`, {
+    const up = await fetch(`${storage.url}/storage/v1/object/medical-orders/${objectPath}`, {
       method: "POST",
-      headers: {
-        Authorization: `Bearer ${storage.key}`,
-        "Content-Type": mime,
-        "x-upsert": "true",
-        "cache-control": "3600",
-      },
+      headers: { Authorization: `Bearer ${storage.key}`, "Content-Type": mime, "x-upsert": "true", "cache-control": "3600" },
       body: new Uint8Array(bytes),
     });
     if (!up.ok) throw new Error(`storage ${up.status}: ${await up.text()}`);
-
-    await db.setOrderFile(appt.id, path);
+    await db.setOrderFile(appt.id, objectPath);
     res.status(200).json({ ok: true });
   } catch (err) {
     console.error(`[medical/order] ${err instanceof Error ? err.message : err}`);

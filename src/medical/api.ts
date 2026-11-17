@@ -98,6 +98,29 @@ export async function createAppointment(
   });
 }
 
+/** Solicitud de examen de laboratorio desde la web (tile de lab):
+ *  requiere orden sellada (la foto se sube aparte con uploadOrder). */
+export async function createLabRequest(payload: {
+  sede: MedBranch;
+  examType: string;
+  petName: string;
+  petType: string;
+  ownerName: string;
+  ownerPhone: string;
+}): Promise<{ orderCode: string; whatsappDelivered?: boolean }> {
+  return jsonFetch<{ orderCode: string }>("/api/lab/create-client", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+}
+
+/** Costos de rayos/eco configurados en ⚙ Config (null = sin precio visible). */
+export async function fetchPrices(): Promise<{ rayos: string | null; eco: string | null }> {
+  const { rayos, eco } = await jsonFetch<{ rayos: string | null; eco: string | null }>("/api/medical/prices");
+  return { rayos, eco };
+}
+
 /** Sube la foto/PDF de la orden sellada para una solicitud de rayos/eco
  *  (base64; la API valida firma real del archivo y tamaño). */
 export async function uploadOrder(

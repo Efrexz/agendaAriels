@@ -5,6 +5,7 @@ import { Cat, Check, ChevronDown, ClipboardList, Clock, Copy, Dog, FileText, Fla
   type LabOrder, type LabView,
 } from "./apiLab";
 import { fetchDoctors, MED_BRANCHES, type MedBranch, type MedDoctor } from "../medical/api";
+import { fetchOrderUrl } from "./apiMedical";
 import { LAB_STATUS_META, labStatusMeta } from "../labStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
 import { NewArrivalsToast } from "./NewArrivalsToast";
@@ -115,6 +116,76 @@ function timeOfLima(iso: string): string {
   return new Date(iso).toLocaleString("es-PE", {
     timeZone: "America/Lima", day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit",
   });
+}
+
+/** Fila compacta de solicitudes de lab desde la web (estado 'solicitada'):
+ *  verificar orden → coordinar toma de muestra (S/ 25, MANUAL por WhatsApp)
+ *  → 'recibida' cuando la muestra esté en mano. */
+function LabPendingRow({ o, onStatus }: {
+  o: LabOrder;
+  onStatus: (o: LabOrder, status: string) => void;
+}) {
+  const [orderBusy, setOrderBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function verOrden() {
+    setOrderBusy(true);
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await fetchOrderUrl(o.orderCode);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch {
+      tab?.close();
+      setError("No se pudo abrir la orden. Intenta de nuevo.");
+    } finally {
+      setOrderBusy(false);
+    }
+  }
+
+  const coordMsg = [
+    `Hola ${o.ownerName.split(/\s+/)[0]} 🐾 le escribimos de Ariel's Clinic sobre el examen de ${o.petName} (${o.examType}, código ${o.orderCode}).`,
+    "",
+    "Su orden ya fue verificada ✓ Para la toma de muestra coordinamos día y hora con usted por este chat.",
+    "💉 Costo de la toma de muestra: S/ 25 (se paga en la sede).",
+    "Recuerde traer la orden impresa si no la subió a la web.",
+  ].join("\n");
+
+  return (
+    <div className="rounded-xl bg-white p-3 ring-1 ring-amber-100">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm flex flex-wrap items-center gap-2">
+          <b className="font-mono text-brand-blue">{o.orderCode}</b>
+          <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-semibold text-amber-800 ring-1 ring-amber-200">
+            🧪 Solicitud web
+          </span>
+          <span>{o.examType} · {o.petName} ({o.petType}) · {o.ownerName} · {o.ownerPhone}</span>
+          {o.orderPath ? (
+            <span className="rounded-full bg-green-50 px-2 py-0.5 text-[10px] font-semibold text-green-700 ring-1 ring-green-200">✅ Orden subida</span>
+          ) : (
+            <span className="rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-800 ring-1 ring-orange-200">⚠ Sin orden subida</span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-2">
+          {o.orderPath && (
+            <button onClick={() => void verOrden()} disabled={orderBusy} className="rounded-lg bg-[#FFF7E6] px-3 py-1.5 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 disabled:opacity-50">
+              {orderBusy ? "Abriendo…" : "📄 Ver orden"}
+            </button>
+          )}
+          <MiniWhatsApp
+            phone={o.ownerPhone}
+            message={coordMsg}
+            title="Coordinar la toma de muestra (S/ 25) — edita día y hora antes de enviar"
+          />
+          <button onClick={() => onStatus(o, "recibida")} className="rounded-lg bg-brand-blue px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-blue-700" title="La muestra está en mano → arranca el tracking">
+            🩸 Muestra tomada
+          </button>
+        </div>
+      </div>
+      {error && <p className="mt-2 text-xs text-red-600">{error}</p>}
+    </div>
+  );
 }
 
 function branchShort(v: string): string {
@@ -301,6 +372,23 @@ export function LabTab({ jumpSearch = null }: { jumpSearch?: string | null }) {
 
       {error && <p className="mb-3 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
 
+      {/* Banda: exámenes SOLICITADOS desde la web (feedback 17/11) — el counter
+          verifica la orden, coordina la toma de muestra (S/ 25) por WhatsApp y
+          al tomarla pasa la orden a 'recibida' para que arranque el tracking. */}
+      {vista === "active" && searchResults === null && orders.some((o) => o.status === "solicitada") && (
+        <div className="no-print mb-5 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200">
+          <p className="mb-2 flex items-center gap-2 text-sm font-bold text-amber-800">
+            📥 Exámenes por confirmar ({orders.filter((o) => o.status === "solicitada").length})
+            <span className="text-[11px] font-medium text-amber-700">— solicitudes desde la web</span>
+          </p>
+          <div className="flex flex-col gap-2">
+            {orders.filter((o) => o.status === "solicitada").map((o) => (
+              <LabPendingRow key={o.id} o={o} onStatus={setOrderStatus} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {searchResults !== null && (
         <div className="mb-4 rounded-2xl bg-white p-4 ring-1 ring-slate-200">
           <p className="mb-2 text-xs text-slate-500">Resultados de búsqueda ({searchResults.length})</p>
@@ -386,7 +474,25 @@ function LabCard({ o, onStatus, onChanged }: {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmBorrar, setConfirmBorrar] = useState(false);
   const [confirmReenvio, setConfirmReenvio] = useState(false);
+  // Orden subida por el cliente (solicitudes web): URL firmada para el staff.
+  const [orderBusy, setOrderBusy] = useState(false);
   const meta = labStatusMeta(o.status);
+
+  async function verOrdenSubida() {
+    setOrderBusy(true);
+    const tab = window.open("", "_blank");
+    if (tab) tab.opener = null;
+    try {
+      const url = await fetchOrderUrl(o.orderCode);
+      if (tab) tab.location.href = url;
+      else window.location.assign(url);
+    } catch (err) {
+      tab?.close();
+      setResultMsg(err instanceof Error ? err.message : "No se pudo abrir la orden.");
+    } finally {
+      setOrderBusy(false);
+    }
+  }
 
   async function publicarResultado(file: File | null) {
     if (!file) return;
@@ -454,7 +560,8 @@ function LabCard({ o, onStatus, onChanged }: {
   }
 
   const nextActions: Array<[string, string]> = [];
-  if (o.status === "recibida") nextActions.push(["en_laboratorio", "🔬 Enviar al laboratorio"], ["cancelado", "❌ Cancelar"]);
+  if (o.status === "solicitada") nextActions.push(["recibida", "🩸 Muestra tomada"], ["cancelado", "❌ Cancelar"]);
+  else if (o.status === "recibida") nextActions.push(["en_laboratorio", "🔬 Enviar al laboratorio"], ["cancelado", "❌ Cancelar"]);
   else if (o.status === "en_laboratorio") nextActions.push(["resultado_listo", "✅ Resultado listo"], ["cancelado", "❌ Cancelar"]);
   else if (o.status === "resultado_listo") nextActions.push(["entregada", "📋 Entregada / leída"]);
 
@@ -533,6 +640,17 @@ function LabCard({ o, onStatus, onChanged }: {
             <LabInfoCell icon={Wallet} tint="bg-[#E8F7EE] text-green-600" label="Pago / notas">
               {o.paidNotes !== "-" ? o.paidNotes : o.notes !== "-" ? o.notes : "—"}
             </LabInfoCell>
+            {o.orderPath && (
+              <LabInfoCell icon={FileText} tint="bg-[#FFF7E6] text-amber-600" label="Orden del cliente">
+                <button
+                  onClick={() => void verOrdenSubida()}
+                  disabled={orderBusy}
+                  className="rounded-lg bg-[#FFF7E6] px-2.5 py-1 text-xs font-semibold text-amber-800 ring-1 ring-amber-200 transition hover:bg-amber-100 disabled:opacity-50"
+                >
+                  {orderBusy ? "Abriendo…" : "📄 Ver orden"}
+                </button>
+              </LabInfoCell>
+            )}
           </div>
 
           {nextActions.length > 0 && (

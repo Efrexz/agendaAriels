@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion";
 import {
   Apple, ArrowRight, Bone, CalendarDays, Check, CheckCircle2, ChevronLeft, ChevronRight,
-  ClipboardList, Clock, Copy, FileCheck2, FileX2, GraduationCap, Heart, HeartPulse, Info, Loader2,
+  Clock, Copy, FileCheck2, FileX2, FlaskConical, GraduationCap, Heart, HeartPulse, Info, Loader2,
   LockKeyholeOpen,
   Mail,
   MapPin, MessageCircle, Microscope, PawPrint, Phone, ScanLine, ShieldCheck, Smile, Sparkles, Stethoscope, Sunrise,
@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { CalendarCard } from "./CalendarCard";
 import { clearMedProfile, loadMedProfile, saveMedProfile } from "./clientProfileMed";
-import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, uploadOrder,
+import { createAppointment, createLabRequest, fetchDoctors, fetchPrices, fetchSlots, fetchSpecialties, uploadOrder,
   MED_BRANCH_PHONES, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty,
 } from "./api";
 import { BRANCHES, isBranchOpen } from "../data/branches";
@@ -23,8 +23,11 @@ import { prepareOrderBase64 } from "./orderUpload";
 // logo, biombo, framer-motion (0.4s easeOut, reduced-motion) y mascota webp en hitos.
 // NO cambia lógica ni APIs — mismos handlers/estados queProduction probados.
 
-type ServiceType = "general" | "rayos" | "eco" | "especializada";
-type Step = "sede" | "servicio" | "orden" | "subir_orden" | "sin_orden" | "especialidad" | "doctor" | "agenda" | "datos" | "enviado";
+type ServiceType = "general" | "rayos" | "eco" | "especializada" | "lab";
+// Tiles del paso servicio: rayos y eco comparten tile (mismo flujo de orden —
+// feedback 17/11 del dueño) y lab entra como solicitud del cliente.
+type TileId = "general" | "imagenes" | "lab" | "especializada";
+type Step = "sede" | "servicio" | "examen" | "orden" | "subir_orden" | "examen_lab" | "sin_orden" | "especialidad" | "doctor" | "agenda" | "datos" | "enviado";
 
 interface FormData {
   branch: MedBranch | null;
@@ -37,6 +40,8 @@ interface FormData {
   date: string | null;
   startMinute: number | null;
   hasOrder: boolean | null;
+  /** Lab: examen que indica la orden del cliente (texto libre). */
+  examType: string;
   petName: string;
   petType: string;
   petNotes: string;
@@ -47,7 +52,7 @@ interface FormData {
 
 const INITIAL: FormData = {
   branch: null, serviceType: null, specialtyId: null, specialtyName: null, specialtyCost: null,
-  doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null,
+  doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null, examType: "",
   petName: "", petType: "Perro", petNotes: "", ownerName: "", ownerPhone: "", ownerEmail: "",
 };
 
@@ -55,6 +60,7 @@ const INITIAL: FormData = {
 // reemplazar los archivos webp cuando lleguen los definitivos — sin tocar código).
 const MASCOT = {  orden: "/images/vetMascot/orden.webp",
   sinOrden: "/images/vetMascot/confirmacionOrden.webp",
+  lab: "/images/vetMascot/laboratorio.webp",
   diaDoctor: "/images/vetMascot/diaDoctor.webp",
   sinDisponibilidad: "/images/vetMascot/sinDisponibilidad.webp",
   interconsulta: "/images/vetMascot/interconsultaConfirmacion.webp",
@@ -112,10 +118,10 @@ function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError, f
   );
 }
 
-const SERVICE_IMAGE: Record<ServiceType, { src: string; alt: string }> = {
+const SERVICE_IMAGE: Record<TileId, { src: string; alt: string }> = {
   general: { src: "/images/medical/servicio/general.webp", alt: "Consulta general veterinaria" },
-  rayos: { src: "/images/medical/servicio/rayos.webp", alt: "Radiografía veterinaria" },
-  eco: { src: "/images/medical/servicio/eco.webp", alt: "Ecografía veterinaria" },
+  imagenes: { src: "/images/medical/servicio/rayos.webp", alt: "Radiografía y ecografía veterinaria" },
+  lab: { src: "/images/vetMascot/laboratorio.webp", alt: "Examen de laboratorio veterinario" },
   especializada: {
     // Arte circular del bulldog especialista con el golden y el gato (mint):
     // el recorte object-cover de la card lo respeta tal cual.
@@ -147,11 +153,11 @@ function hora(min: number): string {
 }
 
 const SERVICES: Array<{
-  id: ServiceType;
+  id: TileId;
   label: string;
   desc: string;
   icon: typeof Stethoscope;
-  /** Las de imagen piden orden sellada — se comunica en la pill de la card. */
+  /** Las de imagen/lab piden orden sellada — se comunica en la pill de la card. */
   needsOrder: boolean;
   /** Solo la general: badge "El más solicitado" (confirmar con counter). */
   popular?: boolean;
@@ -162,14 +168,14 @@ const SERVICES: Array<{
     icon: Stethoscope, needsOrder: false, popular: true,
   },
   {
-    id: "rayos", label: "Radiografía",
-    desc: "Estudio de imagen digital en clínica. Necesitas una orden médica sellada.",
+    id: "imagenes", label: "Rayos X y Ecografía",
+    desc: "Estudios de imagen digital en nuestra sede (radiografía y ultrasonido). Necesitas una orden médica sellada.",
     icon: ScanLine, needsOrder: true,
   },
   {
-    id: "eco", label: "Ecografía",
-    desc: "Ultrasonido en detalle, en nuestra sede. Necesitas una orden médica sellada.",
-    icon: ClipboardList, needsOrder: true,
+    id: "lab", label: "Exámenes de Laboratorio",
+    desc: "Toma de muestra en sede para tu examen. Necesitas una orden médica sellada · Toma de muestra: S/ 25.",
+    icon: FlaskConical, needsOrder: true,
   },
   {
     id: "especializada", label: "Consulta Especializada",
@@ -181,7 +187,7 @@ const SERVICES: Array<{
 // Grupos del progreso (4): sede / servicio / agenda / datos
 const PROGRESS_GROUPS: Array<{ label: string; steps: Step[] }> = [
   { label: "Sede", steps: ["sede"] },
-  { label: "Servicio", steps: ["servicio", "orden", "subir_orden", "sin_orden", "especialidad", "doctor"] },
+  { label: "Servicio", steps: ["servicio", "examen", "orden", "subir_orden", "examen_lab", "sin_orden", "especialidad", "doctor"] },
   { label: "Agenda", steps: ["agenda"] },
   { label: "Datos", steps: ["datos"] },
 ];
@@ -221,7 +227,7 @@ function especialidadDesc(name: string): string {
 // azules de marca para general/rayos, naranja de marca para eco, y verde para
 // especializada (en este sistema el verde ya significa "ruta distinta /
 // resultado bueno"). Clases neveras 100-200 suaves: texto navy/slate legible.
-const SERVICE_TINT: Record<ServiceType, {
+const SERVICE_TINT: Record<TileId, {
   card: string;    // pastel de fondo de toda la card
   halo: string;    // círculo pastel DESPLAZADO detrás de la foto (doble círculo del mockup)
   blob: string;    // ola grande inferior
@@ -230,8 +236,8 @@ const SERVICE_TINT: Record<ServiceType, {
   deco: string;    // rayitas decorativas pegadas a la foto
 }> = {
   general: { card: "bg-blue-100/50", halo: "bg-blue-200", blob: "bg-blue-200/70", iconText: "text-brand-blue", arrow: "bg-brand-blue", deco: "bg-orange-300" },
-  rayos: { card: "bg-cyan-100/50", halo: "bg-cyan-200", blob: "bg-cyan-200/70", iconText: "text-cyan-700", arrow: "bg-cyan-500", deco: "bg-cyan-300" },
-  eco: { card: "bg-orange-100/60", halo: "bg-orange-200", blob: "bg-orange-200/80", iconText: "text-brand-orange", arrow: "bg-brand-orange", deco: "bg-orange-400" },
+  imagenes: { card: "bg-cyan-100/50", halo: "bg-cyan-200", blob: "bg-cyan-200/70", iconText: "text-cyan-700", arrow: "bg-cyan-500", deco: "bg-cyan-300" },
+  lab: { card: "bg-indigo-100/50", halo: "bg-indigo-200", blob: "bg-indigo-200/70", iconText: "text-indigo-700", arrow: "bg-indigo-500", deco: "bg-indigo-300" },
   especializada: { card: "bg-green-100/50", halo: "bg-green-200", blob: "bg-green-200/70", iconText: "text-green-600", arrow: "bg-green-500", deco: "bg-green-300" },
 };
 
@@ -259,6 +265,8 @@ export default function App() {
   // Idea 1: ¿estamos mostrando datos guardados del navegador del cliente?
   const [recordados, setRecordados] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Costos de rayos/eco (⚙ Config): clientes preguntan cuánto cuestan (17/11).
+  const [prices, setPrices] = useState<{ rayos: string | null; eco: string | null } | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion() ?? false;
@@ -266,6 +274,19 @@ export default function App() {
   useEffect(() => {
     cardRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   }, [step]);
+
+  // Costos de rayos/eco (⚙ Config): fallo silencioso — el wizard funciona sin
+  // precios (solo no los muestra).
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        const p = await fetchPrices();
+        if (active) setPrices(p);
+      } catch { /* sin precios: los botones muestran el texto genérico */ }
+    })();
+    return () => { active = false; };
+  }, []);
 
   // Candado anti doble-click (400ms): SOLO bloquea repetir el MISMO destino en
   // ese instante (doce clicks en una card). Destinos distintos seguidos pasan:
@@ -287,7 +308,8 @@ export default function App() {
   const back = () => {
     setError(null);
     const prev: Record<Step, Step> = {
-      sede: "sede", servicio: "sede", orden: "servicio", subir_orden: "orden", sin_orden: "servicio",
+      sede: "sede", servicio: "sede", examen: "servicio", orden: "examen", subir_orden: "orden",
+      examen_lab: "subir_orden", sin_orden: "servicio",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
     };
     const orderFlow =
@@ -296,48 +318,60 @@ export default function App() {
     // fija el counter después del pago. El back de datos/agenda regresa a la
     // especialidad — igual al paso que llamó a go() — y NUNCA recrea el bucle
     // datos ⇄ agenda que atrapaba al usuario.
-    // Rayos/eco con orden: la fecha/hora NO se elige (las fija el counter tras
-    // verificar la orden) — el back de datos regresa a "subir_orden".
-    if (orderFlow && step === "datos") {
+    // Rayos/eco con orden y lab: la fecha/hora NO se elige — el back de datos
+    // regresa al paso previo propio (subir_orden o examen_lab del lab).
+    if (form.serviceType === "lab" && step === "datos") {
+      go("examen_lab");
+    } else if (orderFlow && step === "datos") {
       go("subir_orden");
     } else if (form.serviceType === "especializada" && (step === "datos" || step === "agenda")) {
       go("especialidad");
+    } else if (step === "orden") {
+      // Rayos/eco llegan al paso orden desde la sub-selección "examen" (tiles
+      // unificados); lab viene directo del tile de laboratorio.
+      go(form.serviceType === "lab" ? "servicio" : "examen");
     } else {
       go(prev[step]);
     }
   };
 
-  // Paso servicio → carga: doctores (general/rayos/eco) o especialidades.
-  // Al cambiar de TIPO de servicio se limpian los campos del flujo anterior:
-  // una especializada jamás muestra doctor/fecha de una general elegida antes
-  // (los fija el counter tras verificar el pago), y viceversa con la especialidad.
-  async function chooseService(t: ServiceType) {
+  // Paso servicio (tile) → carga: doctores (general) o especialidades; rayos y
+  // eco comparten tile "imagenes" (mismo flujo de orden — feedback 17/11) con
+  // sub-selección; lab va directo a la pregunta de orden como solicitud.
+  async function chooseService(tile: TileId) {
     setError(null);
-    update("serviceType", t);
-    if (t === "general" || t === "rayos" || t === "eco") {
-      // Limpia rastro de una especializada previa (paso especialidad) y de una
-      // orden subida previa (paso subir_orden).
+    if (tile === "general" || tile === "imagenes") {
+      // Limpia rastro de una especializada previa (paso especialidad), de una
+      // orden subida previa (paso subir_orden) y del examen de lab.
       setForm((f) => ({
         ...f,
         specialtyId: null, specialtyName: null, specialtyCost: null,
+        serviceType: null, hasOrder: null, examType: "",
       }));
       setOrderFile(null);
       setOrderPreview(null);
-      if (t !== "general") {
-        go("orden");
-        return;
-      }
-      go("doctor");
-    } else {
-      // Limpia rastro de una general/rayos/eco previa (pasos doctor/agenda/orden).
+      go(tile === "general" ? "doctor" : "examen");
+      return;
+    }
+    if (tile === "lab") {
       setForm((f) => ({
         ...f,
-        doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null,
+        serviceType: "lab", specialtyId: null, specialtyName: null, specialtyCost: null,
+        doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null, examType: "",
       }));
       setOrderFile(null);
       setOrderPreview(null);
-      go("especialidad");
+      go("orden");
+      return;
     }
+    // especializada
+    setForm((f) => ({
+      ...f,
+      doctorId: null, doctorName: null, date: null, startMinute: null, hasOrder: null, examType: "",
+    }));
+    setOrderFile(null);
+    setOrderPreview(null);
+    go("especialidad");
   }
 
   // HOTFIX V1.1 (carrera del dueño): elegir día en curso → llega TARDE la
@@ -475,26 +509,50 @@ export default function App() {
     // (el mensaje de confirmación lo escribe el counter a mano, con costo).
     const orderFlow =
       (form.serviceType === "rayos" || form.serviceType === "eco") && form.hasOrder === true;
+    // Lab: SOLICITUD de examen con orden subida — el counter la verifica,
+    // coordina la toma de muestra (S/ 25) y al tomarla pasa a 'recibida'.
+    const esLab = form.serviceType === "lab";
     try {
-      const result = await createAppointment({
-        branch: form.branch!,
-        serviceType: form.serviceType!,
-        specialtyId: form.serviceType === "especializada" ? form.specialtyId : null,
-        doctorId: form.serviceType === "especializada" || orderFlow ? null : form.doctorId,
-        date: form.serviceType === "especializada" || orderFlow ? null : form.date,
-        startMinute: form.serviceType === "especializada" || orderFlow ? null : form.startMinute,
-        withOrderUpload: orderFlow ? true : null,
-        hasOrder:
-          form.serviceType === "rayos" || form.serviceType === "eco"
-            ? form.hasOrder === true
-            : null,
-        petName: form.petName.trim(),
-        petType: form.petType,
-        petNotes: form.petNotes.trim() || "-",
-        ownerName: form.ownerName.trim(),
-        ownerPhone: form.ownerPhone.trim(),
-        ownerEmail: form.ownerEmail.trim() || "-",
-      });
+      let orderCode: string;
+      let requested = false;
+      let delivered: boolean | undefined;
+      if (esLab) {
+        const result = await createLabRequest({
+          sede: form.branch!,
+          examType: form.examType.trim(),
+          petName: form.petName.trim(),
+          petType: form.petType,
+          ownerName: form.ownerName.trim(),
+          ownerPhone: form.ownerPhone.trim(),
+        });
+        orderCode = result.orderCode;
+        requested = true;
+        delivered = result.whatsappDelivered;
+      } else {
+        const result = await createAppointment({
+          branch: form.branch!,
+          // "lab" nunca pasa por aquí (va a /api/lab/create-client arriba).
+          serviceType: form.serviceType! as "general" | "rayos" | "eco" | "especializada",
+          specialtyId: form.serviceType === "especializada" ? form.specialtyId : null,
+          doctorId: form.serviceType === "especializada" || orderFlow ? null : form.doctorId,
+          date: form.serviceType === "especializada" || orderFlow ? null : form.date,
+          startMinute: form.serviceType === "especializada" || orderFlow ? null : form.startMinute,
+          withOrderUpload: orderFlow ? true : null,
+          hasOrder:
+            form.serviceType === "rayos" || form.serviceType === "eco"
+              ? form.hasOrder === true
+              : null,
+          petName: form.petName.trim(),
+          petType: form.petType,
+          petNotes: form.petNotes.trim() || "-",
+          ownerName: form.ownerName.trim(),
+          ownerPhone: form.ownerPhone.trim(),
+          ownerEmail: form.ownerEmail.trim() || "-",
+        });
+        orderCode = result.appointmentCode;
+        requested = result.requested === true;
+        delivered = result.whatsappDelivered;
+      }
       // Idea 1: el dueño se recuerda en SU navegador al lograr registrar la
       // cita (mismo espíritu que el grooming — nunca sale del dispositivo).
       saveMedProfile({
@@ -506,18 +564,18 @@ export default function App() {
       // Si falla, la reserva no se pierde: el panel muestra "⚠️ Sin orden" y el
       // counter la pide por chat o el cliente la trae impresa.
       setOrdenSubida(null);
-      if (orderFlow && orderFile) {
+      if ((orderFlow || esLab) && orderFile) {
         try {
           const { base64, mime } = await prepareOrderBase64(orderFile);
-          await uploadOrder(result.appointmentCode, base64, mime);
+          await uploadOrder(orderCode, base64, mime);
           setOrdenSubida(true);
         } catch {
           setOrdenSubida(false);
         }
       }
-      setCode(result.appointmentCode);
-      setSolicitudEnviada(result.requested === true);
-      setWhatsAppOk(result.whatsappDelivered === true);
+      setCode(orderCode);
+      setSolicitudEnviada(requested);
+      setWhatsAppOk(delivered === true);
       go("enviado");
     } catch (err) {
       setError(err instanceof Error ? err.message : "No se pudo registrar la cita");
@@ -693,6 +751,123 @@ export default function App() {
                 </section>
               )}
 
+              {/* ── Sub-selección de imagen (rayos/eco unificados, feedback 17/11):
+                      mismo tile, mismo flujo de orden — aquí se define QUÉ examen
+                      es (radiografía o ecografía) para los mensajes y el panel. ── */}
+              {step === "examen" && (
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Estudios de imagen</p>
+                    </div>
+                    <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">¿Cuál es tu</span>
+                      <span className="block"><span className="text-orange-500">examen de imagen</span>?</span>
+                    </h2>
+                    <p className="mb-5 text-sm text-[#546A8E]">
+                      Ambos requieren <b>orden médica sellada</b> y se hacen en nuestra sede con equipos digitales.
+                    </p>
+                    <div className="flex flex-col gap-3">
+                      {([["rayos", "Radiografía", prices?.rayos], ["eco", "Ecografía", prices?.eco]] as Array<["rayos" | "eco", string, string | null | undefined]>).map(
+                        ([st, label, price], i) => (
+                          <motion.button
+                            key={st}
+                            onClick={() => { update("serviceType", st); update("hasOrder", null); go("orden"); }}
+                            initial={{ opacity: 0, y: reduceMotion ? 0 : 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.25 + i * 0.1 }}
+                            className="group flex items-center gap-4 rounded-2xl bg-white px-5 py-4 text-left ring-2 ring-blue-300 shadow-sm transition-all hover:-translate-y-1 hover:bg-[#F7FBFF] hover:shadow-lg hover:shadow-blue-100/50 focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-500 active:translate-y-0 active:scale-[0.99]"
+                          >
+                            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-[#EFF5FC] text-blue-600 ring-1 ring-blue-100">
+                              <ScanLine className="h-6 w-6" />
+                            </span>
+                            <span className="min-w-0 flex-1">
+                              <span className="block font-display text-xl font-bold leading-tight text-[#475AAB]">{label}</span>
+                              {price ? <span className="block text-xs font-semibold text-orange-600">Desde S/ {price}</span> : <span className="block text-xs text-[#546A8E]">Con orden sellada de un médico</span>}
+                            </span>
+                            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-600 text-white shadow-md transition-transform group-hover:translate-x-1">
+                              <ArrowRight className="h-5 w-5" />
+                            </span>
+                          </motion.button>
+                        ),
+                      )}
+                      {/* ¿Dudas del costo? WhatsApp directo (feedback 17/11: los
+                          clientes preguntan si hacen el examen y cuánto cuesta) */}
+                      <a
+                        href={`https://wa.me/${MED_BRANCH_PHONES[form.branch!]}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-xs font-medium text-[#546A8E] underline decoration-dotted transition-colors hover:text-[#475AAB]"
+                      >
+                        ¿Dudas del examen o del costo? Escríbenos por WhatsApp 🐾
+                      </a>
+                    </div>
+                  </div>
+
+                  <MascotaCard
+                    src="/images/medical/servicio/eco.webp"
+                    alt="Ecografía veterinaria en nuestra sede"
+                    imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                  />
+                </section>
+              )}
+
+              {/* ── Examen de lab (texto libre): el cliente copia el examen que
+                      indica su orden — el counter lo corrige si hace falta. ── */}
+              {step === "examen_lab" && (
+                <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
+                  <div>
+                    <div className="mb-1.5 flex items-center gap-2.5">
+                      <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Exámenes de laboratorio</p>
+                    </div>
+                    <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
+                      <span className="block">¿Qué examen indica tu</span>
+                      <span className="block"><span className="text-orange-500">orden</span>?</span>
+                    </h2>
+                    <label className="block">
+                      <span className="mb-1 block text-[11px] font-bold uppercase tracking-wide text-slate-500">Nombre del examen (como aparece en tu orden)</span>
+                      <input
+                        value={form.examType}
+                        onChange={(e) => update("examType", e.target.value.slice(0, 120))}
+                        placeholder="Ej. Perfil hepático, Hemograma completo…"
+                        className="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm outline-none transition focus:border-brand-blue focus:ring-2 focus:ring-brand-blue/20"
+                      />
+                    </label>
+                    <motion.div
+                      className="mb-5 mt-3 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200"
+                      initial={{ opacity: 0, y: reduceMotion ? 0 : 8 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ duration: reduceMotion ? 0.2 : 0.35, ease: "easeOut", delay: 0.2 }}
+                    >
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-amber-600 shadow-sm ring-1 ring-amber-100">
+                        💉
+                      </span>
+                      <p className="pt-1 text-xs leading-relaxed text-amber-800">
+                        La <b>toma de muestra tiene un costo de S/ 25</b> (se paga en la sede el día de la toma).
+                        El resultado lo ves aquí mismo con tu código — te avisamos por WhatsApp cuando esté listo.
+                      </p>
+                    </motion.div>
+                    <motion.button
+                      onClick={() => { setError(null); go("datos"); }}
+                      disabled={form.examType.trim().length < 2}
+                      title={form.examType.trim().length < 2 ? "Escribe el examen que indica tu orden" : undefined}
+                      className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-7 py-3 text-sm font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
+                    >
+                      Continuar
+                      <ArrowRight className="h-4 w-4" />
+                    </motion.button>
+                  </div>
+
+                  <MascotaCard
+                    src={MASCOT.lab}
+                    alt="Examen de laboratorio veterinario"
+                    imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                  />
+                </section>
+              )}
+
               {/* ── Orden médica: pregunta (estilo maqueta: 2 columnas, mascota con rayos/eco/orden) ── */}
               {step === "orden" && (
                 <section className="grid items-center gap-4 lg:grid-cols-[1.05fr_0.95fr] lg:gap-8">
@@ -700,7 +875,9 @@ export default function App() {
                   <div>
                     <div className="mb-1.5 flex items-center gap-2.5">
                       <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Radiografía y ecografía</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">
+                        {form.serviceType === "lab" ? "Exámenes de laboratorio" : "Radiografía y ecografía"}
+                      </p>
                     </div>
                     <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
                       <span className="block">¿Tu mascota tiene</span>
@@ -762,8 +939,8 @@ export default function App() {
                   {/* Columna derecha: tarjeta ilustrada (orden.webp ya trae
                       blobs, placa, eco, orden, huellitas y destellos dentro) */}
                   <MascotaCard
-                    src={MASCOT.orden}
-                    alt="Mascota con su orden médica, radiografía y ecografía"
+                    src={form.serviceType === "lab" ? MASCOT.lab : MASCOT.orden}
+                    alt={form.serviceType === "lab" ? "Mascota con su orden médica y examen de laboratorio" : "Mascota con su orden médica, radiografía y ecografía"}
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
                   />
                 </section>
@@ -778,7 +955,9 @@ export default function App() {
                   <div>
                     <div className="mb-1.5 flex items-center gap-2.5">
                       <span className="h-1 w-6 rounded-full bg-orange-500" aria-hidden />
-                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">Radiografía y ecografía</p>
+                      <p className="text-[11px] font-bold uppercase tracking-[0.18em] text-orange-600">
+                        {form.serviceType === "lab" ? "Exámenes de laboratorio" : "Radiografía y ecografía"}
+                      </p>
                     </div>
                     <h2 className="mb-4 font-display text-3xl font-bold leading-[1.12] tracking-tight text-[#475AAB] sm:text-4xl">
                       <span className="block">Sube tu <span className="text-orange-500">orden sellada</span></span>
@@ -793,9 +972,19 @@ export default function App() {
                         <FileCheck2 className="h-5 w-5" />
                       </span>
                       <p className="pt-1 text-xs leading-relaxed text-[#3B5178]">
-                        Fotografía la orden <b>con el sello del médico</b> (o adjúntala en PDF).
-                        Nuestro personal la verifica con el doctor y te escribimos para
-                        confirmar <b>fecha, hora y costo</b>. No elijas doctor ni hora: nosotros te contactamos.
+                        {form.serviceType === "lab" ? (
+                          <>
+                            Fotografía la orden <b>con el sello del médico</b> (o adjúntala en PDF).
+                            Nuestro personal la verifica con el equipo de la sede y te escribimos para
+                            coordinar la <b>toma de muestra</b> (S/ 25, se paga en la sede). No elijas fecha: nosotros te contactamos.
+                          </>
+                        ) : (
+                          <>
+                            Fotografía la orden <b>con el sello del médico</b> (o adjúntala en PDF).
+                            Nuestro personal la verifica con el doctor y te escribimos para
+                            confirmar <b>fecha, hora y costo</b>. No elijas doctor ni hora: nosotros te contactamos.
+                          </>
+                        )}
                       </p>
                     </motion.div>
 
@@ -857,7 +1046,7 @@ export default function App() {
 
                     <div className="mt-4 flex flex-col items-start gap-2">
                       <motion.button
-                        onClick={() => go("datos")}
+                        onClick={() => go(form.serviceType === "lab" ? "examen_lab" : "datos")}
                         disabled={!orderFile}
                         title={!orderFile ? "Sube la foto de tu orden para continuar" : undefined}
                         className="flex items-center gap-2 rounded-full bg-gradient-to-r from-orange-500 to-orange-400 px-7 py-3 text-sm font-bold text-white shadow-md shadow-orange-200/60 transition-all hover:-translate-y-0.5 hover:shadow-lg active:scale-[0.98] disabled:opacity-50 disabled:hover:translate-y-0"
@@ -866,7 +1055,7 @@ export default function App() {
                         <ArrowRight className="h-4 w-4" />
                       </motion.button>
                       <button
-                        onClick={() => go("datos")}
+                        onClick={() => go(form.serviceType === "lab" ? "examen_lab" : "datos")}
                         className="text-xs font-medium text-[#546A8E] underline decoration-dotted transition-colors hover:text-[#475AAB]"
                       >
                         No puedo subirla ahora — la traigo impresa o la envío por WhatsApp
@@ -875,8 +1064,8 @@ export default function App() {
                   </div>
 
                   <MascotaCard
-                    src={MASCOT.orden}
-                    alt="Mascota con su orden médica, radiografía y ecografía"
+                    src={form.serviceType === "lab" ? MASCOT.lab : MASCOT.orden}
+                    alt={form.serviceType === "lab" ? "Mascota con su orden médica y examen de laboratorio" : "Mascota con su orden médica, radiografía y ecografía"}
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
                   />
                 </section>
@@ -900,8 +1089,8 @@ export default function App() {
                       </span>
                     </h2>
                     <p className="mb-5 text-sm leading-relaxed text-[#546A8E]">
-                      El médico evalúa a tu mascota y, si es necesario, te emite la orden para la
-                      radiografía o ecografía el mismo día.
+                      El médico evalúa a tu mascota y, si es necesario, te emite la orden para la{" "}
+                      {form.serviceType === "lab" ? "toma de muestra del examen de laboratorio" : "radiografía o ecografía"} el mismo día.
                     </p>
                     <div className="flex flex-col gap-3">
                       <motion.button
@@ -1396,7 +1585,13 @@ export default function App() {
                 <div className="mx-auto grid max-w-4xl gap-6 py-4 lg:grid-cols-2 lg:items-start">
                   {/* Columna izquierda: mascota + código + avisos (lo que hay que GUARDAR) */}
                   <div className="flex flex-col items-center gap-4">
-                    {form.serviceType === "especializada" || solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco") ? (
+                    {form.serviceType === "lab" ? (
+                      <MascotaCard
+                        src={MASCOT.lab}
+                        alt="Solicitud de examen de laboratorio registrada"
+                        imgClass="h-auto w-64 sm:w-80"
+                      />
+                    ) : form.serviceType === "especializada" || solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco") ? (
                       <MascotaCard
                         src={MASCOT.interconsulta}
                         alt="Doctor frenchie saludando con su clipboard registrado, aviso de WhatsApp enviado y calendario a confirmar"
@@ -1470,6 +1665,26 @@ export default function App() {
                         </p>
                       </div>
                       </>
+                    ) : (form.serviceType === "lab" ? (
+                      // Lab: la muestra aún no se toma — estado 'solicitada'.
+                      <>
+                        {ordenSubida === false && (
+                          <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                            <p className="font-bold text-amber-800">Tu orden no se pudo subir</p>
+                            <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                              Tu solicitud SÍ está registrada. Tráela <b>impresa</b> el día de la toma o envíanos la foto por WhatsApp de la sede.
+                            </p>
+                          </div>
+                        )}
+                        <div className="w-full rounded-2xl bg-amber-50 px-4 py-3 text-left ring-1 ring-amber-200">
+                          <p className="font-bold text-amber-800">Aviso por WhatsApp</p>
+                          <p className="mt-1 text-xs leading-relaxed text-amber-800">
+                            <b>¡Solicitud de examen recibida!</b> 🧪 Nuestro personal está verificando tu orden con el equipo de la sede y
+                            te escribimos para coordinar la <b>toma de muestra</b> — costo <b>S/ 25</b> (se paga en la sede). El
+                            resultado lo ves aquí con tu código cuando esté listo.
+                          </p>
+                        </div>
+                      </>
                     ) : solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco") ? (
                       // Rayos/eco con orden: la fecha/hora las fija el counter tras
                       // verificar la orden con el doctor (feedback 16/11).
@@ -1517,7 +1732,7 @@ export default function App() {
                             : <>No pudimos confirmar que el aviso haya salido por WhatsApp. Tu cita SÍ está registrada: <b>guarda tu código</b>.</>}
                         </p>
                       </div>
-                    )}
+                    ))}
                   </div>
 
                   {/* Columna derecha: tarjeta grande de confirmación (lo que se CONFIRMÓ) */}
@@ -1531,7 +1746,7 @@ export default function App() {
                           <h2 className="font-display text-2xl font-bold leading-tight text-[#475AAB] sm:text-3xl">
                             ¡Tu cita está <span className="text-orange-500">registrada!</span>
                           </h2>
-                          {form.serviceType === "especializada" || (solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco"))
+                          {form.serviceType === "especializada" || form.serviceType === "lab" || (solicitudEnviada && (form.serviceType === "rayos" || form.serviceType === "eco"))
                             ? <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Tu solicitud está registrada con éxito.</p>
                             : <p className="mt-0.5 text-xs font-medium text-[#546A8E]">Hemos agendado tu cita con éxito.</p>}
                         </div>
@@ -1924,8 +2139,12 @@ function Resumen({ form, header = false, onLink }: {
   onLink?: (target: ResumenLink) => void;
 }) {
   const b = MED_BRANCHES.find((x) => x.value === form.branch);
-  const serviceLabel = SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
+  const serviceLabel =
+    form.serviceType === "rayos" ? "Radiografía"
+      : form.serviceType === "eco" ? "Ecografía"
+        : SERVICES.find((s) => s.id === form.serviceType)?.label ?? form.serviceType;
   const esEspecializada = form.serviceType === "especializada";
+  const esLab = form.serviceType === "lab";
   return (
     <div className="w-full max-w-sm rounded-[18px] border border-[#DCEBFF] bg-gradient-to-b from-white to-[#F7FBFF] px-4 py-3 text-left shadow-sm sm:px-5">
       {header && (
@@ -1945,10 +2164,11 @@ function Resumen({ form, header = false, onLink }: {
             {b.label}
           </SummaryRow>
         )}
-        <SummaryRow icon={esEspecializada ? Microscope : Stethoscope} tint="orange" label="Servicio" onLink={onLink ? () => onLink("servicio") : undefined}>
+        <SummaryRow icon={esLab ? FlaskConical : esEspecializada ? Microscope : Stethoscope} tint="orange" label="Servicio" onLink={onLink ? () => onLink("servicio") : undefined}>
           {serviceLabel}
           {esEspecializada && form.specialtyName ? ` · ${form.specialtyName}` : ""}
           {esEspecializada && form.specialtyCost !== null ? ` — S/ ${form.specialtyCost.toFixed(0)}` : ""}
+          {esLab && form.examType.trim() ? ` · ${form.examType.trim()}` : ""}
         </SummaryRow>
         {/* Doctor y fecha/hora SOLO existen en general/rayos/eco: la especializada
             no pide ni doctor ni fecha — los confirma la especialista tras el pago. */}
@@ -1971,6 +2191,11 @@ function Resumen({ form, header = false, onLink }: {
         {esEspecializada && (
           <SummaryRow icon={CalendarDays} tint="amber" label="Fecha y hora" accent>
             La especialista confirma fecha y hora después de verificar tu pago
+          </SummaryRow>
+        )}
+        {esLab && (
+          <SummaryRow icon={CalendarDays} tint="amber" label="Toma de muestra" accent>
+            El personal de la sede coordina el día y te escribe por WhatsApp — costo S/ 25
           </SummaryRow>
         )}
       </ul>

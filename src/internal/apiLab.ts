@@ -25,6 +25,8 @@ export interface LabOrder {
   resultPath: string | null;
   resultName: string | null;
   resultPublishedAt: string | null;
+  /** Foto de la orden sellada subida por el cliente (bucket privado). */
+  orderPath?: string | null;
   timeline?: Array<{ status: string; createdBy: string; createdAt: string }>;
 }
 

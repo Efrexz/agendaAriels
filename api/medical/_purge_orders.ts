@@ -1,5 +1,6 @@
 import { isAuthorizedCron } from "../_cron.js";
 import { getMedicalDb, notConfigured } from "./_shared.js";
+import { getLabDb } from "../lab/_shared.js";
 
 // ─────────────────────────────────────────────────────────────
 // GET /api/medical/purge-orders  (VERCEL CRON diario, 3er cron gratis)
@@ -44,30 +45,38 @@ export default async function handler(req: Req, res: Res) {
 
   try {
     const cutoff = new Date(Date.now() - ORDER_WINDOW_MS).toISOString();
-    const expired = await db.listOrderFilesToPurge(cutoff);
+    // Órdenes médicas (rayos/eco) + órdenes de lab — mismo bucket, misma ventana.
+    const labDb = getLabDb();
+    const medExpired = await db.listOrderFilesToPurge(cutoff);
+    const labExpired = labDb ? await labDb.listOrderFilesToPurge(cutoff) : [];
+    const targets: Array<{ id: string; orderPath: string; kind: "med" | "lab" }> = [
+      ...medExpired.map((o) => ({ ...o, kind: "med" as const })),
+      ...labExpired.map((o) => ({ ...o, kind: "lab" as const })),
+    ];
     let purged = 0;
     let failed = 0;
-    if (expired.length > 0) {
+    if (targets.length > 0) {
       const client = createClient(
         process.env.SUPABASE_URL ?? "",
         process.env.SUPABASE_SERVICE_ROLE_KEY ?? "",
         { auth: { persistSession: false } },
       );
       const storage = client.storage.from("medical-orders");
-      for (const o of expired) {
+      for (const o of targets) {
         try {
           const { error } = await storage.remove([o.orderPath]);
           if (error) throw new Error("No se pudo borrar el archivo en Storage.");
-          await db.setOrderFile(o.id, null);
+          if (o.kind === "lab") await labDb!.setOrderFile(o.id, null);
+          else await db.setOrderFile(o.id, null);
           purged += 1;
         } catch (err) {
           failed += 1;
-          console.error(`[medical/purge-orders] ${o.id}: ${err instanceof Error ? err.message : err}`);
+          console.error(`[medical/purge-orders] ${o.kind} ${o.id}: ${err instanceof Error ? err.message : err}`);
         }
       }
     }
-    console.log(`[medical/purge-orders] vencidas: ${expired.length}, purgadas: ${purged}, fallos: ${failed}`);
-    res.status(200).json({ ok: failed === 0, expired: expired.length, purged, failed });
+    console.log(`[medical/purge-orders] vencidas: ${targets.length} (médicas ${medExpired.length} + lab ${labExpired.length}), purgadas: ${purged}, fallos: ${failed}`);
+    res.status(200).json({ ok: failed === 0, expired: targets.length, purged, failed });
   } catch (err) {
     console.error(`[medical/purge-orders] ${err instanceof Error ? err.message : err}`);
     res.status(500).json({ ok: false, error: "Error inesperado del servidor." });

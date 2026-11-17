@@ -75,4 +75,5 @@ export const MED_SERVICE_LABELS: Record<string, string> = {
   rayos: "Radiografía",
   eco: "Ecografía",
   especializada: "Consulta Especializada",
+  lab: "Examen de Laboratorio",
 };
