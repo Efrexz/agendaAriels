@@ -1127,9 +1127,16 @@ function ManualApptModal({ onClose, prefill = null }: { onClose: (reload: boolea
         ]);
         if (active) {
           // Igual que el wizard: generales atienden general/rayos/eco
-          setDocList(list.filter((d) => d.kind === "general"));
+          const generales = list.filter((d) => d.kind === "general");
+          setDocList(generales);
           setSpecList(specs);
-          if (list[0]) setDoctor(list[0].id);
+          // HOTFIX 18/11: precargar del listado FILTRADO. Antes tomaba
+          // list[0] del listado SIN filtrar → un ESPECIALISTA invisible
+          // operaba el modal (la hora "disponible" era la de OTRO doctor y
+          // create rechazaba con "Este doctor no atiende consultas
+          // generales" aunque el dropdown mostrara al general correcto).
+          const firstGeneral = generales[0];
+          if (firstGeneral) setDoctor(firstGeneral.id);
           if (specs[0]) setSpecialty(specs[0].id);
         }
       } catch (err) {
