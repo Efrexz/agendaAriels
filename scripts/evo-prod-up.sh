@@ -8,6 +8,12 @@ cd "$(dirname "$0")/.."
 # Containers de WhatsApp (auto-arrancan con Docker Desktop si estaban stopped)
 docker compose -f docker-compose.local-demo.yml up -d
 
+# HOTFIX 18/11: al suspender la PC el socket de WhatsApp muere pero Evolution
+# sigue reportando "open" cacheado → sendText falla con "Connection Closed".
+# Reinicio garantiza un socket fresco con la sesión guardada (sin re-escanear QR).
+echo "→ Reinicio del contenedor (socket fresco)..."
+docker restart ariels_demo_evolution >/dev/null
+
 # Stack abandonado viejo: lo mantenemos detenido para no gastar CPU
 docker ps -a --format "{{.Names}}" | grep "^agenda_server_" | xargs -r docker stop >/dev/null 2>&1 || true
 

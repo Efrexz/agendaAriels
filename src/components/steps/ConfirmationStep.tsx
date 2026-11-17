@@ -386,6 +386,8 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
             {bookingStored !== false && (
               <a
                 href={`/estado?code=${bookingCode}`}
+                target="_blank"
+                rel="noopener noreferrer"
                 className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3.5 text-base font-semibold text-white shadow-md shadow-green-200/60 transition-all hover:-translate-y-0.5 hover:bg-green-700 hover:shadow-lg sm:w-auto"
               >
                 <MessageCircle className="h-5 w-5" />
