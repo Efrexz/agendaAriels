@@ -19,30 +19,32 @@ import { LabTab } from "./LabTab";
 import { HistoryTab, type HistTarget } from "./HistoryTab";
 import { fetchArrivals, type Arrivals } from "./apiLab";
 
-/** "Tin" suave tipo WhatsApp Web por Web Audio (sin archivos): 2 notas
- *  cortas de seno. Funciona con la pestaña EN SEGUNDO PLANO — solo requiere
- *  que el counter haya interactuado con la página alguna vez (política de
- *  autoplay de los navegadores). Fallo silencioso si el audio no está. */
+/** "Tin" tipo WhatsApp Web por Web Audio (sin archivos). Volumen SUBIDO a
+ *  pedido del dueño (18/11: "debería sonar más duro") — 3 notas con cuerpo
+ *  (fundamental + octava + quinta) y decay más largo. Funciona con la
+ *  pestaña EN SEGUNDO PLANO; fallo silencioso si el audio no está. */
 function playChime(): void {
   try {
     const Ctx = window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
     const now = ctx.currentTime;
-    const notes: Array<[number, number]> = [[880, 0], [1174.66, 0.18]]; // La5 → Re6
+    // A5 → Re6 → Fa#6 (arpegio descendente-ascendente bien perceptible)
+    const notes: Array<[number, number]> = [[880, 0], [1174.66, 0.16], [1479.98, 0.32]];
     for (const [freq, at] of notes) {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.type = "sine";
       osc.frequency.value = freq;
+      // Pico 0.35 (antes 0.08 — 4x más fuerte) + cola de 0.9s
       gain.gain.setValueAtTime(0.0001, now + at);
-      gain.gain.exponentialRampToValueAtTime(0.08, now + at + 0.02);
-      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.35);
+      gain.gain.exponentialRampToValueAtTime(0.35, now + at + 0.02);
+      gain.gain.exponentialRampToValueAtTime(0.0001, now + at + 0.9);
       osc.connect(gain).connect(ctx.destination);
       osc.start(now + at);
-      osc.stop(now + at + 0.4);
+      osc.stop(now + at + 1);
     }
-    setTimeout(() => void ctx.close().catch(() => undefined), 1200);
+    setTimeout(() => void ctx.close().catch(() => undefined), 2500);
   } catch {
     /* sin audio disponible: la campana visual queda */
   }

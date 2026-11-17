@@ -413,12 +413,19 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
         const docs = a.serviceType === "especializada" ? todos.filter((d) => d.kind !== "general") : todos;
         setDocList(docs);
         setSchedsList(schedRes.schedules ?? []);
-        if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) setDocId(a.doctorId);        else if (docs.length > 0) setDocId(docs[0].id);
+        let chosen = "";
+        if (a.serviceType !== "especializada" && a.doctorId && docs.some((d) => d.id === a.doctorId)) { chosen = a.doctorId; setDocId(a.doctorId); }
+        else if (docs.length > 0) { chosen = docs[0].id; setDocId(docs[0].id); }
         else setError(
           a.serviceType === "especializada"
             ? "No hay doctores especialistas activos para esta sede — agrégalos en ⚙ Config → Doctores (tipo «Especialista», con especialidad y sede)."
             : "No hay doctores generales activos para esta sede — agrégalos en ⚙ Config → Doctores.",
         );
+        // Solicitud de próxima semana: PRE-CARGAR el día preferido del cliente
+        // (feedback 18/11) — el counter ve de una las horas de ese día.
+        if (chosen && esSolicitud && a.serviceType !== "especializada" && a.apptDate && a.startMinute === null) {
+          void cargarSlots(a.apptDate, chosen);
+        }
       } catch (err) { setError(err instanceof Error ? err.message : "Error"); }
       finally { setPending(false); }
     }
@@ -442,20 +449,21 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
     if (!Number.isNaN(h) && !Number.isNaN(m)) setStart((h ?? 0) * 60 + (m ?? 0));
   }
 
-  async function cargarSlots(d: string) {
+  async function cargarSlots(d: string, doc?: string) {
+    const docActual = doc ?? docId;
     setPicker(d); setStart(null); setSlotsList([]); setBusyList([]);
-    if (!docId) return;
+    if (!docActual) return;
     try {
       // Slots libres (API pública, mismos datos del wizard) + citas del día
       // del staff: las ocupadas se pintan en el grid V2 como inhabilitadas.
       const [loadedSlots, dayRes] = await Promise.all([
-        fetchSlots(docId, d),
+        fetchSlots(docActual, d),
         fetchMedDay(d, "all"),
       ]);
       setSlotsList(loadedSlots);
       setBusyList(
         (dayRes.appointments ?? [])
-          .filter((x) => x.doctorId === docId && x.startMinute !== null)
+          .filter((x) => x.doctorId === docActual && x.startMinute !== null)
           .map((x) => ({ startMinute: x.startMinute!, durationMinutes: x.durationMinutes })),
       );
     } catch { setSlotsList([]); }
@@ -502,6 +510,14 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
           <b className="font-mono text-brand-blue">{a.appointmentCode}</b>
           <PendingChip a={a} />
           <span>{a.specialtyName} · {a.petName} ({a.petType}) · {a.ownerName} · {a.ownerPhone}</span>
+          {/* Día PREFERIDO del cliente (solicitudes de próxima semana):
+              la info clave ya vive en la BD — que el counter la vea aquí y
+              trate de coordinar ese día. */}
+          {esSolicitud && a.apptDate && a.startMinute === null && (
+            <span className="rounded-full bg-blue-50 px-2 py-0.5 text-[10px] font-bold text-blue-700 ring-1 ring-blue-200">
+              🗓 Cliente prefiere: {a.apptDate.split("-").reverse().join("/")}
+            </span>
+          )}
         </div>
         <div className="flex gap-2">
           {a.orderPath && (
@@ -527,6 +543,13 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
 
       {open && (
         <div className="mt-3 border-t border-amber-100 pt-3">
+          {/* Recordatorio del día preferido dentro del asignador: al abrir el
+              calendario, el counter ve de una QUÉ día coordinar. */}
+          {esSolicitud && a.apptDate && a.startMinute === null && (
+            <p className="mb-2 flex items-center gap-1.5 rounded-lg bg-blue-50 px-3 py-2 text-xs font-semibold text-blue-800 ring-1 ring-blue-200">
+              🗓 El cliente pidió el <b>{a.apptDate.split("-").reverse().join("/")}</b> — coordina esa fecha si el horario del doctor lo permite (o contacta al cliente por WhatsApp para acordar otra).
+            </p>
+          )}
           <div className="flex flex-wrap items-center gap-2">
             <select
               value={docId}
