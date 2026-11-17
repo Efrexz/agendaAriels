@@ -403,14 +403,13 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
       setPending(true);
       try {
         // Especializadas: SOLO especialistas. Solicitudes de próxima semana
-        // (general/rayos/eco): cualquier doctor activo, con el pedido preseleccionado.
-        // Los horarios van en paralelo: si fallan, los chips V2 no aparecen y
-        // queda la vía de "Otra hora (excepcional)" — la asignación no se bloquea.
+        // (general/rayos/eco): SOLO generales (QA 18/11: el dropdown mostraba
+        // también especialistas y se podía asignar uno a una cita general).
         const [todos, schedRes] = await Promise.all([
           fetchDoctors(a.branch as MedBranch),
           fetchSchedules().catch(() => ({ schedules: [] as ScheduleWithDoctor[] })),
         ]);
-        const docs = a.serviceType === "especializada" ? todos.filter((d) => d.kind !== "general") : todos;
+        const docs = a.serviceType === "especializada" ? todos.filter((d) => d.kind !== "general") : todos.filter((d) => d.kind === "general");
         setDocList(docs);
         setSchedsList(schedRes.schedules ?? []);
         let chosen = "";

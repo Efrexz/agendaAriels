@@ -79,11 +79,23 @@ export default async function handler(req: Req, res: Res) {
       res.status(400).json({ ok: false, error: "Falta doctor, fecha u hora para asignar." });
       return;
     }
-    // Valida doctor de la sede
+    // Valida doctor de la sede + TIPO correcto (candado añadido 18/11: el
+    // dropdown del counter ahora filtra, pero el servidor NUNCA confía —
+    // un especialista no puede terminar asignado a una cita general).
     const doctors = await db.listDoctors(appt.branch, null);
     const doctor = doctors.find((d) => d.id === doctorId && d.active) ?? null;
     if (!doctor) {
       res.status(400).json({ ok: false, error: "Doctor no disponible en esa sede." });
+      return;
+    }
+    const wantKind = appt.serviceType === "especializada" ? "especialista" : "general";
+    if (doctor.kind !== wantKind) {
+      res.status(400).json({
+        ok: false,
+        error: appt.serviceType === "especializada"
+          ? "Las especializadas solo con doctor especialista."
+          : "Las consultas generales/rayos/eco solo con doctor general.",
+      });
       return;
     }
     // Duración efectiva desde app_config; las citas por asignar guardan 0.
