@@ -491,11 +491,17 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
       for (let m = b.startMinute; m + dur <= b.endMinute; m += 15) {
         if (seen.has(m)) continue;
         seen.add(m);
+        const sugerida = slots.some((s) => s.startMinute === m);
         chipsGrid.push({
           min: m,
           label: horaCorta(m),
-          suggested: slots.some((s) => s.startMinute === m),
-          taken: busyAppts.some((x) => m < x.startMinute + x.durationMinutes && m + dur > x.startMinute),
+          suggested: sugerida,
+          // Regla robusta (QA 18/11 del dueño): TACHADA si choca con OTRA cita
+          // O si la API de disponibilidad NO la ofrece (ocupada por otra cita,
+          // ausencia del doctor, hora ya pasada del día, etc.). Antes solo
+          // dependía de la lista de citas del día — si esa lista fallaba, la
+          // hora ocupada aparecía como libre azul.
+          taken: busyAppts.some((x) => m < x.startMinute + x.durationMinutes && m + dur > x.startMinute) || !sugerida,
         });
       }
     }
@@ -701,7 +707,7 @@ function ChipGroup({ titulo, grupo, startMin, manualTime, onPick }: {
                 key={c.min}
                 disabled
                 aria-disabled="true"
-                title="Ocupada: hay otra cita en esta hora"
+                title="No disponible: ocupada por otra cita, ausencia del doctor o fuera de la agenda del día"
                 className="cursor-not-allowed rounded-lg bg-red-50 px-2.5 py-1 text-xs font-medium text-red-300 line-through ring-1 ring-red-100"
               >
                 {c.label}
