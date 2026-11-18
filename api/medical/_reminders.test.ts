@@ -31,6 +31,15 @@ describe("buildReminderMessage", () => {
     const msg = buildReminderMessage({ ...appt, doctorName: null, specialtyName: "Cardiología" });
     expect(msg).toContain("Cardiología");
   });
+
+  it("ESPECIALIZADA: agenda reservada del externo + regla de 24h (sin 'siguiente en espera')", () => {
+    const msg = buildReminderMessage({ ...appt, specialtyName: "Cardiología" });
+    expect(msg).toContain("tolerancia es de 10 minutos");
+    expect(msg).toContain("reserva un espacio en su agenda");
+    expect(msg).toContain("24 horas de anticipación");
+    expect(msg).toContain("penalización");
+    expect(msg).not.toContain("siguiente en espera");
+  });
 });
 
 describe("buildCounterReminderSummary", () => {

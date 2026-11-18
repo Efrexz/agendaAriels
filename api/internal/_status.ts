@@ -44,7 +44,7 @@ interface Res {
 
 export const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) => string> = {
   en_camino_recojo: (nombre) =>
-    `🚐 *¡En camino!*\n\nLa movilidad de Veterinaria Ariel va hacia tu domicilio para recoger a *${nombre}*.\n\n¡Nos vemos en un momento! 🐶`,
+    `🚐 *¡En camino!*\n\nLa movilidad de Veterinaria Ariel ya va rumbo a tu domicilio para recoger a *${nombre}*.\n\n🐾 Por favor mantente atento: tenemos varias mascotitas programadas y nuestro tiempo de espera es de *10 minutos*, ya que la movilidad tiene otros recojos que realizar.\n\n⏱ Si pasados los 10 minutos no es posible salir a tiempo, la movilidad seguirá con sus demás recojos. Si deseas que vuelva por ti, se aplicaría un recargo extra.\n\n¡Gracias por tu comprensión! 🐶✨`,
   listo: (nombre, branchLabel) =>
     `✅ *¡${nombre} está${nombre.includes(", ") ? "n" : ""} listo${nombre.includes(", ") ? "s" : ""}!*\n\nYa puedes pasar por *${branchLabel}* o esperar la movilidad de entrega. 🐾`,
   en_camino_entrega: (nombre) =>

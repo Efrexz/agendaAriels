@@ -111,3 +111,38 @@ describe("PATCH /api/medical/status (estados médicos)", () => {
     expect(sendMock).not.toHaveBeenCalled();
   });
 });
+
+// Feedback 17/11 del dueño: la tolerancia y su consecuencia dependen del tipo
+// de consulta (general: entra el siguiente; especializada: agenda reservada
+// del doctor externo + regla de 24h con penalización).
+const { buildConfirmationMessage } = await import("./_status.js");
+
+describe("buildConfirmationMessage — tolerancia por tipo de consulta", () => {
+  const base = {
+    apptDate: "2026-11-20",
+    startMinute: 540,
+    branchLabel: "Sede San Miguel",
+    doctorName: "Dr. Ejemplo",
+    specialtyName: null,
+    petName: "Kira",
+    ownerName: "Rosa Quispe",
+    appointmentCode: "CM-TOL01",
+    needsOrder: false,
+    branchPhone: "51954599221",
+  };
+
+  it("GENERAL: tolerancia 10 min + se atiende al siguiente en espera", () => {
+    const msg = buildConfirmationMessage(base);
+    expect(msg).toContain("tolerancia es de 10 minutos y luego atendemos al siguiente en espera");
+    expect(msg).not.toContain("penalización");
+  });
+
+  it("ESPECIALIZADA: agenda reservada del externo + regla de 24h con penalización", () => {
+    const msg = buildConfirmationMessage({ ...base, specialtyName: "Cardiología" });
+    expect(msg).toContain("tolerancia es de 10 minutos");
+    expect(msg).toContain("reserva un espacio en su agenda");
+    expect(msg).toContain("24 horas de anticipación");
+    expect(msg).toContain("penalización");
+    expect(msg).not.toContain("atendemos al siguiente");
+  });
+});

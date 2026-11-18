@@ -144,3 +144,35 @@ describe("/api/medical/reschedule", () => {
     expect(dbMock.assignAppt).not.toHaveBeenCalled();
   });
 });
+
+// Feedback 17/11 del dueño: tolerancia con consecuencia según tipo de consulta.
+const { buildRescheduleMessage } = await import("./_reschedule.js");
+
+describe("buildRescheduleMessage — tolerancia por tipo de consulta", () => {
+  const base = {
+    ownerName: "Juan Pérez",
+    petName: "Rex",
+    specialtyName: null,
+    branchLabel: "Sede San Miguel",
+    doctorName: "Dr. Uno",
+    oldDate: "2026-11-20",
+    oldMinute: 540,
+    newDate: "2026-11-21",
+    newMinute: 600,
+    appointmentCode: "CM-TEST1",
+    branchPhone: "51954599221",
+  };
+
+  it("GENERAL: tolerancia 10 min + se atiende al siguiente en espera", () => {
+    const msg = buildRescheduleMessage(base);
+    expect(msg).toContain("tolerancia es de 10 minutos y luego atendemos al siguiente en espera");
+    expect(msg).not.toContain("penalización");
+  });
+
+  it("ESPECIALIZADA: agenda reservada del externo + regla de 24h con penalización", () => {
+    const msg = buildRescheduleMessage({ ...base, specialtyName: "Cardiología" });
+    expect(msg).toContain("reserva un espacio en su agenda");
+    expect(msg).toContain("24 horas de anticipación");
+    expect(msg).toContain("penalización");
+  });
+});

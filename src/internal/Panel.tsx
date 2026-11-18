@@ -175,13 +175,22 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
     }
   }
 
+  // Feedback del dueño (17/11): las terminadas (entregadas/canceladas) NO
+  // quedan en la vista principal — hacen bulto y confunden. El chip las
+  // revela de un clic cuando el counter necesita revisarlas. Las búsquedas
+  // no se filtran (buscar un registro viejo es explícito).
+  const [showDone, setShowDone] = useState(false);
+  const isDone = (s: string) => s === "entregado" || s === "cancelado";
+  const doneCount = (bookings ?? []).filter((b) => isDone(b.status)).length;
+
   const bySlot = useMemo(() => {
     const list = searchResults ?? bookings ?? [];
+    const visible = searchResults ? list : showDone ? list : list.filter((b) => !isDone(b.status));
     return {
-      "9-11": list.filter((b) => b.timeSlot === "9-11"),
-      "11-14": list.filter((b) => b.timeSlot === "11-14"),
+      "9-11": visible.filter((b) => b.timeSlot === "9-11"),
+      "11-14": visible.filter((b) => b.timeSlot === "11-14"),
     };
-  }, [bookings, searchResults]);
+  }, [bookings, searchResults, showDone]);
 
   // Contadores de estado por franja (chips del header, referix visual rápida
   // para el counter).
@@ -320,6 +329,21 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
           <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
           Actualizar
         </button>
+        {/* Completadas del día (entregadas/canceladas): fuera de la vista
+            principal por defecto (feedback 17/11); el chip las revela. */}
+        {doneCount > 0 && (
+          <button
+            onClick={() => setShowDone((v) => !v)}
+            title={showDone ? "Oculta las reservas entregadas y canceladas" : "Muestra las reservas entregadas y canceladas del día"}
+            className={`rounded-2xl px-3 py-2.5 text-sm shadow-sm ring-1 transition ${
+              showDone
+                ? "bg-emerald-600 text-white ring-emerald-600"
+                : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"
+            }`}
+          >
+            ✓ Completadas ({doneCount})
+          </button>
+        )}
         <label className="ml-auto flex min-w-56 flex-1 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue sm:max-w-xs">
           <Search className="h-4 w-4 text-slate-400" />
           <input

@@ -59,7 +59,17 @@ export function buildReminderMessage(appt: {
     `👤 ${appt.ownerName.split(/\s+/)[0] ?? ""}`,
   ];
   if (appt.needsOrder) lines.push("", "📄 No olvides tu orden médica sellada por un médico.");
-  lines.push("", "⚠️ La tolerancia es de 10 minutos; luego se atiende al siguiente en espera.", "", "¡Nos vemos mañana! 🐶✨");
+  // Feedback 17/11 del dueño: la consecuencia cambia por tipo de consulta.
+  if (appt.specialtyName) {
+    lines.push(
+      "",
+      "⚠️ La tolerancia es de 10 minutos: el especialista reserva un espacio en su agenda y atiende a otros pacientes.",
+      "ℹ️ Recuerda: cancela o cambia tu cita con 24 horas de anticipación; después se aplica una penalización.",
+    );
+  } else {
+    lines.push("", "⚠️ La tolerancia es de 10 minutos; luego se atiende al siguiente en espera.");
+  }
+  lines.push("", "¡Nos vemos mañana! 🐶✨");
   return lines.filter(Boolean).join("\n").replace("* ", "* ") ;
 }
 

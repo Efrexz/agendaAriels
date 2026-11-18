@@ -56,6 +56,15 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   // Cambio de horario de una cita CONFIRMADA (fecha/hora/doctor, sin cancelar).
   const [reschedAppt, setReschedAppt] = useState<MedAppt | null>(null);
   const [tick, setTick] = useState(0);
+  // Feedback del dueño (17/11): atendidas / no llegaron / canceladas NO
+  // quedan en la vista principal (hacen bulto y confunden). El chip las
+  // revela de un clic; el Historial conserva el registro completo. Las
+  // búsquedas no se filtran (buscar un registro viejo es explícito).
+  const [showDone, setShowDone] = useState(false);
+  const doneCount = useMemo(
+    () => appts.filter((a) => a.status === "atendida" || a.status === "no_llego" || a.status === "cancelado").length,
+    [appts],
+  );
   // Toast de llegadas nuevas (citas creadas tras abrir el panel y aún no vistas)
   const [novelCount, setNovelCount] = useState(0);
   const sessionStartRef = useRef<number | null>(null);
@@ -166,15 +175,18 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
   }
 
   const grouped = useMemo(() => {
+    const visibles = showDone
+      ? appts
+      : appts.filter((a) => a.status !== "atendida" && a.status !== "no_llego" && a.status !== "cancelado");
     const map = new Map<string, MedAppt[]>();
-    for (const a of appts) {
+    for (const a of visibles) {
       const key = a.doctorName ?? `Sin doctor (${a.serviceType})`;
       const arr = map.get(key);
       if (arr) arr.push(a);
       else map.set(key, [a]);
     }
     return [...map.entries()];
-  }, [appts]);
+  }, [appts, showDone]);
 
   return (
     <div>
@@ -245,6 +257,21 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
             className="w-full text-sm outline-none"
           />
         </label>
+        {/* Completadas del día (atendidas/no llegaron/canceladas): fuera de la
+            vista principal por defecto (feedback 17/11); el chip las revela. */}
+        {doneCount > 0 && (
+          <button
+            onClick={() => setShowDone((v) => !v)}
+            title={showDone ? "Oculta las citas atendidas, no llegaron y canceladas" : "Muestra las citas atendidas, no llegaron y canceladas del período"}
+            className={`rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ring-1 transition ${
+              showDone
+                ? "bg-emerald-600 text-white ring-emerald-600"
+                : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"
+            }`}
+          >
+            ✓ Completadas ({doneCount})
+          </button>
+        )}
         <button
           onClick={() => setManualOpen(true)}
           className="flex items-center gap-1.5 rounded-2xl bg-brand-blue px-3.5 py-2.5 text-sm font-semibold text-white shadow-sm shadow-blue-600/20 transition hover:-translate-y-0.5 hover:bg-blue-700 active:translate-y-0"
@@ -274,6 +301,14 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
           {!busy && appts.length === 0 && (
             <p className="rounded-2xl bg-white/70 p-6 text-center text-sm text-slate-400">
               No hay citas para {vista === "hoy" ? "hoy" : vista === "manana" ? "mañana" : "esta semana"}{branch !== "all" ? ` en ${MED_BRANCHES.find((b) => b.value === branch)?.short}` : ""}
+            </p>
+          )}
+          {!busy && appts.length > 0 && grouped.length === 0 && (
+            <p className="rounded-2xl bg-white/70 p-6 text-center text-sm text-slate-400">
+              {doneCount === 1
+                ? "La única cita de este día ya fue atendida (o cancelada)."
+                : `Las ${doneCount} citas de este día ya fueron atendidas (o canceladas).`}{" "}
+              Quedan en 📚 Historial.
             </p>
           )}
           {grouped.map(([doctor, list]) => (
@@ -865,7 +900,7 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
         // Feedback 17/11 del dueño: expectativa del informe + lectura por el médico tratante.
         "⏱ El informe se entrega en un plazo aproximado de 24 horas después del examen.",
         "🔬 En la sede NO se da lectura de las imágenes: la lectura la hace su médico tratante.",
-        "⚠️ Llega puntual; la tolerancia es de 10 minutos.",
+        "⚠️ Llega puntual; la tolerancia es de 10 minutos y luego atendemos al siguiente en espera.",
         "¡Te esperamos! 🐶✨",
       ].filter(Boolean).join("\n")
     : null;

@@ -58,9 +58,22 @@ export function buildConfirmationMessage(appt: {
   if (appt.needsOrder) {
     lines.push("", "📄 IMPORTANTE: preséntate con tu orden médica sellada por un médico.");
   }
+  // Feedback 17/11 del dueño: la consecuencia de la tolerancia cambia por tipo
+  // de consulta. General: entra el siguiente en espera. Especializada: doctor
+  // externo con agenda reservada → tolerancia + regla de 24h con penalización.
+  if (appt.specialtyName) {
+    lines.push(
+      "",
+      "⚠️ La tolerancia es de 10 minutos: el especialista reserva un espacio en su agenda y atiende a otros pacientes.",
+      "ℹ️ Recuerda: cancela o cambia tu cita con 24 horas de anticipación; después se aplica una penalización.",
+    );
+  } else {
+    lines.push(
+      "",
+      "⚠️ Llega puntual; la tolerancia es de 10 minutos y luego atendemos al siguiente en espera.",
+    );
+  }
   lines.push(
-    "",
-    "⚠️ Llega puntual; la tolerancia es de 10 minutos.",
     `☎ Consultas: ${appt.branchPhone}`,
     "",
     "¡Te esperamos! 🐶✨",

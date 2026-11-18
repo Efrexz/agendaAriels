@@ -75,7 +75,13 @@ export function buildRescheduleMessage(appt: {
     "",
     `🔖 Código (no cambia): *${appt.appointmentCode}*`,
     "",
-    "⚠️ Llega puntual; la tolerancia es de 10 minutos.",
+    // Feedback 17/11 del dueño: consecuencia de la tolerancia por tipo de consulta.
+    ...(appt.specialtyName
+      ? [
+          "⚠️ La tolerancia es de 10 minutos: el especialista reserva un espacio en su agenda y atiende a otros pacientes.",
+          "ℹ️ Recuerda: cancela o cambia tu cita con 24 horas de anticipación; después se aplica una penalización.",
+        ]
+      : ["⚠️ Llega puntual; la tolerancia es de 10 minutos y luego atendemos al siguiente en espera."]),
     `☎ Consultas: ${appt.branchPhone}`,
     "",
     "¡Te esperamos! 🐶✨",
