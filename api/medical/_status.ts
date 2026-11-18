@@ -91,14 +91,16 @@ export function buildSurveyMessage(appt: {
 }, googleUrl: string | null): string {
   const lines = [
     `🐾 *¡Gracias por su visita, ${appt.ownerName.split(/\s+/)[0]}!*`,
-    `💙 ${appt.petName} ya está atendida.`,
+    `💙 *${appt.petName}* ya fue atendido/a.`,
     "",
     "Su opinión nos ayuda a mejorar cada día. ¿Nos responde aquí mismo? 🙏",
     "1️⃣ Del 1 al 5, ¿cómo califica la atención?",
     "2️⃣ ¿Nos recomendaría con sus conocidos?",
     "3️⃣ ¿Algo que podamos mejorar?",
   ];
-  if (googleUrl) lines.push("", `⭐ Y si nos llevó bien, califíquenos en Google: ${googleUrl}`);
+  // Feedback 18/11: "si nos llevó bien" sonaba confuso — ahora pide la
+  // reseña de forma clara y amable.
+  if (googleUrl) lines.push("", `⭐ Si le gustó la atención, califíquenos en Google: ${googleUrl}`);
   lines.push("", `🔖 Su código: ${appt.appointmentCode}`, "¡Gracias por confiar en Ariel's Clinic! 🐶✨");
   return lines.filter(Boolean).join("\n");
 }

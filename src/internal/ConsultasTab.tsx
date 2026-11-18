@@ -270,7 +270,7 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
                 : "bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50"
             }`}
           >
-            {showDone ? "☑" : "✓"} Completadas ({doneCount}){showDone ? " · viendo" : ""}
+            {showDone ? "☑" : "✓"} Completadas ({doneCount})
           </button>
         )}
         <button

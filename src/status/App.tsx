@@ -404,8 +404,9 @@ export default function App() {
       <div className="relative z-10">
         {/* Encabezado en línea: logo REAL de marca (el mismo del wizard de
             grooming) sobre pastilla blanca — el logo.webp tiene fondo blanco,
-            así flota bien sobre el fondo pastel. Marca naranja al lado. */}
-        <header className="mb-6 flex items-center gap-2.5">
+            así flota bien sobre el fondo pastel. Feedback 18/11: sin el texto
+            "Ariel's Clinic" al lado — el logo ya lo dice. */}
+        <header className="mb-6 flex items-center">
           <div className="flex items-center rounded-2xl bg-white/95 px-2.5 py-1.5 shadow-md shadow-blue-900/5 ring-1 ring-slate-100">
             <img
               src="/logo.webp"
@@ -414,7 +415,6 @@ export default function App() {
               draggable={false}
             />
           </div>
-          <span className="font-hand text-2xl leading-none text-brand-orange">Ariel&apos;s Clinic</span>
         </header>
         {/* Línea de acento de marca sobre el título */}
         <div aria-hidden className="mb-2 h-1 w-8 rounded-full bg-brand-orange" />

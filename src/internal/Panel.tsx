@@ -342,7 +342,7 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
                 : "bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50"
             }`}
           >
-            {showDone ? "☑" : "✓"} Completadas ({doneCount}){showDone ? " · viendo" : ""}
+            {showDone ? "☑" : "✓"} Completadas ({doneCount})
           </button>
         )}
         <label className="ml-auto flex min-w-56 flex-1 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue sm:max-w-xs">
