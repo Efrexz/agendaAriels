@@ -206,7 +206,9 @@ export function buildNextWeekRequestMessage(
 }
 
 /** Mensaje para rayos/eco CON orden (feedback 16/11 del counter): la orden se
- *  verifica con el doctor y el counter escribe después con fecha, hora y costo. */
+ *  verifica con el doctor y el counter escribe después con fecha, hora y costo.
+ *  Feedback 17/11 del dueño: fijar expectativa del informe (~24h) y aclarar que
+ *  la lectura de los resultados la hace el médico tratante, no la sede. */
 export function buildOrderRequestMessage(
   p: { ownerName: string; petName: string },
   serviceLabel: string,
@@ -222,7 +224,12 @@ export function buildOrderRequestMessage(
     "",
     "Recibimos tu orden sellada — nuestro personal la está verificando con el doctor.",
     "En cuanto confirmemos la disponibilidad te escribimos por este medio con la",
-    "fecha, hora y el costo. Sin llamadas ni trámites extra 🐶✨",
+    "fecha, hora y el costo. Sin llamadas ni trámites extra.",
+    "",
+    "⏱ El informe se entrega en un plazo aproximado de 24 horas después del examen.",
+    "",
+    "🔬 En la sede NO se da lectura de las imágenes: la lectura e interpretación",
+    "de los resultados las hace su médico tratante.",
     "",
     `☎ Consultas: ${BRANCH_PHONES[branch] ?? ""}`,
   ];

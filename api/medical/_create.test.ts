@@ -2,6 +2,7 @@ import { describe, it, expect, beforeEach } from "vitest";
 import {
   buildClientApptMessage,
   buildCounterAlert,
+  buildOrderRequestMessage,
   handleMedicalCreate,
 } from "./_create";
 
@@ -82,6 +83,22 @@ describe("plantillas de WhatsApp", () => {
       { serviceLabel: "Radiografía", doctor: "Dr. X", time: "10:00" },
     );
     expect(msg).toContain("orden médica sellada");
+  });
+
+  it("mensaje de orden RAYOS/ECO fija expectativa del informe (24h) y lectura por el médico tratante", () => {
+    const msg = buildOrderRequestMessage(
+      { ownerName: "Juan Pérez", petName: "Manolo" },
+      "Radiografía",
+      "CM-ORD01",
+      "san_miguel",
+    );
+    expect(msg).toContain("CM-ORD01");
+    expect(msg).toContain("Radiografía");
+    expect(msg).toContain("plazo aproximado de 24 horas");
+    expect(msg).toContain("NO se da lectura");
+    expect(msg).toContain("médico tratante");
+    // No promete una lectura que la sede no hace.
+    expect(msg).not.toContain("nosotros la leemos");
   });
 
   it("mensaje ESPECIALIZADA con métodos de pago y comprobante al WhatsApp de sede", () => {

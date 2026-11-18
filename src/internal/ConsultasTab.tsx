@@ -7,6 +7,7 @@ import {
 import { createAppointment, fetchDoctors, fetchSlots, fetchSpecialties, MED_BRANCHES, type MedBranch, type MedDoctor, type MedSlot, type MedSpecialty } from "../medical/api";
 import { MED_SERVICE_LABELS, MED_STATUS_META, medStatusMeta } from "../medicalStatuses";
 import { MiniWhatsApp } from "./MiniWhatsApp";
+import { printViaQzAppt } from "./qz";
 import { NewArrivalsToast } from "./NewArrivalsToast";
 import { ModalSection, ModalShell, FIELD_CLS } from "./ModalShell";
 import { ConfirmModal } from "./ConfirmModal";
@@ -794,6 +795,8 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
   const [resendMsg, setResendMsg] = useState<string | null>(null);
   // Orden subida por el cliente: abrirla firmada para el doctor.
   const [orderBusy, setOrderBusy] = useState(false);
+  // Ticket de cartelera (recordatorio interno): true mientras se imprime esta cita.
+  const [printing, setPrinting] = useState(false);
   // Marcas locales de reenvío (p.ej. en resultados de búsqueda la lista no se
   // refresca sola): se fusionan con el timeline del servidor para que el ⚠
   // responda al instante.
@@ -859,10 +862,47 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
         "",
         `🔖 Código: *${a.appointmentCode}*`,
         "",
+        // Feedback 17/11 del dueño: expectativa del informe + lectura por el médico tratante.
+        "⏱ El informe se entrega en un plazo aproximado de 24 horas después del examen.",
+        "🔬 En la sede NO se da lectura de las imágenes: la lectura la hace su médico tratante.",
         "⚠️ Llega puntual; la tolerancia es de 10 minutos.",
         "¡Te esperamos! 🐶✨",
       ].filter(Boolean).join("\n")
     : null;
+
+  // Etiquetas del ticket de cartelera (sede corta + servicio legible).
+  const branchLabel = MED_BRANCHES.find((b) => b.value === a.branch)?.short ?? a.branch;
+  const serviceLabel = MED_SERVICE_LABELS[a.serviceType] ?? a.serviceType;
+
+  // Ticket de cartelera (recordatorio interno del counter): QZ primero,
+  // fallback al diálogo del navegador con el área de impresión de panel.css.
+  function handlePrint() {
+    setPrinting(true);
+    void printViaQzAppt({
+      appointmentCode: a.appointmentCode,
+      branchLabel,
+      serviceLabel,
+      specialtyName: a.specialtyName,
+      doctorName: a.doctorName,
+      apptDate: a.apptDate,
+      startMinute: a.startMinute,
+      petName: a.petName,
+      petType: a.petType,
+      petNotes: a.petNotes,
+      ownerName: a.ownerName,
+      ownerPhone: a.ownerPhone,
+    }).then((ok) => {
+      if (ok) {
+        setPrinting(false);
+        return;
+      }
+      // Deja pintar el ticket (área de impresión) antes de abrir el diálogo.
+      setTimeout(() => {
+        window.print();
+        setPrinting(false);
+      }, 50);
+    });
+  }
 
   const nextActions: Array<[string, string]> = [];
   if (a.status === "confirmada") nextActions.push(["en_consulta", "🏥 Entró"], ["no_llego", "⏰ No llegó"], ["cancelado", "❌ Cancelar"]);
@@ -884,6 +924,9 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
 
   return (
     <article className={`rounded-2xl border-l-4 bg-white shadow-sm ring-1 ring-slate-200 ${MED_BORDER[a.status] ?? "border-l-slate-300"}`}>
+      {/* Impresión: solo visible con @media print cuando es el ticket activo */}
+      {printing && <PrintableApptTicket a={a} branchLabel={branchLabel} serviceLabel={serviceLabel} />}
+
       {/* Bloque visible: chip de hora + mascota + estado + código */}
       <div
         role="button"
@@ -1008,6 +1051,18 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
                 🕐 Cambiar horario
               </button>
             )}
+            {/* Ticket de cartelera (recordatorio interno): solo citas CONFIRMADAS,
+                que siempre tienen fecha/hora/doctor — se pega en la cartelera de pendientes. */}
+            {a.status === "confirmada" && (
+              <button
+                onClick={handlePrint}
+                disabled={printing}
+                title="Imprime el recordatorio de esta cita para la cartelera del counter"
+                className="flex items-center gap-1.5 rounded-lg bg-slate-100 px-3 py-1.5 text-xs font-semibold text-slate-700 ring-1 ring-slate-200 transition hover:bg-slate-200 disabled:opacity-50"
+              >
+                {printing ? "Imprimiendo…" : "🖨 Imprimir ticket"}
+              </button>
+            )}
             {/* Orden subida por el cliente (rayos/eco): URL firmada para el doctor. */}
             {(a.serviceType === "rayos" || a.serviceType === "eco") && a.orderPath && (
               <button
@@ -1081,6 +1136,30 @@ function ApptCard({ a, onStatus, onReagendar, onReschedule, onUpdate }: {
         />
       )}
     </article>
+  );
+}
+
+/** Ticket 80mm de cartelera: visible solo al imprimir vía .print-area en panel.css. */
+function PrintableApptTicket({ a, branchLabel, serviceLabel }: { a: MedAppt; branchLabel: string; serviceLabel: string }) {
+  return (
+    <div className="print-area">
+      <p style={{ textAlign: "center", fontWeight: 700 }}>VETERINARIA ARIEL</p>
+      <p style={{ textAlign: "center" }}>{branchLabel}</p>
+      <hr />
+      <p style={{ textAlign: "center", fontWeight: 700, fontSize: "14pt" }}>{a.appointmentCode}</p>
+      <hr />
+      <p style={{ fontWeight: 700 }}>{a.petName} ({a.petType})</p>
+      <p>Consulta: {serviceLabel}{a.specialtyName ? ` - ${a.specialtyName}` : ""}</p>
+      <p>Fecha: {a.apptDate ? a.apptDate.split("-").reverse().join("/") : "por confirmar"}</p>
+      <p>Hora: {a.startMinute !== null ? hour(a.startMinute) : "por confirmar"}</p>
+      {a.doctorName && <p>Doctor(a): {a.doctorName}</p>}
+      <hr />
+      <p>Cliente: {a.ownerName}</p>
+      <p>Tel: {a.ownerPhone}</p>
+      {a.petNotes.trim() && a.petNotes.trim() !== "-" && <p>Indicac.: {a.petNotes}</p>}
+      <hr />
+      <p style={{ textAlign: "center" }}>Recordatorio interno</p>
+    </div>
   );
 }
 
