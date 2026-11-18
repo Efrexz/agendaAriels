@@ -335,13 +335,14 @@ export function Panel({ onSignOut, embedded = false, jumpSearch = null }: { emai
           <button
             onClick={() => setShowDone((v) => !v)}
             title={showDone ? "Oculta las reservas entregadas y canceladas" : "Muestra las reservas entregadas y canceladas del día"}
-            className={`rounded-2xl px-3 py-2.5 text-sm shadow-sm ring-1 transition ${
+            aria-pressed={showDone}
+            className={`rounded-2xl px-3 py-2.5 text-sm shadow-sm transition ${
               showDone
-                ? "bg-emerald-600 text-white ring-emerald-600"
-                : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"
+                ? "bg-emerald-600 text-white ring-2 ring-emerald-700 ring-offset-1"
+                : "bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50"
             }`}
           >
-            ✓ Completadas ({doneCount})
+            {showDone ? "☑" : "✓"} Completadas ({doneCount}){showDone ? " · viendo" : ""}
           </button>
         )}
         <label className="ml-auto flex min-w-56 flex-1 items-center gap-2 rounded-2xl bg-white px-3 py-2.5 shadow-sm ring-1 ring-slate-200 outline-none transition focus-within:ring-brand-blue sm:max-w-xs">

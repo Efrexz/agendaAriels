@@ -126,9 +126,15 @@ export default async function handler(req: Req, res: Res) {
     }
     const weekday = weekdayOf(apptDate);
     const schedules = await db.listDoctorSchedules(doctorId);
-    const inWindow = schedules.some(
-      (s) => s.weekday === weekday && startMinute >= s.startMinute && end <= s.endMinute,
-    );
+    // Feedback 18/11 del dueño: los ESPECIALISTAS son externos y NO tienen
+    // horario en ⚙ Config — el counter asigna la hora exacta que el doctor
+    // indicó (la grilla del wizard es para generales). Sí se mantiene el
+    // candado de solapamiento (el externo también agenda una cita a la vez).
+    const inWindow =
+      appt.serviceType === "especializada" ||
+      schedules.some(
+        (s) => s.weekday === weekday && startMinute >= s.startMinute && end <= s.endMinute,
+      );
     if (!inWindow) {
       res.status(409).json({ ok: false, error: "Esa hora no está dentro del horario del doctor." });
       return;

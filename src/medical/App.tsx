@@ -316,8 +316,9 @@ export default function App() {
       branch: b,
       doctorId: null,
       doctorName: null,
-      date: null,
       startMinute: null,
+      // Feedback 18/11 (QA del dueño): la FECHA se conserva — el cliente quiere
+      // ese día; la HORA se deselecciona (la disponibilidad es por sede/doctor).
       ...(f.serviceType === "especializada"
         ? specialty
           ? { specialtyId: specialty.id, specialtyName: specialty.name, specialtyCost: specialty.cost }
@@ -325,14 +326,16 @@ export default function App() {
         : {}),
     }));
     setCambiar(null);
-    // Agenda-flow (general/rayos/eco sin orden): la hora depende de la sede →
-    // se re-elige ahí (el paso agenda no deja volver a datos sin franja elegida).
-    if (reEligeAgenda) go("agenda");
+    // Agenda-flow (general/rayos/eco sin orden): los DOCTORES son por sede →
+    // se elige el doctor de la sede nueva y de ahí se pasa a la agenda con la
+    // fecha ya seleccionada (la hora se re-elige con el horario real del doctor).
+    if (reEligeAgenda) go("doctor");
   }
 
-  // Doctor: se resetea la agenda (la disponibilidad es por doctor) → agenda.
+  // Doctor: se conserva la fecha elegida; solo se deselecciona la hora
+  // (la disponibilidad es por doctor) → agenda.
   function aplicarDoctor(id: string, name: string) {
-    setForm((f) => ({ ...f, doctorId: id, doctorName: name, date: null, startMinute: null }));
+    setForm((f) => ({ ...f, doctorId: id, doctorName: name, startMinute: null }));
     setCambiar(null);
     go("agenda");
   }

@@ -157,12 +157,17 @@ export default async function handler(req: Req, res: Res) {
     }
 
     // Dentro del horario semanal del doctor cubriendo la duración completa.
+    // Excepción (feedback 18/11 del dueño): especializadas con doctor EXTERNO
+    // sin horario en ⚙ Config — la hora la dicta el especialista. El candado
+    // de solapamiento se mantiene.
     const end = startMinute + duration;
     const weekday = weekdayOf(apptDate);
     const schedules = await db.listDoctorSchedules(doctorId);
-    const inWindow = schedules.some(
-      (s) => s.weekday === weekday && startMinute >= s.startMinute && end <= s.endMinute,
-    );
+    const inWindow =
+      appt.serviceType === "especializada" ||
+      schedules.some(
+        (s) => s.weekday === weekday && startMinute >= s.startMinute && end <= s.endMinute,
+      );
     if (!inWindow) {
       res.status(409).json({ ok: false, error: "Esa hora no está dentro del horario del doctor." });
       return;

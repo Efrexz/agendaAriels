@@ -263,13 +263,14 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
           <button
             onClick={() => setShowDone((v) => !v)}
             title={showDone ? "Oculta las citas atendidas, no llegaron y canceladas" : "Muestra las citas atendidas, no llegaron y canceladas del período"}
-            className={`rounded-2xl px-3.5 py-2.5 text-sm shadow-sm ring-1 transition ${
+            aria-pressed={showDone}
+            className={`rounded-2xl px-3.5 py-2.5 text-sm shadow-sm transition ${
               showDone
-                ? "bg-emerald-600 text-white ring-emerald-600"
-                : "bg-white text-emerald-700 ring-emerald-200 hover:bg-emerald-50"
+                ? "bg-emerald-600 text-white ring-2 ring-emerald-700 ring-offset-1"
+                : "bg-white text-emerald-700 ring-1 ring-emerald-200 hover:bg-emerald-50"
             }`}
           >
-            ✓ Completadas ({doneCount})
+            {showDone ? "☑" : "✓"} Completadas ({doneCount}){showDone ? " · viendo" : ""}
           </button>
         )}
         <button
@@ -304,12 +305,20 @@ export function ConsultasTab({ jumpSearch = null }: { jumpSearch?: string | null
             </p>
           )}
           {!busy && appts.length > 0 && grouped.length === 0 && (
-            <p className="rounded-2xl bg-white/70 p-6 text-center text-sm text-slate-400">
-              {doneCount === 1
-                ? "La única cita de este día ya fue atendida (o cancelada)."
-                : `Las ${doneCount} citas de este día ya fueron atendidas (o canceladas).`}{" "}
-              Quedan en 📚 Historial.
-            </p>
+            <div className="rounded-3xl border border-emerald-100 bg-gradient-to-b from-emerald-50/80 to-white p-8 text-center shadow-sm ring-1 ring-emerald-100">
+              <span className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-emerald-100 text-2xl" aria-hidden>
+                🎉
+              </span>
+              <p className="font-display text-lg font-bold text-emerald-800">
+                {doneCount === 1 ? "¡Día completo!" : "¡Día completo!"}
+              </p>
+              <p className="mx-auto mt-1 max-w-md text-sm leading-relaxed text-slate-500">
+                {doneCount === 1
+                  ? "La única cita de este día ya fue atendida (o cancelada)."
+                  : `Las ${doneCount} citas de este día ya fueron atendidas (o canceladas).`}{" "}
+                El registro completo vive en 📚 <b>Historial</b>.
+              </p>
+            </div>
           )}
           {grouped.map(([doctor, list]) => (
             <section key={doctor}>
@@ -601,50 +610,76 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
             </select>
             <input type="date" value={date} onChange={(e) => void cargarSlots(e.target.value)} className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm" />
           </div>
-          {/* Estado inicial: sin fecha aún no hay horas que mostrar — guía el
+          {/* Feedback 18/11 del dueño: ESPECIALIZADAS = doctor externo sin
+              horario en ⚙ Config → SIN grilla de chips; el counter escribe la
+              hora exacta que el especialista indicó. */}
+          {a.serviceType === "especializada" ? (
+            date ? (
+              <div className="mt-2 rounded-lg bg-[#EFF5FC] px-3 py-2 ring-1 ring-blue-100">
+                <p className="mb-1.5 text-xs font-semibold text-[#3B5178]">
+                  ⏱ Hora exacta que indicó el especialista (los externos no tienen horario fijo):
+                </p>
+                <input
+                  type="time"
+                  step={300}
+                  value={manualTime}
+                  onChange={(e) => setManualHour(e.target.value)}
+                  className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
+                />
+                {startMin !== null && !manualTime && (
+                  <p className="mt-1.5 text-xs text-slate-500">Escribe la hora para habilitar la confirmación.</p>
+                )}
+              </div>
+            ) : null
+          ) : (
+            <>
+              {/* Estado inicial: sin fecha aún no hay horas que mostrar — guía el
               flujo (antes quedaba un input de hora suelto sin contexto). */}
-          {!date && (
-            <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
-              <Clock className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
-              Elige una fecha para ver las horas del doctor.
-            </p>
-          )}
-          {date && slots.length === 0 && docBlocks.length === 0 && (
-            <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-100">
-              Sin horas en el horario semanal de ⚙ Config para ese día — usa una
-              hora excepcional, o pide configurar el horario del doctor.
-            </div>
-          )}
-          {/* Slots librados sin horario semanal en memoria local (ej. la API de
-              horarios falló): no perder las horas sugeridas — chips simples. */}
-          {date && docBlocks.length === 0 && slots.length > 0 && (
-            <div className="mt-2 flex flex-wrap gap-1.5">
-              {slots.map((s) => (
-                <button
-                  key={s.startMinute}
-                  onClick={() => { setStart(s.startMinute); setManualTime(""); }}
-                  className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
-                    startMin === s.startMinute && !manualTime
-                      ? "bg-brand-orange text-white"
-                      : "bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100"
-                  }`}
-                >
-                  {s.label}
-                </button>
-              ))}
-            </div>
-          )}
-          {chipsManaña.length > 0 && (
-            <div className="mt-2 flex flex-col gap-2">
-              <ChipGroup titulo="☀️ Mañana" grupo={chipsManaña} startMin={startMin} manualTime={manualTime}
-                onPick={(min) => { setStart(min); setManualTime(""); }} />
-              <ChipGroup titulo="🌇 Tarde" grupo={chipsTarde} startMin={startMin} manualTime={manualTime}
-                onPick={(min) => { setStart(min); setManualTime(""); }} />
-            </div>
+              {!date && (
+                <p className="mt-2 flex items-center gap-1.5 text-xs font-medium text-slate-500">
+                  <Clock className="h-3.5 w-3.5 shrink-0 text-brand-orange" />
+                  Elige una fecha para ver las horas del doctor.
+                </p>
+              )}
+              {date && slots.length === 0 && docBlocks.length === 0 && (
+                <div className="mt-2 rounded-lg bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800 ring-1 ring-amber-100">
+                  Sin horas en el horario semanal de ⚙ Config para ese día — usa una
+                  hora excepcional, o pide configurar el horario del doctor.
+                </div>
+              )}
+              {/* Slots librados sin horario semanal en memoria local (ej. la API de
+                  horarios falló): no perder las horas sugeridas — chips simples. */}
+              {date && docBlocks.length === 0 && slots.length > 0 && (
+                <div className="mt-2 flex flex-wrap gap-1.5">
+                  {slots.map((s) => (
+                    <button
+                      key={s.startMinute}
+                      onClick={() => { setStart(s.startMinute); setManualTime(""); }}
+                      className={`rounded-lg px-2.5 py-1 text-xs font-semibold ${
+                        startMin === s.startMinute && !manualTime
+                          ? "bg-brand-orange text-white"
+                          : "bg-orange-50 text-orange-700 ring-1 ring-orange-200 hover:bg-orange-100"
+                      }`}
+                    >
+                      {s.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+              {chipsManaña.length > 0 && (
+                <div className="mt-2 flex flex-col gap-2">
+                  <ChipGroup titulo="☀️ Mañana" grupo={chipsManaña} startMin={startMin} manualTime={manualTime}
+                    onPick={(min) => { setStart(min); setManualTime(""); }} />
+                  <ChipGroup titulo="🌇 Tarde" grupo={chipsTarde} startMin={startMin} manualTime={manualTime}
+                    onPick={(min) => { setStart(min); setManualTime(""); }} />
+                </div>
+              )}
+            </>
           )}
           {/* La excepción, no la regla (pedido explícito del dueño): desplegable
-              cuando hay grid; input directo solo en el fallback sin grid. */}
-          {chipsManaña.length > 0 ? (
+              cuando hay grid; input directo solo en el fallback sin grid.
+              En ESPECIALIZADAS no aplica: la hora manual ya es LA regla. */}
+          {a.serviceType !== "especializada" && (chipsManaña.length > 0 ? (
             <details className="mt-2 w-fit">
               <summary className="w-fit cursor-pointer select-none rounded-lg bg-white px-2.5 py-1.5 text-xs font-semibold text-brand-blue ring-1 ring-blue-100 hover:bg-blue-50">
                 ⏱ Otra hora (excepcional)
@@ -671,8 +706,8 @@ function PendingRow({ a, onChanged }: { a: MedAppt; onChanged: () => void }) {
                 className="rounded-lg border border-slate-300 px-2 py-1.5 text-sm"
               />
             </div>
-          ) : null}
-          {startMin !== null && manualTime && (
+          ) : null)}
+          {startMin !== null && manualTime && a.serviceType !== "especializada" && (
             <p className="mt-2 text-xs text-amber-700">
               ⚠️ Hora excepcional ({manualTime}) fuera del horario regular del doctor.
             </p>
@@ -1460,6 +1495,12 @@ function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: b
   const [startMinute, setStart] = useState<number | null>(appt.startMinute);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Hora manual (especializadas: doctor externo sin horario fijo).
+  const [manualTime, setManualTime] = useState(
+    appt.serviceType === "especializada" && appt.startMinute !== null
+      ? `${String(Math.floor(appt.startMinute / 60)).padStart(2, "0")}:${String(appt.startMinute % 60).padStart(2, "0")}`
+      : "",
+  );
   // Generales atienden general/rayos/eco; especialistas las especializadas.
   const wantKind = appt.serviceType === "especializada" ? "especialista" : "general";
 
@@ -1558,7 +1599,7 @@ function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: b
             </label>
             <label className="grid min-w-0 gap-1">
               <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Fecha</span>
-              <input type="date" value={date} onChange={(e) => void loadSlots(e.target.value)} className={`${FIELD_CLS} w-full`} />
+              <input type="date" value={date} onChange={(e) => { setManualTime(""); void loadSlots(e.target.value); }} className={`${FIELD_CLS} w-full`} />
             </label>
           </div>
           {slotsLoading && (
@@ -1570,25 +1611,50 @@ function RescheduleModal({ appt, onClose }: { appt: MedAppt; onClose: (reload: b
               </div>
             </div>
           )}
-          {!slotsLoading && !error && date && slots.length === 0 && (
-            <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
-              <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
-              <p className="text-xs leading-relaxed text-amber-800">
-                <b>El doctor no tiene horarios para este día.</b> Prueba otra fecha o cambia de doctor.
-              </p>
-            </div>
-          )}
-          {slots.length > 0 && (
-            <div className="grid gap-1">
-              <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
-              <div className="flex flex-wrap gap-1.5">
-                {slots.map((s) => (
-                  <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${startMinute === s.startMinute ? "bg-brand-orange text-white shadow-sm shadow-orange-200" : "bg-[#EFF5FC] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:bg-blue-50"}`}>
-                    {s.label}
-                  </button>
-                ))}
+          {/* Feedback 18/11 del dueño: especializadas = doctor externo SIN
+              horario fijo → hora manual en vez de grilla de slots. */}
+          {appt.serviceType === "especializada" ? (
+            date && !slotsLoading ? (
+              <div className="rounded-xl bg-[#EFF5FC] px-3 py-2.5 ring-1 ring-blue-100">
+                <p className="mb-1.5 text-xs font-semibold text-[#3B5178]">
+                  ⏱ Hora exacta que indicó el especialista (los externos no tienen horario fijo):
+                </p>
+                <input
+                  type="time"
+                  step={300}
+                  value={manualTime}
+                  onChange={(e) => {
+                    setManualTime(e.target.value);
+                    const [h, m] = e.target.value.split(":").map(Number);
+                    if (!Number.isNaN(h) && !Number.isNaN(m)) setStart((h ?? 0) * 60 + (m ?? 0));
+                  }}
+                  className={`${FIELD_CLS} w-40`}
+                />
               </div>
-            </div>
+            ) : null
+          ) : (
+            <>
+              {!slotsLoading && !error && date && slots.length === 0 && (
+                <div className="flex items-start gap-2.5 rounded-xl bg-amber-50 px-3 py-2.5 ring-1 ring-amber-200">
+                  <CalendarDays className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                  <p className="text-xs leading-relaxed text-amber-800">
+                    <b>El doctor no tiene horarios para este día.</b> Prueba otra fecha o cambia de doctor.
+                  </p>
+                </div>
+              )}
+              {slots.length > 0 && (
+                <div className="grid gap-1">
+                  <span className="text-[11px] font-bold uppercase tracking-wide text-slate-500">Hora</span>
+                  <div className="flex flex-wrap gap-1.5">
+                    {slots.map((s) => (
+                      <button key={s.startMinute} onClick={() => setStart(s.startMinute)} className={`rounded-lg px-2.5 py-1 text-xs font-bold transition focus:outline-none focus-visible:ring-2 focus-visible:ring-orange-300 ${startMinute === s.startMinute ? "bg-brand-orange text-white shadow-sm shadow-orange-200" : "bg-[#EFF5FC] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:bg-blue-50"}`}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           <div className="border-t border-slate-100 pt-3">

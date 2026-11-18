@@ -113,4 +113,22 @@ describe("plantillas de WhatsApp", () => {
     expect(msg).toContain("Yape: 900 000 000");
     expect(msg).toContain("captura del pago al WhatsApp de la sede");
   });
+
+  it("mensaje ESPECIALIZADA con monto visible (feedback 18/11: el cliente sabe cuánto pagar)", () => {
+    const msg = buildClientApptMessage(
+      payload({ serviceType: "especializada", date: null, doctorId: null, specialtyId: "11111111-1111-1111-1111-111111111111" }) as never,
+      "CM-PAY02",
+      { specialty: "Cardiología", specialtyCost: "180" },
+      "Yape: 900 000 000",
+    );
+    expect(msg).toContain("Monto de la consulta: S/ 180");
+    // Sin costo configurado no sale una línea vacía.
+    const sinCosto = buildClientApptMessage(
+      payload({ serviceType: "especializada", date: null, doctorId: null, specialtyId: "11111111-1111-1111-1111-111111111111" }) as never,
+      "CM-PAY03",
+      { specialty: "Cardiología" },
+      "Yape: 900 000 000",
+    );
+    expect(sinCosto).not.toContain("Monto de la consulta");
+  });
 });

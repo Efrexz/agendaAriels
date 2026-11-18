@@ -127,7 +127,7 @@ export function buildCounterAlert(p: CreatePayload, code: string, extra: Record<
     lines.push(`📄 Orden médica: ${p.hasOrder ? " presenta orden sellada" : "⚠️ SIN orden"}`);
   }
   if (p.serviceType === "especializada") {
-    lines.push("💰 Pago pactado: el cliente enviará comprobante por WhatsApp");
+    lines.push(`💰 Pago pactado: ${extra.specialtyCost ? `S/ ${extra.specialtyCost} — ` : ""}el cliente enviará comprobante por WhatsApp`);
   }
   if (p.doctorId) return lines.join("\n");
   return lines.join("\n");
@@ -140,6 +140,9 @@ export function buildClientApptMessage(
   paymentInfo?: string,
 ): string {
   if (p.serviceType === "especializada") {
+    // Feedback 18/11 del dueño: el monto VA en el mensaje — el cliente sabe
+    // exactamente cuánto pagar antes de elegir el método.
+    const monto = extra.specialtyCost ? `💰 *Monto de la consulta: S/ ${extra.specialtyCost}*` : null;
     const lines = [
       `🐾 *Solicitud registrada, ${p.ownerName.split(/\s+/)[0]}!*`,
       "",
@@ -147,6 +150,7 @@ export function buildClientApptMessage(
       `🐾 Mascota: ${p.petName}`,
       `🔖 Código: *${code}*`,
       "",
+      ...(monto ? [monto, ""] : []),
       "💳 *Para confirmar tu cita, escoge nuestros métodos de pago:*",
       paymentInfo ?? "(métodos de pago en configuración)",
       "",
@@ -307,6 +311,7 @@ export async function handleMedicalCreate(opts: {
 
   let doctorName: string | null = null;
   let specialtyName: string | null = null;
+  let specialtyCost: number | null = null;
 
   try {
     if (p.serviceType === "especializada") {
@@ -320,6 +325,7 @@ export async function handleMedicalCreate(opts: {
         return { status: 400, body: { ok: false, error: "Esta especialidad no atiende en esa sede." } };
       }
       specialtyName = spec.name;
+      specialtyCost = spec.cost;
     } else if (!orderFlow) {
       // general / rayos / eco: doctor + franja exacta (semana en curso), o
       // SOLICITUD sin hora si es de la próxima semana (agenda se publica lunes).
@@ -448,6 +454,7 @@ export async function handleMedicalCreate(opts: {
         ? "🗓 SOLICITUD PRÓXIMA SEMANA (hora por confirmar el lunes)"
         : p.serviceType === "especializada" ? "🎓 SOLICITUD ESPECIALIZADA (pago pendiente)" : null,
     specialty: specialtyName,
+    specialtyCost: specialtyCost !== null ? String(specialtyCost) : null,
     doctor: doctorName,
     time: requestedNextWeek ? null : p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null,
   });
@@ -462,7 +469,12 @@ export async function handleMedicalCreate(opts: {
       : buildClientApptMessage(
         p,
         code,
-        { specialty: specialtyName, doctor: doctorName, time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null },
+        {
+          specialty: specialtyName,
+          specialtyCost: specialtyCost !== null ? String(specialtyCost) : null,
+          doctor: doctorName,
+          time: p.startMinute !== null && p.startMinute !== undefined ? minuteToTime(p.startMinute) : null,
+        },
         config.payment_info,
       );
   const clientDest = normalizePhoneDest(p.ownerPhone);

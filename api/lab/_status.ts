@@ -44,7 +44,9 @@ export function buildLabResultMessage(order: {
     `🧪 *¡Resultados listos, ${order.ownerName.split(/\s+/)[0]}!*`,
     "",
     `🐾 Mascota: ${order.petName} · Examen: ${order.examType}`,
-    `🏥 Recoge el resultado y la explicación de tu doctor en: ${LAB_BRANCH_LABELS[order.sedeResponsable] ?? order.sedeResponsable}`,
+    // Feedback 18/11 del dueño: solo "recoge el resultado" — la lectura/la
+    // explicación NO es cosa de la sede (la hace su médico tratante).
+    `🏥 Recoge el resultado en: ${LAB_BRANCH_LABELS[order.sedeResponsable] ?? order.sedeResponsable}`,
     `🗓 A partir de: ${shortDateLima()}`,
     `🔖 Código: *${order.orderCode}*`,
     "",

@@ -102,6 +102,30 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     expect(patch.durationMinutes).toBe(60);
   });
 
+  it("ESPECIALIZADA (doctor externo): permite hora FUERA del horario de ⚙ Config (feedback 18/11)", async () => {
+    const date = limaPlus(1);
+    const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    // El externo NO tiene horario en Config: solo un bloque 9-13 en OTRO día.
+    dbMock.listDoctorSchedules.mockResolvedValue([{ weekday: (weekday + 3) % 7, startMinute: 540, endMinute: 780 }]);
+    const { res, entries } = makeRes();
+    await handler(
+      { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 1200 } }, // 8:00 pm
+      res,
+    );
+    expect(entries[0]).toMatchObject({ s: 200, b: { ok: true, status: "confirmada", notified: false } });
+  });
+
+  it("especializada SIGUE bloqueada si el doctor ya tiene una cita en esa hora (anti-solapamiento)", async () => {
+    const date = limaPlus(1);
+    dbMock.listApptsForDoctor.mockResolvedValue([{ startMinute: 1200, durationMinutes: 60 }]);
+    const { res, entries } = makeRes();
+    await handler(
+      { method: "POST", headers: {}, body: { id: appt.id, doctorId: doctor.id, apptDate: date, startMinute: 1200 } },
+      res,
+    );
+    expect(entries[0]).toMatchObject({ s: 409 });
+  });
+
   it("bloquea slot ocupado aunque la cita existente tenga duración 0 (bug original)", async () => {
     const date = limaPlus(1);
     dbMock.listApptsForDoctor.mockResolvedValue([{ startMinute: 540, durationMinutes: 0 }]);
@@ -114,9 +138,11 @@ describe("POST /api/medical/assign (asignación con duración real)", () => {
     expect(dbMock.assignAppt).not.toHaveBeenCalled();
   });
 
-  it("rechaza hora fuera del horario semanal del doctor", async () => {
+  it("rechaza hora fuera del horario semanal del doctor (general/rayos/eco; especializadas NO aplican)", async () => {
     const date = limaPlus(1);
     const weekday = new Date(`${date}T12:00:00Z`).getUTCDay();
+    dbMock.findApptById.mockResolvedValue({ ...appt, serviceType: "general" });
+    dbMock.listDoctors.mockResolvedValue([{ ...doctor, kind: "general" }]);
     dbMock.listDoctorSchedules.mockResolvedValue([{ weekday, startMinute: 540, endMinute: 780 }]);
     const { res, entries } = makeRes();
     await handler(

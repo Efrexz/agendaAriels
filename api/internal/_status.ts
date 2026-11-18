@@ -48,7 +48,7 @@ export const NOTIFIABLE: Record<string, (nombre: string, branchLabel: string) =>
   listo: (nombre, branchLabel) =>
     `✅ *¡${nombre} está${nombre.includes(", ") ? "n" : ""} listo${nombre.includes(", ") ? "s" : ""}!*\n\nYa puedes pasar por *${branchLabel}* o esperar la movilidad de entrega. 🐾`,
   en_camino_entrega: (nombre) =>
-    `🚐 *¡De regreso a casa!*\n\nLa movilidad va camino a llevarte a *${nombre}*. ¡Gracias por tu confianza! 🐶✨`,
+    `🚐 *¡De regreso a casa!*\n\nLa movilidad va camino a llevarte a *${nombre}*.\n\n🐾 Cuando llegue, por favor revisa bien a tu mascota. Si todo está conforme, firma la hoja de conformidad que te presentará nuestra movilidad.\n\n¡Gracias por tu confianza! 🐶✨`,
 };
 
 export function petNames(pets: Array<{ name: string }>): string {
