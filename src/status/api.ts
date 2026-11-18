@@ -32,11 +32,11 @@ export async function fetchTracking(code: string): Promise<TrackingResult> {
   return body.booking;
 }
 
-export async function fetchLabDownload(code: string, token: string): Promise<string> {
+export async function fetchLabDownload(code: string, token: string, resultId?: string): Promise<string> {
   const res = await fetch("/api/lab-download", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ code, token }),
+    body: JSON.stringify(resultId ? { code, token, result: resultId } : { code, token }),
     cache: "no-store",
     referrerPolicy: "no-referrer",
   });

@@ -519,9 +519,29 @@ function LabCard({ o, onStatus, onChanged }: {
   const [confirmCancel, setConfirmCancel] = useState(false);
   const [confirmBorrar, setConfirmBorrar] = useState(false);
   const [confirmReenvio, setConfirmReenvio] = useState(false);
+  // Resultados ADICIONALES (feedback 17/11: 2-3 exámenes por paciente):
+  // se cargan al abrir la card con resultado publicado.
+  const [extras, setExtras] = useState<Array<{ id: string; name: string }> | null>(null);
+  const [extrasTick, setExtrasTick] = useState(0);
+  const [confirmBorrarExtra, setConfirmBorrarExtra] = useState<string | null>(null);
   // Orden subida por el cliente (solicitudes web): URL firmada para el staff.
   const [orderBusy, setOrderBusy] = useState(false);
   const meta = labStatusMeta(o.status);
+
+  // Lista de archivos adicionales de la orden (solo con resultado publicado).
+  useEffect(() => {
+    if (!open || !o.resultPath || o.status !== "resultado_listo") return;
+    let active = true;
+    void (async () => {
+      try {
+        const res = await getLabResultUrl(o.id);
+        if (active) setExtras((res.results ?? []).filter((r) => r.id !== "principal").map((r) => ({ id: r.id, name: r.name })));
+      } catch {
+        if (active) setExtras([]);
+      }
+    })();
+    return () => { active = false; };
+  }, [open, o.id, o.resultPath, o.status, o.updatedAt, extrasTick]);
 
   async function verOrdenSubida() {
     setOrderBusy(true);
@@ -539,7 +559,7 @@ function LabCard({ o, onStatus, onChanged }: {
     }
   }
 
-  async function publicarResultado(file: File | null) {
+  async function publicarResultado(file: File | null, opts?: { replace?: boolean }) {
     if (!file) return;
     setResultBusy(true);
     setResultMsg(null);
@@ -551,10 +571,17 @@ function LabCard({ o, onStatus, onChanged }: {
         name: file.name,
         mime: file.type,
         size: file.size,
+        replace: opts?.replace === true,
       });
-      setResultMsg(published.notified
-        ? "✓ Resultado publicado y enlace privado enviado por WhatsApp."
-        : "⚠ Resultado publicado, pero el enlace no se envió. Usa 'Reenviar enlace' para intentarlo de nuevo.");
+      if (published.added) {
+        setResultMsg("✓ Resultado adicional agregado — el cliente lo descarga desde el MISMO enlace privado que ya recibió.");
+      } else {
+        setResultMsg(published.notified
+          ? "✓ Resultado publicado y enlace privado enviado por WhatsApp."
+          : "⚠ Resultado publicado, pero el enlace no se envió. Usa 'Reenviar enlace' para intentarlo de nuevo.");
+      }
+      setExtras(null);
+      setExtrasTick((t) => t + 1);
       onChanged();
     } catch (err) {
       setResultMsg(err instanceof Error ? err.message : "No se pudo publicar el resultado.");
@@ -577,16 +604,33 @@ function LabCard({ o, onStatus, onChanged }: {
     }
   }
 
-  async function verResultado() {
+  async function verResultado(resultId?: string) {
     setResultBusy(true);
     setResultMsg(null);
     try {
-      const { url } = await getLabResultUrl(o.id);
+      const { url } = await getLabResultUrl(o.id, resultId);
       window.open(url, "_blank", "noopener,noreferrer");
     } catch (err) {
       setResultMsg(err instanceof Error ? err.message : "No se pudo abrir el resultado.");
     } finally {
       setResultBusy(false);
+    }
+  }
+
+  async function borrarResultadoExtra(resultId: string) {
+    setResultBusy(true);
+    setResultMsg(null);
+    try {
+      await deleteLabResult(o.id, resultId);
+      setResultMsg("✓ Resultado adicional borrado.");
+      setExtras(null);
+      setExtrasTick((t) => t + 1);
+      onChanged();
+    } catch (err) {
+      setResultMsg(err instanceof Error ? err.message : "No se pudo borrar.");
+    } finally {
+      setResultBusy(false);
+      setConfirmBorrarExtra(null);
     }
   }
 
@@ -760,10 +804,31 @@ function LabCard({ o, onStatus, onChanged }: {
                   <button onClick={() => setConfirmReenvio(true)} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2.5 py-1 text-xs font-semibold text-white disabled:opacity-50">↗ Reenviar enlace</button>
                   <label className="cursor-pointer rounded-lg bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-700 hover:bg-slate-200">
                     🔁 Reemplazar
-                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)} />
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden disabled={resultBusy} onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null, { replace: true })} />
                   </label>
                   <button onClick={() => setConfirmBorrar(true)} disabled={resultBusy} className="rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-700 hover:bg-red-100">🗑 Borrar</button>
+                  {/* Feedback 17/11: varios exámenes por paciente — el archivo
+                      adicional comparte el MISMO enlace privado del cliente. */}
+                  <label className="cursor-pointer rounded-lg bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 hover:bg-emerald-100">
+                    ➕ Agregar otro resultado
+                    <input type="file" accept=".pdf,.jpg,.jpeg,.png" hidden disabled={resultBusy} onChange={(e) => void publicarResultado(e.target.files?.[0] ?? null)} />
+                  </label>
                 </div>
+              )}
+              {/* Resultados adicionales registrados (2..N) */}
+              {o.resultPath && extras === null && (
+                <p className="mt-1.5 text-[11px] text-slate-400">Cargando resultados adicionales…</p>
+              )}
+              {extras !== null && extras.length > 0 && (
+                <ul className="mt-2 flex flex-col gap-1">
+                  {extras.map((ex, i) => (
+                    <li key={ex.id} className="flex flex-wrap items-center gap-2 rounded-lg bg-white px-2.5 py-1.5 ring-1 ring-blue-100">
+                      <span className="text-xs font-semibold text-slate-700">📄 Examen {i + 2}</span>
+                      <button onClick={() => void verResultado(ex.id)} disabled={resultBusy} className="rounded-lg bg-brand-blue px-2 py-0.5 text-[11px] font-semibold text-white disabled:opacity-50">👁 Ver</button>
+                      <button onClick={() => setConfirmBorrarExtra(ex.id)} disabled={resultBusy} className="rounded-lg bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-red-700 hover:bg-red-100 disabled:opacity-50">🗑 Borrar</button>
+                    </li>
+                  ))}
+                </ul>
               )}
               {resultMsg && <p className="mt-1.5 text-xs text-slate-600">{resultMsg}</p>}
             </div>
@@ -804,6 +869,17 @@ function LabCard({ o, onStatus, onChanged }: {
             setConfirmCancel(false);
             onStatus(o, "cancelado");
           }}
+        />
+      )}
+
+      {confirmBorrarExtra && (
+        <ConfirmModal
+          title="¿Borrar este resultado adicional?"
+          description="El cliente dejará de verlo en su enlace privado (el resto de resultados sigue disponible)."
+          confirmLabel="Sí, borrar"
+          danger
+          onClose={() => setConfirmBorrarExtra(null)}
+          onConfirm={() => void borrarResultadoExtra(confirmBorrarExtra)}
         />
       )}
 

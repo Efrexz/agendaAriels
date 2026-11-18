@@ -1,7 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { newResultToken, resultTokenHash } from "./_access.js";
 
-const db = { findOrderByCode: vi.fn(), findResultAccessHash: vi.fn() };
+const db = { findOrderByCode: vi.fn(), findResultAccessHash: vi.fn(), listExtraResults: vi.fn(async () => []) };
 const sign = vi.fn(async () => ({ data: { signedUrl: "https://storage.test/signed" }, error: null }));
 vi.mock("./_shared.js", () => ({ getLabDb: () => db, notConfigured: () => false }));
 vi.mock("@supabase/supabase-js", () => ({ createClient: () => ({ storage: { from: () => ({ createSignedUrl: sign }) } }) }));
@@ -43,6 +43,25 @@ describe("descarga privada", () => {
       await handler({ method: "POST", body: { code: "LAB-ABCDE", token } }, res);
       expect(res.code).toBe(404);
     }
+    expect(sign).not.toHaveBeenCalled();
+  });
+
+  it("result=<id> firma el archivo ADICIONAL con el mismo token/ventana de la orden", async () => {
+    db.listExtraResults.mockResolvedValue([
+      { id: "9eb9cf5e-9e46-4a2c-8a7b-000000000099", path: "test/extra", name: "extra.pdf", publishedAt: new Date().toISOString() },
+    ]);
+    const res = response();
+    await handler({ method: "POST", body: { code: "LAB-ABCDE", token, result: "9eb9cf5e-9e46-4a2c-8a7b-000000000099" } }, res);
+    expect(res.code).toBe(200);
+    expect(res.body.url).toBe("https://storage.test/signed");
+    expect(sign).toHaveBeenCalledWith("test/extra", 60);
+  });
+
+  it("result=<id> inexistente en la orden: 404 sin firmar", async () => {
+    db.listExtraResults.mockResolvedValue([]);
+    const res = response();
+    await handler({ method: "POST", body: { code: "LAB-ABCDE", token, result: "9eb9cf5e-9e46-4a2c-8a7b-000000000031" } }, res);
+    expect(res.code).toBe(404);
     expect(sign).not.toHaveBeenCalled();
   });
 });

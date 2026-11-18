@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
-  db: { listExpiredResults: vi.fn(), finalizePurge: vi.fn() },
+  db: { listExpiredResults: vi.fn(), finalizePurge: vi.fn(), listExtraPaths: vi.fn(async () => []), deleteExtraResultsOfOrder: vi.fn(async () => undefined) },
   remove: vi.fn(),
 }));
 vi.mock("./_shared.js", () => ({ getLabDb: () => mocks.db, notConfigured: () => false }));

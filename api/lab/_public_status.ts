@@ -81,6 +81,12 @@ export async function buildLabStatusResponse(
     orderBody.resultExpired = true;
   } else if (order.resultPath && Number.isFinite(publishedMs)) {
     orderBody.resultAvailable = true;
+    // Feedback 17/11: puede haber VARIOS exámenes por orden. Se exponen los
+    // ids de los archivos adicionales (para pedir cada descarga) — nunca
+    // nombres ni paths (pueden hablar de la orden interna).
+    const extras = await db.listExtraResults(order.id);
+    orderBody.resultFiles = 1 + extras.length;
+    orderBody.resultExtraIds = extras.map((e) => e.id);
   } else if (!order.resultPath && Number.isFinite(publishedMs)) {
     orderBody.resultExpired = true;
   }

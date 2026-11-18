@@ -25,6 +25,10 @@ export interface TrackingLab {
   timeline: Array<{ status: string; createdAt: string }>;
   /** Hay un archivo, pero su descarga requiere el enlace privado. */
   resultAvailable?: boolean;
+  /** Cuántos archivos hay (1..N — feedback 17/11: varios exámenes por orden). */
+  resultFiles?: number;
+  /** Ids de los archivos ADICIONALES (2..N) para pedir cada descarga. */
+  resultExtraIds?: string[];
   /** true → el resultado existió pero su ventana de 20 días ya terminó. */
   resultExpired?: boolean;
 }

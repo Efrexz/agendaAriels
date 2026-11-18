@@ -3,7 +3,12 @@ import { z } from "zod/v4";
 import { getLabDb, notConfigured } from "./_shared.js";
 import { resultAvailable, tokenMatches } from "./_access.js";
 
-const SCHEMA = z.object({ code: z.string().regex(/^LAB-[A-Z0-9]{5}$/), token: z.string().regex(/^[A-Za-z0-9_-]{43}$/) });
+const SCHEMA = z.object({
+  code: z.string().regex(/^LAB-[A-Z0-9]{5}$/),
+  token: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
+  /** Opcional: id de un resultado ADICIONAL (2..N). Sin él sirve el primero. */
+  result: z.string().uuid().optional(),
+});
 
 interface Req { method?: string; body?: unknown }
 interface Res { status(code: number): Res; json(payload: unknown): Res; setHeader(name: string, value: string): unknown }
@@ -23,8 +28,16 @@ export default async function handler(req: Req, res: Res) {
       res.status(404).json({ ok: false, error: "Enlace no disponible o vencido. Solicita uno nuevo a la sede." });
       return;
     }
+    // Resultado adicional (2..N): mismo token y ventana de la orden, archivo propio.
+    let path = order.resultPath!;
+    if (parsed.data.result) {
+      const extras = await db.listExtraResults(order.id);
+      const extra = extras.find((e) => e.id === parsed.data.result);
+      if (!extra) { res.status(404).json({ ok: false, error: "Enlace no disponible o vencido. Solicita uno nuevo a la sede." }); return; }
+      path = extra.path;
+    }
     const client = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, { auth: { persistSession: false } });
-    const { data, error } = await client.storage.from("lab-results").createSignedUrl(order.resultPath!, 60);
+    const { data, error } = await client.storage.from("lab-results").createSignedUrl(path, 60);
     if (error || !data?.signedUrl) { res.status(503).json({ ok: false, error: "No pudimos abrir el resultado. Intenta nuevamente." }); return; }
     res.status(200).json({ ok: true, url: data.signedUrl });
   } catch {

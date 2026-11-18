@@ -267,6 +267,10 @@ export default function App() {
   const [error, setError] = useState<string | null>(null);
   // Costos de rayos/eco (⚙ Config): clientes preguntan cuánto cuestan (17/11).
   const [prices, setPrices] = useState<{ rayos: string | null; eco: string | null } | null>(null);
+  // Feedback del dueño (17/11): cambiar sede o doctor DESDE el resumen sin
+  // salir del paso de datos. El servicio sigue re-caminando pasos (cada
+  // servicio tiene un flujo distinto) — ese "Cambiar" queda como estaba.
+  const [cambiar, setCambiar] = useState<"sede" | "doctor" | null>(null);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion() ?? false;
@@ -301,6 +305,38 @@ export default function App() {
     setStep(s);
   }, []);
 
+  // ── Aplicar cambios desde el resumen (feedback del dueño 17/11) ──
+  // Sede: se resetea TODO lo que depende de la sede (doctor, agenda y, en
+  // especializadas, la especialidad — se re-eligió en el mismo modal). El
+  // servicio y la orden subida se conservan (van atados al flujo, no a la sede).
+  function aplicarSede(b: MedBranch, specialty: MedSpecialty | null) {
+    const reEligeAgenda = form.serviceType !== "especializada" && form.startMinute !== null;
+    setForm((f) => ({
+      ...f,
+      branch: b,
+      doctorId: null,
+      doctorName: null,
+      date: null,
+      startMinute: null,
+      ...(f.serviceType === "especializada"
+        ? specialty
+          ? { specialtyId: specialty.id, specialtyName: specialty.name, specialtyCost: specialty.cost }
+          : { specialtyId: null, specialtyName: null, specialtyCost: null }
+        : {}),
+    }));
+    setCambiar(null);
+    // Agenda-flow (general/rayos/eco sin orden): la hora depende de la sede →
+    // se re-elige ahí (el paso agenda no deja volver a datos sin franja elegida).
+    if (reEligeAgenda) go("agenda");
+  }
+
+  // Doctor: se resetea la agenda (la disponibilidad es por doctor) → agenda.
+  function aplicarDoctor(id: string, name: string) {
+    setForm((f) => ({ ...f, doctorId: id, doctorName: name, date: null, startMinute: null }));
+    setCambiar(null);
+    go("agenda");
+  }
+
   const update = useCallback(<K extends keyof FormData>(field: K, value: FormData[K]) => {
     setForm((f) => ({ ...f, [field]: value }));
   }, []);
@@ -311,8 +347,7 @@ export default function App() {
       sede: "sede", servicio: "sede", examen: "servicio", orden: "examen", subir_orden: "orden",
       examen_lab: "subir_orden", sin_orden: "servicio",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
-    };
-    const orderFlow =
+    };    const orderFlow =
       (form.serviceType === "rayos" || form.serviceType === "eco") && form.hasOrder === true;
     // Especializada ("interconsulta") no pasa por el calendario: su fecha la
     // fija el counter después del pago. El back de datos/agenda regresa a la
@@ -1542,7 +1577,18 @@ export default function App() {
 
                   {/* Ticket de resumen + CTA (primero en móvil, pegote en desktop) */}
                   <aside className="order-first lg:order-none lg:sticky lg:top-24">
-                    <Resumen form={form} header onLink={(t) => go(t)} />
+                    {/* Feedback del dueño (17/11): sede y doctor se cambian AQUÍ
+                        (modal inline) sin re-caminar el wizard; servicio/agenda
+                        conservan los links de siempre. */}
+                    <Resumen
+                      form={form}
+                      header
+                      onLink={(t) => {
+                        if (t === "sede") setCambiar("sede");
+                        else if (t === "doctor") setCambiar("doctor");
+                        else go(t);
+                      }}
+                    />
                     {form.serviceType === "especializada" && (
                       <motion.div
                         initial={{ opacity: 0, y: reduceMotion ? 0 : 6 }}
@@ -1578,6 +1624,14 @@ export default function App() {
                       Tus datos están protegidos y serán usados solo para la gestión de tu cita.
                     </p>
                   </aside>
+
+                  {/* Modales inline del resumen (feedback del dueño 17/11) */}
+                  {cambiar === "sede" && (
+                    <CambiarSedeModal form={form} onClose={() => setCambiar(null)} onApply={aplicarSede} />
+                  )}
+                  {cambiar === "doctor" && (
+                    <CambiarDoctorModal form={form} onClose={() => setCambiar(null)} onApply={aplicarDoctor} />
+                  )}
                 </section>
               )}
 
@@ -2289,4 +2343,196 @@ function requestedNextWeek(dateKey: string): boolean {
   const toSunday = 6 - ((wd + 6) % 7);
   const weekEndKey = new Date(base.getTime() + toSunday * 86400_000).toISOString().slice(0, 10);
   return dateKey > weekEndKey;
+}
+
+// ── Modales inline del resumen (feedback del dueño 17/11) ──────────────────
+// Cambiar sede o doctor SIN salir del paso de datos. Overlay + card propia,
+// sin framer-motion (los modales del wizard no dependen del step).
+
+function ModalShellInline({ onClose, title, subtitle, children, label }: {
+  onClose: () => void;
+  title: string;
+  subtitle: string;
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4" role="dialog" aria-modal="true" aria-label={label}>
+      <div className="absolute inset-0 bg-blue-950/40" onClick={onClose} />
+      <div className="relative max-h-[85vh] w-full max-w-md overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl">
+        <button
+          onClick={onClose}
+          className="absolute right-3 top-3 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600"
+          aria-label="Cerrar"
+        >
+          ✕
+        </button>
+        <h3 className="pr-8 font-display text-xl font-bold leading-tight text-brand-blue">{title}</h3>
+        <p className="mb-4 mt-1 text-xs text-[#8A97B1]">{subtitle}</p>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+/** Cambiar de sede desde el resumen. En ESPECIALIZADAS la especialidad es POR
+ *  SEDE: se re-elige en el mismo modal (dos pantallas) antes de aplicar. */
+function CambiarSedeModal({ form, onClose, onApply }: {
+  form: FormData;
+  onClose: () => void;
+  onApply: (branch: MedBranch, specialty: MedSpecialty | null) => void;
+}) {
+  const esEsp = form.serviceType === "especializada";
+  const [sede, setSede] = useState<MedBranch | null>(null);
+  const [specs, setSpecs] = useState<MedSpecialty[] | null>(null);
+  const [specLoading, setSpecLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function elegirSede(b: MedBranch) {
+    if (b === form.branch) { onClose(); return; }
+    if (!esEsp) { onApply(b, null); return; }
+    // Especializada: la especialidad depende de la sede → se re-elige aquí.
+    setSede(b);
+    setSpecs(null);
+    setSpecLoading(true);
+    setError(null);
+    try {
+      setSpecs(await fetchSpecialties(b));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error de conexión");
+    } finally {
+      setSpecLoading(false);
+    }
+  }
+
+  const sedeElegida = MED_BRANCHES.find((b) => b.value === sede);
+  return (
+    <ModalShellInline
+      onClose={onClose}
+      label="Cambiar sede"
+      title={sedeElegida ? `Especialidad en ${sedeElegida.short}` : "Cambia de sede"}
+      subtitle={sedeElegida
+        ? "Las especialidades se ofrecen por sede — elige la que necesitas para tu consulta."
+        : "Tu servicio y tus datos se conservan — solo eliges dónde atenderte."}
+    >
+      {(!esEsp || sede === null) ? (
+        <div className="grid gap-2">
+          {MED_BRANCHES.map((b) => (
+            <button
+              key={b.value}
+              onClick={() => void elegirSede(b.value)}
+              disabled={specLoading}
+              className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md disabled:opacity-60 ${
+                form.branch === b.value
+                  ? "border-blue-300 bg-[#F7FBFF] ring-1 ring-blue-300"
+                  : "border-[#DCEBFF] bg-white hover:border-blue-300"
+              }`}
+            >
+              <img src={b.image} alt="" className="h-11 w-11 shrink-0 rounded-xl object-cover" />
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-[#1A2238]">{b.short}</span>
+                <span className="block text-[11px] text-[#8A97B1]">{b.label}</span>
+              </span>
+              {form.branch === b.value && <Check className="h-5 w-5 shrink-0 text-green-600" strokeWidth={3} />}
+            </button>
+          ))}
+          {specLoading && (
+            <p className="flex items-center gap-2 text-xs text-slate-500">
+              <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando especialidades…
+            </p>
+          )}
+        </div>
+      ) : (
+        <div className="grid gap-2">
+          {specs !== null && specs.length === 0 && (
+            <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+              Sin especialidades activas en esta sede por ahora — elige otra sede o escríbenos por WhatsApp.
+            </p>
+          )}
+          {specs?.map((s) => (
+            <button
+              key={s.id}
+              onClick={() => onApply(sede, s)}
+              className="flex items-center justify-between gap-3 rounded-2xl border border-[#DCEBFF] bg-white p-3 text-left transition-all hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md"
+            >
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-bold text-[#1A2238]">{s.name}</span>
+                {s.cost > 0 && (
+                  <span className="block text-[11px] text-[#8A97B1]">Consulta: S/ {s.cost.toFixed(0)} (pago por adelantado)</span>
+                )}
+              </span>
+              <ChevronRight className="h-4 w-4 shrink-0 text-slate-400" />
+            </button>
+          ))}
+          <button onClick={() => { setSede(null); setSpecs(null); }} className="mt-1 self-start text-xs font-semibold text-blue-500 transition hover:underline">
+            ‹ Elegir otra sede
+          </button>
+        </div>
+      )}
+      {error && <p className="mt-3 rounded-xl bg-red-50 p-2.5 text-xs text-red-700">{error}</p>}
+    </ModalShellInline>
+  );
+}
+
+/** Cambiar de doctor desde el resumen (solo general/rayos/eco sin orden: las
+ *  especializadas no piden doctor — lo asigna el counter tras el pago). */
+function CambiarDoctorModal({ form, onClose, onApply }: {
+  form: FormData;
+  onClose: () => void;
+  onApply: (doctorId: string, doctorName: string) => void;
+}) {
+  const [doctors, setDoctors] = useState<MedDoctor[] | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      try {
+        // Generales atienden general/rayos/eco (mismo filtro del paso doctor).
+        const all = await fetchDoctors(form.branch ?? "san_miguel", "general");
+        if (active) setDoctors(all);
+      } catch (err) {
+        if (active) setError(err instanceof Error ? err.message : "Error de conexión");
+      }
+    })();
+    return () => { active = false; };
+  }, [form.branch]);
+
+  return (
+    <ModalShellInline
+      onClose={onClose}
+      label="Cambiar doctor"
+      title="Cambia de doctor"
+      subtitle="Al cambiar, la hora se vuelve a elegir (la disponibilidad es por doctor)."
+    >
+      {doctors !== null && doctors.length === 0 && (
+        <p className="rounded-xl bg-amber-50 p-3 text-xs text-amber-800">
+          Sin doctores disponibles en esta sede por ahora — escríbenos por WhatsApp.
+        </p>
+      )}
+      <div className="grid gap-2">
+        {doctors?.map((d) => (
+          <button
+            key={d.id}
+            onClick={() => onApply(d.id, d.name)}
+            className={`flex items-center gap-3 rounded-2xl border p-3 text-left transition-all hover:-translate-y-0.5 hover:shadow-md ${
+              form.doctorId === d.id
+                ? "border-blue-300 bg-[#F7FBFF] ring-1 ring-blue-300"
+                : "border-[#DCEBFF] bg-white hover:border-blue-300"
+            }`}
+          >
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[#EFF6FF] font-display text-sm font-bold text-brand-blue">
+              {d.name.replace(/^Dr(a)?\.?\s*/i, "").slice(0, 2).toUpperCase()}
+            </span>
+            <span className="min-w-0 flex-1">
+              <span className="block text-sm font-bold text-[#1A2238]">{d.name}</span>
+              <span className="block text-[11px] text-[#8A97B1]">{d.specialty ?? "Medicina Veterinaria General"}</span>
+            </span>
+            {form.doctorId === d.id && <Check className="h-5 w-5 shrink-0 text-green-600" strokeWidth={3} />}
+          </button>
+        ))}
+      </div>
+      {error && <p className="mt-3 rounded-xl bg-red-50 p-2.5 text-xs text-red-700">{error}</p>}
+    </ModalShellInline>
+  );
 }

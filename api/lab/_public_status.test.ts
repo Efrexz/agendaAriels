@@ -3,6 +3,7 @@ import { describe, it, expect, vi, beforeEach } from "vitest";
 const dbMock = {
   findOrderByCode: vi.fn(),
   listStatusUpdatesMany: vi.fn(),
+  listExtraResults: vi.fn(async () => []),
 };
 
 vi.mock("./_shared.js", () => ({

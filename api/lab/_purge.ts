@@ -65,9 +65,14 @@ export default async function handler(req: Req, res: Res) {
       for (const o of expired) {
         try {
           if (!o.resultPath || !o.resultPublishedAt) { failed += 1; continue; }
-          const { error } = await storage.remove([o.resultPath]);
+          // Purga completa: principal + resultados adicionales (2..N) — todos
+          // comparten la ventana de la orden y expiran con ella.
+          const extraPaths = await db.listExtraPaths(o.id);
+          const paths = [o.resultPath, ...extraPaths];
+          const { error } = await storage.remove(paths);
           if (error) throw new Error("No se pudo borrar el archivo en Storage.");
           const finalized = await db.finalizePurge(o.id, o.status, o.resultPath, o.resultPublishedAt);
+          if (extraPaths.length > 0) await db.deleteExtraResultsOfOrder(o.id);
           if (finalized) purged += 1;
           else changed += 1; // El archivo fue reemplazado mientras corría la purga.
         } catch (err) {

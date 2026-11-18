@@ -749,23 +749,27 @@ function LabView({
 }) {
   const current = labStatusMeta(order.status);
   const reduceMotion = useReducedMotion() ?? false;
-  const [downloadBusy, setDownloadBusy] = useState(false);
+  const [downloadBusy, setDownloadBusy] = useState<string | null>(null);
   const [downloadError, setDownloadError] = useState<string | null>(null);
-  async function download() {
+  // Varios exámenes por orden (feedback 17/11): un botón por archivo. El
+  // primero no lleva id (archivo principal); los demás van por su id.
+  const extraIds = order.resultExtraIds ?? [];
+  const files = Math.max(1, order.resultFiles ?? 1);
+  async function download(resultId?: string) {
     // Abrir desde el clic evita que el navegador bloquee la ventana tras el fetch.
     const tab = window.open("", "_blank");
     if (tab) tab.opener = null;
-    setDownloadBusy(true);
+    setDownloadBusy(resultId ?? "principal");
     setDownloadError(null);
     try {
-      const url = await fetchLabDownload(order.orderCode, token);
+      const url = await fetchLabDownload(order.orderCode, token, resultId);
       if (tab) tab.location.href = url;
       else window.location.assign(url);
     } catch (err) {
       tab?.close();
       setDownloadError(err instanceof Error ? err.message : "No pudimos abrir el resultado.");
     } finally {
-      setDownloadBusy(false);
+      setDownloadBusy(null);
     }
   }
   return (
@@ -805,16 +809,40 @@ function LabView({
       </section>
       </div>
 
-      {/* Resultado del examen (ancho completo, bajo las 2 columnas) */}
+      {/* Resultado del examen (ancho completo, bajo las 2 columnas).
+          Varios exámenes (feedback 17/11): un botón por archivo. */}
       {order.resultAvailable && (
         <section className="mt-4 rounded-3xl bg-white p-6 text-center shadow-sm ring-2 ring-green-200">
-          <p className="text-sm font-semibold text-slate-800">📄 Tu resultado ya está disponible</p>
-          {token ? <button onClick={() => void download()} disabled={downloadBusy} className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50">
-            {downloadBusy ? "Abriendo…" : "⬇ Descargar resultado"}
-          </button> : <p className="mt-2 text-xs text-slate-500">Para descargarlo, abre el enlace privado que te enviamos por WhatsApp. Si no lo recibiste, solicítalo a la sede.</p>}
+          <p className="text-sm font-semibold text-slate-800">
+            📄 {files > 1 ? `Tus ${files} resultados ya están disponibles` : "Tu resultado ya está disponible"}
+          </p>
+          {token ? (
+            <div className="mt-3 flex flex-wrap items-center justify-center gap-2">
+              {files === 1 ? (
+                <button onClick={() => void download()} disabled={downloadBusy !== null} className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50">
+                  {downloadBusy === "principal" ? "Abriendo…" : "⬇ Descargar resultado"}
+                </button>
+              ) : (
+                Array.from({ length: files }, (_, i) => {
+                  const resultId = i === 0 ? undefined : extraIds[i - 1];
+                  const label = `⬇ Examen ${i + 1}`;
+                  return (
+                    <button
+                      key={resultId ?? "principal"}
+                      onClick={() => void download(resultId)}
+                      disabled={downloadBusy !== null || (i > 0 && !resultId)}
+                      className="inline-flex items-center gap-1.5 rounded-full bg-green-600 px-5 py-2.5 text-xs font-semibold text-white transition hover:bg-green-700 disabled:opacity-50"
+                    >
+                      {downloadBusy === (resultId ?? "principal") ? "Abriendo…" : label}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          ) : <p className="mt-2 text-xs text-slate-500">{files > 1 ? "Para descargarlos" : "Para descargarlo"}, abre el enlace privado que te enviamos por WhatsApp. Si no lo recibiste, solicítalo a la sede.</p>}
           {downloadError && <p role="alert" className="mt-2 text-xs text-red-700">{downloadError}</p>}
           <p className="mt-2 text-[11px] text-slate-400">
-            No compartas tu enlace privado. El archivo está disponible durante 20 días desde su publicación.
+            No compartas tu enlace privado. Los archivos están disponibles durante 20 días desde su publicación.
           </p>
         </section>
       )}

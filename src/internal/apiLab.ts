@@ -169,7 +169,10 @@ export async function publishLabResult(input: {
   name: string;
   mime: string;
   size: number;
-}): Promise<{ ok: boolean; notified: boolean }> {
+  /** true = reemplaza el PRIMER archivo. Sin flag y con resultado ya
+   *  publicado, el archivo se registra como ADICIONAL (2..N). */
+  replace?: boolean;
+}): Promise<{ ok: boolean; notified: boolean; added?: boolean }> {
   return authedFetch("/api/internal/lab/result", {
     method: "POST",
     body: JSON.stringify(input),
@@ -180,10 +183,19 @@ export async function resendLabResult(id: string): Promise<{ notified: boolean }
   return authedFetch("/api/internal/lab/resend-result", { method: "POST", body: JSON.stringify({ id }) });
 }
 
-export async function getLabResultUrl(id: string): Promise<{ url: string; name: string }> {
-  return authedFetch(`/api/internal/lab/result?id=${encodeURIComponent(id)}`);
+export async function getLabResultUrl(id: string, resultId?: string): Promise<{
+  url: string;
+  name: string;
+  /** Lista completa (principal + adicionales) cuando no se pide uno concreto. */
+  results?: Array<{ id: string; name: string; url: string }>;
+}> {
+  const extra = resultId ? `&result=${encodeURIComponent(resultId)}` : "";
+  return authedFetch(`/api/internal/lab/result?id=${encodeURIComponent(id)}${extra}`);
 }
 
-export async function deleteLabResult(id: string): Promise<{ ok: boolean }> {
-  return authedFetch(`/api/internal/lab/result?id=${encodeURIComponent(id)}`, { method: "DELETE" });
+/** Borra el resultado principal (sin resultId — también elimina los
+ *  adicionales, mismo ciclo de publicación) o uno adicional concreto. */
+export async function deleteLabResult(id: string, resultId?: string): Promise<{ ok: boolean }> {
+  const extra = resultId ? `&result=${encodeURIComponent(resultId)}` : "";
+  return authedFetch(`/api/internal/lab/result?id=${encodeURIComponent(id)}${extra}`, { method: "DELETE" });
 }

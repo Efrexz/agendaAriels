@@ -395,6 +395,65 @@ export class LabDb {
     return (data ?? []).map((r) => rowToRecord(r as unknown as LabDbRow));
   }
 
+  // ── Resultados ADICIONALES (2..N, feedback 17/11 del dueño) ──
+  // El 1º vive en lab_orders.result_path con su token y ventana; estos
+  // comparten el MISMO enlace/token de la orden y expiran con ella.
+
+  async listExtraResults(orderId: string): Promise<Array<{ id: string; path: string; name: string; publishedAt: string }>> {
+    const { data, error } = await this.client
+      .from("lab_extra_results")
+      .select("id, path, name, published_at")
+      .eq("order_id", orderId)
+      .order("published_at", { ascending: true });
+    if (error) throw new Error(`listExtraResults: ${error.message}`);
+    return (data ?? []).map((r) => ({ id: String(r.id), path: r.path, name: r.name, publishedAt: r.published_at }));
+  }
+
+  /** Registra un archivo adicional. Devuelve null si el path ya estaba
+   *  registrado (UNIQUE order_id+path) — el llamador responde 409. */
+  async addExtraResult(orderId: string, path: string, name: string, createdBy: string): Promise<string | null> {
+    const { data, error } = await this.client
+      .from("lab_extra_results")
+      .insert({ order_id: orderId, path, name, created_by: createdBy })
+      .select("id");
+    if (!error && data && data.length === 1) return String(data[0].id);
+    if (error && error.code === "23505") return null;
+    if (error) throw new Error(`addExtraResult: ${error.message}`);
+    return null;
+  }
+
+  /** Borra un archivo adicional (el storage lo elimina el llamador). */
+  async removeExtraResult(orderId: string, resultId: string, expectedPath: string): Promise<boolean> {
+    const { data, error } = await this.client
+      .from("lab_extra_results")
+      .delete()
+      .eq("id", resultId)
+      .eq("order_id", orderId)
+      .eq("path", expectedPath)
+      .select("id");
+    if (error) throw new Error(`removeExtraResult: ${error.message}`);
+    return (data ?? []).length === 1;
+  }
+
+  /** Paths de resultados adicionales de una orden (para la purga). */
+  async listExtraPaths(orderId: string): Promise<string[]> {
+    const { data, error } = await this.client
+      .from("lab_extra_results")
+      .select("path")
+      .eq("order_id", orderId);
+    if (error) throw new Error(`listExtraPaths: ${error.message}`);
+    return (data ?? []).map((r) => r.path);
+  }
+
+  /** Borra TODOS los archivos adicionales de una orden (purga post-ventana). */
+  async deleteExtraResultsOfOrder(orderId: string): Promise<void> {
+    const { error } = await this.client
+      .from("lab_extra_results")
+      .delete()
+      .eq("order_id", orderId);
+    if (error) throw new Error(`deleteExtraResultsOfOrder: ${error.message}`);
+  }
+
   /** Purga post-borrado del archivo: limpia el path/nombre pero CONSERVA
    *  result_published_at (es la señal "resultado existió pero ya expiró"
    *  para el aviso en /estado). Si siguió en 'resultado_listo' pasa a
