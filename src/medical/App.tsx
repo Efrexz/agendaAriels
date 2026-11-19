@@ -271,6 +271,14 @@ export default function App() {
   // salir del paso de datos. El servicio sigue re-caminando pasos (cada
   // servicio tiene un flujo distinto) — ese "Cambiar" queda como estaba.
   const [cambiar, setCambiar] = useState<"sede" | "doctor" | null>(null);
+  // Feedback marketing (18/11): al elegir fecha, la sección de HORAS aparece
+  // abajo — en móvil el cliente no la ve. scrollIntoView con block:"nearest"
+  // baja la vista SOLO si está fuera de pantalla (en desktop no salta).
+  const horasRef = useRef<HTMLDivElement | null>(null);
+  useEffect(() => {
+    if (!form.date || slotsLoading || slots === null) return;
+    horasRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [form.date, slotsLoading, slots]);
 
   const cardRef = useRef<HTMLDivElement>(null);
   const reduceMotion = useReducedMotion() ?? false;
@@ -1371,7 +1379,7 @@ export default function App() {
                       sin fecha → frenchie doctor; OJO: la webp diaDoctor YA TRAE el
                       panel "¡Agenda fácil y rápido!" con sus 3 pills dibujadas,
                       no se duplica en código. Con fecha → tarjetas de horarios) */}
-                  <div className={!form.date ? "lg:self-center" : undefined}>
+                  <div ref={horasRef} className={!form.date ? "lg:self-center" : undefined}>
                     {!form.date && (
                       <MascotaCard
                         src={MASCOT.diaDoctor}
@@ -1578,8 +1586,10 @@ export default function App() {
                     </label>
                   </div>
 
-                  {/* Ticket de resumen + CTA (primero en móvil, pegote en desktop) */}
-                  <aside className="order-first lg:order-none lg:sticky lg:top-24">
+                  {/* Ticket de resumen + CTA (feedback marketing 18/11: en MÓVIL
+                      va DESPUÉS del formulario — así se llena el formulario y se
+                      baja directo al botón Confirmar; desktop igual que siempre) */}
+                  <aside className="order-last lg:order-none lg:sticky lg:top-24">
                     {/* Feedback del dueño (17/11): sede y doctor se cambian AQUÍ
                         (modal inline) sin re-caminar el wizard; servicio/agenda
                         conservan los links de siempre. */}
@@ -1887,6 +1897,17 @@ function SedeStep({ selected, onPick, onContinue }: {
   onPick: (b: MedBranch) => void;
   onContinue: () => void;
 }) {
+  // Feedback marketing (18/11): al elegir sede, la vista baja al botón
+  // "Ver servicios disponibles" — así el cliente ve el siguiente paso sin
+  // hacer scroll. block:"nearest": en desktop (botón visible) no salta.
+  const continueRef = useRef<HTMLButtonElement | null>(null);
+  const prevSelected = useRef<MedBranch | null>(null);
+  useEffect(() => {
+    if (selected && prevSelected.current === null) {
+      continueRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevSelected.current = selected;
+  }, [selected]);
   return (
     <section>
       <StepHeading kicker="3 sedes para atenderte">
@@ -2014,6 +2035,7 @@ function SedeStep({ selected, onPick, onContinue }: {
 
       {/* Confirmación de sede (patrón grooming "Iniciar Reserva") */}
       <button
+        ref={continueRef}
         onClick={onContinue}
         disabled={!selected}
         className={`mt-6 flex w-full items-center rounded-2xl p-4 text-left transition-all sm:mt-8 ${

@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   format, startOfMonth, endOfMonth, eachDayOfInterval,
   isSameDay, isBefore, addMonths, subMonths,
@@ -103,6 +103,18 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
 
   const petType = formData.petType === "cat" ? "cat" : "dog";
   const canContinue = Boolean(formData.date && formData.timeRange);
+
+  // Feedback marketing (18/11): al elegir día, la sección de HORARIOS aparece
+  // abajo — en móvil el cliente no la ve. scrollIntoView con block:"nearest"
+  // baja la vista SOLO si está fuera de pantalla (en desktop no salta).
+  const horariosRef = useRef<HTMLDivElement | null>(null);
+  const prevDate = useRef<string | null>(null);
+  useEffect(() => {
+    if (formData.date && prevDate.current === null) {
+      horariosRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevDate.current = formData.date;
+  }, [formData.date]);
 
   const selectedDateLabel = useMemo(() => {
     if (!formData.date) return "";
@@ -216,6 +228,7 @@ export function ScheduleStep({ formData, update, onNext }: ScheduleStepProps) {
         {/* Sección inferior: horarios (condicional) */}
         {formData.date ? (
           <motion.div
+            ref={horariosRef}
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, ease: "easeOut" }}

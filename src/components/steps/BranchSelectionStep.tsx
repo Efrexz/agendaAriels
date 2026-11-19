@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import { MapPin, Check, Clock, Phone, ArrowRight, CalendarDays, ShieldCheck, Heart, Car } from "lucide-react";
 import type { FormData } from "../BookingWizard";
 import { BRANCHES, isBranchOpen } from "../../data/branches";
@@ -32,6 +33,18 @@ const TRUST_BADGES = [
 
 export function BranchSelectionStep({ formData, update, onNext }: BranchSelectionStepProps) {
   const selected = formData.branch;
+
+  // Feedback marketing (18/11): al elegir sede, la vista baja al botón
+  // "Iniciar Reserva" — el siguiente paso se anuncia solo. block:"nearest":
+  // si el botón ya es visible (desktop), no salta.
+  const continueRef = useRef<HTMLButtonElement | null>(null);
+  const prevSelected = useRef<string | null>(null);
+  useEffect(() => {
+    if (selected && prevSelected.current === null) {
+      continueRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevSelected.current = selected;
+  }, [selected]);
 
   return (
     <div>
@@ -179,6 +192,7 @@ export function BranchSelectionStep({ formData, update, onNext }: BranchSelectio
       </div>
 
       <button
+        ref={continueRef}
         onClick={onNext}
         disabled={!selected}
         className={`mt-6 sm:mt-8 flex w-full items-center rounded-2xl p-4 text-left transition-all ${
