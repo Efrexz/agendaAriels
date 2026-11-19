@@ -359,10 +359,14 @@ export function WelcomeBackStep({
             </div>
           </div>
         </div>
-        <MascotIllustration
-          src="/images/vetMascot/DogAndCatFamilia.webp"
-          className="relative mx-auto -mb-6 mt-4 h-44 max-w-full self-center sm:h-48 lg:h-52 lg:mx-0 lg:mt-0 lg:shrink-0"
-        />
+        {/* Feedback marketing 19/11: la ilustración flota rompiendo el borde del
+            banner en móvil y roba espacio vertical — SOLO tablet/desktop. */}
+        <div className="hidden sm:block">
+          <MascotIllustration
+            src="/images/vetMascot/DogAndCatFamilia.webp"
+            className="relative mx-auto -mb-6 mt-4 h-44 max-w-full self-center sm:h-48 lg:h-52 lg:mx-0 lg:mt-0 lg:shrink-0"
+          />
+        </div>
       </div>
 
       <div className="mb-5 space-y-3">

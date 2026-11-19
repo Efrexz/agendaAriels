@@ -1485,7 +1485,7 @@ export default function App() {
                                         <button
                                           key={s.startMinute}
                                           onClick={() => { update("startMinute", s.startMinute); go("datos"); }}
-                                          className={`rounded-full px-5 py-3 text-[15px] font-bold transition-all ${
+                                          className={`flex-1 basis-[30%] rounded-full px-5 py-3 text-[15px] font-bold transition-all sm:flex-none ${
                                             sel
                                               ? "bg-brand-orange text-white shadow-lg shadow-orange-200"
                                               : "bg-[#F7FBFF] text-[#475AAB] ring-1 ring-[#DCEBFF] hover:-translate-y-0.5 hover:ring-brand-orange hover:text-brand-orange active:translate-y-0"

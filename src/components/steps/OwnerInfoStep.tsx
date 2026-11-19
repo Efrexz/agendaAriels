@@ -153,12 +153,15 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
       </div>
 
       <div className="relative mt-6">
-        <div className="rounded-2xl bg-[#EFF6FF] p-4 pr-28 sm:p-5 sm:pr-40">
-          <div className="flex items-center gap-3">
+        {/* Feedback marketing 19/11: en MÓVIL la mascota va DENTRO del bloque
+            azul, a la derecha del texto (antes flotaba debajo, fuera de la barra).
+            En desktop se conserva la maqueta: mascota grande abajo-derecha + burbuja. */}
+        <div className="rounded-2xl bg-[#EFF6FF] p-4 sm:p-5 sm:pr-40">
+          <div className="flex items-start gap-3">
             <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-white shadow-sm">
               <ShieldCheck className="h-5 w-5 text-blue-600" />
             </span>
-            <div>
+            <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-[#475AAB]">
                 El tamaño de tu peludito importa
               </p>
@@ -166,12 +169,18 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
                 Nos ayuda a calcular el costo exacto del servicio, ya que varía según el peso y el tipo de pelaje.
               </p>
             </div>
+            <img
+              src="/images/vetMascot/pesoMascota.webp"
+              alt=""
+              aria-hidden
+              className="h-16 w-16 shrink-0 select-none object-contain sm:hidden"
+              draggable={false}
+            />
           </div>
         </div>
 
-        <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-6 sm:right-0 sm:mt-0">
-          {/* Feedback marketing 19/11: en móvil la burbuja tapaba el texto de la
-              tarjeta azul — se muestra solo desde sm (donde no estorba). */}
+        {/* Desktop/tablet: mascota grande en la esquina + burbuja (maqueta intacta). */}
+        <div className="hidden sm:absolute sm:-bottom-6 sm:right-0 sm:flex sm:items-end sm:justify-end">
           <div className="relative mb-10 hidden max-w-44 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md sm:block">
             ¡Yo te ayudo!
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
