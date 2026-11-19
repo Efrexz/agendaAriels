@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
 import { ShowerHead, Scissors, Wind, ChevronRight, Lock, PawPrint, ArrowRight } from "lucide-react";
 import type { FormData } from "../BookingWizard";
@@ -32,6 +32,18 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
   const [showModal, setShowModal] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
+
+  // Feedback marketing (19/11): al elegir el SERVICIO (baño / baño y corte),
+  // la vista baja a la tarjeta de detalle (tipo de baño, extras, perfume).
+  // block:"nearest": si ya es visible (desktop), no salta.
+  const detalleRef = useRef<HTMLDivElement | null>(null);
+  const prevService = useRef<string | null>(null);
+  useEffect(() => {
+    if (formData.service && prevService.current === null) {
+      detalleRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevService.current = formData.service;
+  }, [formData.service]);
 
   const isCat = formData.petType === "cat";
   const SERVICE_OPTIONS = isCat ? CAT_SERVICE_OPTIONS : DOG_SERVICE_OPTIONS;
@@ -228,7 +240,7 @@ export function PetInfoStep({ formData, update, onNext }: PetInfoStepProps) {
       </div>
 
       {/* Services detail card: Bath type + Extras + Perfume */}
-      <div className="mt-10 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-6 shadow-sm lg:p-8">
+      <div ref={detalleRef} className="mt-10 rounded-2xl border border-[#DCEBFF] bg-[#F7FBFF] p-6 shadow-sm lg:p-8">
         <BathTypePicker
           value={formData.bathType}
           onSelect={(v) => { clearErrors(); update("bathType", v); }}

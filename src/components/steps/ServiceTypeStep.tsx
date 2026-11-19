@@ -1,3 +1,4 @@
+import { useEffect, useRef } from "react";
 import type { FormData } from "../BookingWizard";
 import { LazyImage } from "../LazyImage";
 import { Dog, Cat, ChevronRight, ArrowRight } from "lucide-react";
@@ -31,6 +32,17 @@ const OPTIONS = [
 ];
 
 export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepProps) {
+  // Feedback marketing (19/11): al elegir Canino/Felino, la vista baja al
+  // botón "Continuar" (block:"nearest": si ya se ve, no salta).
+  const continueRef = useRef<HTMLButtonElement | null>(null);
+  const prevType = useRef<string | null>(null);
+  useEffect(() => {
+    if (formData.petType && prevType.current === null) {
+      continueRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevType.current = formData.petType;
+  }, [formData.petType]);
+
   const handleSelect = (value: "dog" | "cat") => {
     update("petType", value);
   };
@@ -123,6 +135,7 @@ export function ServiceTypeStep({ formData, update, onNext }: ServiceTypeStepPro
 
       <div className="mt-4 flex justify-end sm:mt-6">
         <button
+          ref={continueRef}
           onClick={onNext}
           disabled={!formData.petType}
           className={`inline-flex items-center gap-2 rounded-full px-6 py-3 text-base font-bold shadow-md transition-all ${

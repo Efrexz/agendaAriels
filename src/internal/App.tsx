@@ -202,19 +202,18 @@ export default function App() {
       </div>
 
       {/* Navbar superior fija (maqueta 17/11): azul marino + franja naranja +
-          logo real en pastilla blanca + pestañas pastilla + chip Recepción */}
+          pestañas pastilla + chip Recepción. Feedback 19/11: logo BLANCO directo
+          sobre el azul (sin pastilla blanca detrás — más natural). */}
       <header className="no-print sticky top-0 z-30 shadow-lg shadow-blue-950/20">
         <div aria-hidden className="h-1 w-full bg-gradient-to-r from-brand-blue via-brand-orange to-brand-blue" />
         <div className="bg-gradient-to-r from-[#0E1D40] via-[#152A52] to-[#1D3A6E]">
         <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-2.5 lg:px-8">
-          <div className="flex shrink-0 items-center rounded-xl bg-white px-2 py-1.5 shadow-md">
-            <img
-              src="/logo.webp"
-              alt="Ariel's Clinic — Hospital Veterinario"
-              className="h-8 w-auto select-none"
-              draggable={false}
-            />
-          </div>
+          <img
+            src="/images/brand/logo-white.webp"
+            alt="Ariel's Clinic — Hospital Veterinario"
+            className="h-8 w-auto select-none"
+            draggable={false}
+          />
           <nav className="ml-2 hidden flex-1 justify-end lg:flex">
             {TABS.map(([v, label, Icon]) => (
               <TabButton key={v} tab={tab} value={v} label={label} Icon={Icon} onSelect={setTab} />

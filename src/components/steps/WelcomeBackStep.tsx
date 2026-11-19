@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   PawPrint,
@@ -248,6 +248,17 @@ export function WelcomeBackStep({
   const selectedCount = selectedPets.length;
   const branchLabel = formData.branch ? BRANCH_LABELS[formData.branch] : null;
 
+  // Feedback marketing (19/11): al marcar la PRIMERA mascota, la vista baja al
+  // botón "Agendar con N mascotas" (block:"nearest": si ya se ve, no salta).
+  const agendarRef = useRef<HTMLButtonElement | null>(null);
+  const prevCount = useRef(0);
+  useEffect(() => {
+    if (selectedCount > 0 && prevCount.current === 0) {
+      agendarRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    }
+    prevCount.current = selectedCount;
+  }, [selectedCount]);
+
   const togglePet = (pet: PetData) => {
     const key = petKey(pet);
     setSelectedKeys((prev) => {
@@ -451,6 +462,7 @@ export function WelcomeBackStep({
       )}
 
       <button
+        ref={agendarRef}
         onClick={() => onUseProfile(selectedPets)}
         disabled={selectedCount === 0}
         className={`flex w-full items-center justify-center gap-2.5 rounded-2xl px-6 py-4 text-lg font-bold text-white shadow-md transition-all ${

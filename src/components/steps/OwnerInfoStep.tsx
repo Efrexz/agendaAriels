@@ -170,7 +170,9 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
         </div>
 
         <div className="mt-3 flex items-end justify-end sm:absolute sm:-bottom-6 sm:right-0 sm:mt-0">
-          <div className="relative mb-10 max-w-44 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md">
+          {/* Feedback marketing 19/11: en móvil la burbuja tapaba el texto de la
+              tarjeta azul — se muestra solo desde sm (donde no estorba). */}
+          <div className="relative mb-10 hidden max-w-44 rounded-2xl bg-white px-3 py-2 text-xs font-medium leading-snug text-gray-600 shadow-md sm:block">
             ¡Yo te ayudo!
             <span className="absolute -right-1.5 bottom-5 h-3 w-3 rotate-45 bg-white" />
           </div>

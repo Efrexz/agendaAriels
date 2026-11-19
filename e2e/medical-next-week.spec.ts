@@ -25,7 +25,7 @@ test("próxima semana: solicitud sin hora y aviso honesto", async ({ page }) => 
 
   await page.goto("/medical.html");
   await page.getByRole("button", { name: /Sede San Miguel/ }).click();
-  await page.getByRole("button", { name: /Ver servicios disponibles/ }).click();
+  await page.getByRole("button", { name: /Ver servicios/ }).click();
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Dr\. Lunes/ }).click();
 

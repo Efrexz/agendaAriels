@@ -79,7 +79,23 @@ const MASCOT = {  orden: "/images/vetMascot/orden.webp",
 // MascotaCard: wrapper de las mascotas del wizard (patrón maqueta, SIN marco):
 // animación + fundido blanco inferior para despegar el arte; la ilustración flota
 // con su fondo propio — sin aro ni padding (se revirtió el marco tras feedback 08/11).
-function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError, fade = true }: {
+// desktopOnly (feedback marketing 19/11): en móvil la ilustración NO se renderiza
+// NI se descarga (render condicional, no CSS display:none) — página más ligera
+// y estilo consistente con consulta general. En tablet (sm+) y desktop sí.
+function useIsDesktop(): boolean {
+  const [isDesktop, setIsDesktop] = useState(() =>
+    typeof window !== "undefined" ? window.matchMedia("(min-width: 640px)").matches : true,
+  );
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 640px)");
+    const onChange = (e: MediaQueryListEvent) => setIsDesktop(e.matches);
+    mq.addEventListener("change", onChange);
+    return () => mq.removeEventListener("change", onChange);
+  }, []);
+  return isDesktop;
+}
+
+function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError, fade = true, desktopOnly = false }: {
   src: string;
   alt: string;
   imgClass: string;
@@ -87,8 +103,11 @@ function MascotaCard({ src, alt, imgClass, mix = false, delay = 0.15, onError, f
   delay?: number;
   onError?: () => void;
   fade?: boolean;
+  desktopOnly?: boolean;
 }) {
   const reduceMotion = useReducedMotion() ?? false;
+  const isDesktop = useIsDesktop();
+  if (desktopOnly && !isDesktop) return null;
   return (
     <motion.div
       className="relative mx-auto w-fit"
@@ -356,7 +375,7 @@ export default function App() {
     setError(null);
     const prev: Record<Step, Step> = {
       sede: "sede", servicio: "sede", examen: "servicio", orden: "examen", subir_orden: "orden",
-      examen_lab: "subir_orden", sin_orden: "servicio",
+      examen_lab: "subir_orden", sin_orden: "orden",
       especialidad: "servicio", doctor: "servicio", agenda: "doctor", datos: "agenda", enviado: "sede",
     };    const orderFlow =
       (form.serviceType === "rayos" || form.serviceType === "eco") && form.hasOrder === true;
@@ -860,6 +879,7 @@ export default function App() {
                     src="/images/medical/servicio/eco.webp"
                     alt="Ecografía veterinaria en nuestra sede"
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                    desktopOnly
                   />
                 </section>
               )}
@@ -915,6 +935,7 @@ export default function App() {
                     src={MASCOT.lab}
                     alt="Examen de laboratorio veterinario"
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                    desktopOnly
                   />
                 </section>
               )}
@@ -993,6 +1014,7 @@ export default function App() {
                     src={form.serviceType === "lab" ? MASCOT.lab : MASCOT.orden}
                     alt={form.serviceType === "lab" ? "Mascota con su orden médica y examen de laboratorio" : "Mascota con su orden médica, radiografía y ecografía"}
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                    desktopOnly
                   />
                 </section>
               )}
@@ -1118,6 +1140,7 @@ export default function App() {
                     src={form.serviceType === "lab" ? MASCOT.lab : MASCOT.orden}
                     alt={form.serviceType === "lab" ? "Mascota con su orden médica y examen de laboratorio" : "Mascota con su orden médica, radiografía y ecografía"}
                     imgClass="h-56 w-auto sm:h-64 lg:h-80"
+                    desktopOnly
                   />
                 </section>
               )}
@@ -1192,6 +1215,7 @@ export default function App() {
                     alt="Perrito y gatito saludando, con burbujas de calendario y consulta médica"
                     imgClass="h-56 w-auto sm:h-72 lg:h-96"
                     fade={false}
+                    desktopOnly
                   />
                 </section>
               )}
@@ -2049,7 +2073,7 @@ function SedeStep({ selected, onPick, onContinue }: {
         </span>
         <div className="flex-1 text-left">
           <span className={`text-lg font-bold ${selected ? "text-white" : "text-[#546A8E]"}`}>
-            Ver servicios disponibles
+            Ver servicios
           </span>
         </div>
         <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-colors ${
@@ -2165,7 +2189,9 @@ function EspecialidadCollage() {
 
 function DoctorMascot() {
   const [hidden, setHidden] = useState(false);
-  if (hidden) return null;
+  // Feedback marketing 19/11: en móvil ni se muestra ni se descarga.
+  const isDesktop = useIsDesktop();
+  if (hidden || !isDesktop) return null;
   return (
     <div className="relative mx-auto hidden w-full justify-center sm:flex">
       <MascotaCard

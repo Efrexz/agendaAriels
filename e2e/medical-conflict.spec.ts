@@ -26,7 +26,7 @@ test("un horario ocupado al confirmar permite elegir otro sin perder los datos",
 
   await page.goto("/medical.html");
   await page.getByRole("button", { name: /Sede San Miguel/ }).click();
-  await page.getByRole("button", { name: /Ver servicios disponibles/ }).click();
+  await page.getByRole("button", { name: /Ver servicios/ }).click();
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Doctor Prueba/ }).click();
   // HOY es el único día habilitado garantizado en cualquier corrida: el "último

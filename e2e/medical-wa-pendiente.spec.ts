@@ -20,7 +20,7 @@ test("cita con WhatsApp no entregado → aviso ámbar y código, no verde", asyn
 
   await page.goto("/medical.html");
   await page.getByRole("button", { name: /Sede San Miguel/ }).click();
-  await page.getByRole("button", { name: /Ver servicios disponibles/ }).click();
+  await page.getByRole("button", { name: /Ver servicios/ }).click();
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Dr\. Lunes/ }).click();
   await page.locator("button:not([disabled])", { hasText: /9|10|11/ }).first().click().catch(() => { /* franja ligada al calendario */ });

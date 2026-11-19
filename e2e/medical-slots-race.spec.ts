@@ -30,7 +30,7 @@ test("carrera: slots lentos del día en curso no reaparecen al pasar a próxima 
 
   await page.goto("/medical.html");
   await page.getByRole("button", { name: /Sede San Miguel/ }).click();
-  await page.getByRole("button", { name: /Ver servicios disponibles/ }).click();
+  await page.getByRole("button", { name: /Ver servicios/ }).click();
   await page.getByRole("button", { name: /Consulta General/ }).click();
   await page.getByRole("button", { name: /Dr\. Lunes/ }).click();
 

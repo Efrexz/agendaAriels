@@ -251,6 +251,12 @@ export function ConfirmationStep({ formData, onAddAnother, onRemovePet, onEditPe
   const submittingRef = useRef(false);
   // Ante un fallo de red, reenviar exactamente la misma solicitud y código.
   const attemptRef = useRef<{ formKey: string; payload: ReturnType<typeof buildBookingPayload> } | null>(null);
+  // Feedback marketing 19/11: al llegar a la confirmación la vista puede
+  // quedar a media página — se sube al TOPE para ver "¡Reserva registrada!"
+  // de una. Hook ANTES del early return (reglas de hooks).
+  useEffect(() => {
+    if (submitState === "success") window.scrollTo({ top: 0, behavior: "auto" });
+  }, [submitState]);
 
   const branch = formData.branch ? BRANCH_BY_VALUE[formData.branch] : null;
   const branchPhone = branch?.phone ?? null;
