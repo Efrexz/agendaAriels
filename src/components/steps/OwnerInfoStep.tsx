@@ -173,7 +173,7 @@ export function OwnerInfoStep({ formData, update, onNext }: OwnerInfoStepProps) 
               src="/images/vetMascot/pesoMascota.webp"
               alt=""
               aria-hidden
-              className="h-16 w-16 shrink-0 select-none object-contain sm:hidden"
+              className="h-24 w-24 shrink-0 select-none object-contain sm:hidden"
               draggable={false}
             />
           </div>

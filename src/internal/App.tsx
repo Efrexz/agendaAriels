@@ -211,7 +211,7 @@ export default function App() {
           <img
             src="/images/brand/logo-white.webp"
             alt="Ariel's Clinic — Hospital Veterinario"
-            className="h-8 w-auto select-none"
+            className="h-12 w-auto select-none"
             draggable={false}
           />
           <nav className="ml-2 hidden flex-1 justify-end lg:flex">
